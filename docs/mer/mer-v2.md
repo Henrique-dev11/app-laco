@@ -194,3 +194,82 @@ Pagamento real
 
 
 **Critério de aprovação deste conceito:** você precisa conseguir explicar com suas palavras que `ClienteIdoso` e `CuidadorServico` existem para resolver relacionamentos **N:N**.
+
+
+# Guardar `valorAcordado` na contratação
+
+Mesmo que `CuidadorServico` tenha:
+
+```
+preco = 80
+```
+
+imagine que amanhã João altere para:
+
+```
+preco = 100
+```
+
+Uma contratação antiga não deve mudar de R$ 80 para R$ 100 retroativamente.
+
+Por isso eu adicionaria:
+
+```
+Contratacao
+----------------
+valorAcordado
+```
+
+No momento da contratação:
+
+```
+CuidadorServico.preco = 80
+
+        ↓ copia
+
+Contratacao.valorAcordado = 80
+```
+
+Depois João pode alterar seu preço sem modificar o histórico.
+
+Esse é um detalhe pequeno, mas bastante profissional.
+
+
+Definaremos o ``status
+### `Usuario`
+
+```
+ATIVO
+BLOQUEADO
+INATIVO
+```
+
+### `Cuidador`
+
+Se você mantiver verificação:
+
+```
+PENDENTE
+APROVADO
+REJEITADO
+```
+
+### `Contratacao`
+
+```
+SOLICITADA
+ACEITA
+REJEITADA
+CANCELADA
+FINALIZADA
+```
+
+### `Agendamento`
+
+```
+AGENDADO
+EM_ANDAMENTO
+CONCLUIDO
+CANCELADO
+```
+
