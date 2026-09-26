@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TipoUsuario {
+  RESPONSAVEL
+  CUIDADOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum StatusUsuario {
+  ATIVO
+  BLOQUEADO
+  INATIVO
+}
+
+enum StatusVerificacao {
+  PENDENTE
+  APROVADO
+  REJEITADO
+}
+
+enum Parentesco {
+  PROPRIO
+  FILHO
+  FILHA
+  CONJUGE
+  NETO
+  NETA
+  OUTRO
+}
+
+model Usuario {
+  id          Int           @id @default(autoincrement())
+  nome        String        @db.VarChar(150)
+  email       String        @unique @db.VarChar(255)
+  senhaHash   String        @db.VarChar(255)
+  tipoUsuario TipoUsuario
+  status      StatusUsuario @default(ATIVO)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  responsavel Responsavel?
+  cuidador    Cuidador?
+}
+
+model Endereco {
+  id          Int     @id @default(autoincrement())
+  rua         String  @db.VarChar(150)
+  numero      String  @db.VarChar(20)
+  complemento String? @db.VarChar(150)
+  bairro      String  @db.VarChar(100)
+  cidade      String  @db.VarChar(100)
+  estado      String  @db.Char(2)
+  cep         String  @db.VarChar(8)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  responsaveis Responsavel[]
+  idosos       Idoso[]
+  cuidadores   Cuidador[]
+}
+
+model Responsavel {
+  id             Int      @id @default(autoincrement())
+  usuarioId      Int      @unique
+  enderecoId     Int
+  telefone       String   @db.VarChar(20)
+  cpf            String   @unique @db.VarChar(11)
+  dataNascimento DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
+  endereco Endereco @relation(fields: [enderecoId], references: [id])
+
+  responsavelIdosos ResponsavelIdoso[]
+}
+
+model ResponsavelIdoso {
+  id                   Int        @id @default(autoincrement())
+  responsavelId        Int
+  idosoId              Int
+  parentesco           Parentesco
+  responsavelPrincipal Boolean    @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  responsavel Responsavel @relation(fields: [responsavelId], references: [id])
+  idoso       Idoso       @relation(fields: [idosoId], references: [id])
+
+  @@unique([responsavelId, idosoId])
+}
+
+model Idoso {
+  id                    Int      @id @default(autoincrement())
+  enderecoId            Int
+  nome                  String   @db.VarChar(150)
+  dataNascimento        DateTime
+  sexo                  String?  @db.VarChar(30)
+  telefone              String?  @db.VarChar(20)
+  cpf                   String?  @unique @db.VarChar(11)
+  observacoes           String?  @db.Text
+  necessidadesEspeciais String?  @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  endereco Endereco @relation(fields: [enderecoId], references: [id])
+
+  responsavelIdosos ResponsavelIdoso[]
+}
+
+model Cuidador {
+  id                      Int               @id @default(autoincrement())
+  usuarioId               Int               @unique
+  enderecoId              Int
+  telefone                String            @db.VarChar(20)
+  cpf                     String            @unique @db.VarChar(11)
+  dataNascimento          DateTime
+  biografia               String?           @db.Text
+  experienciaProfissional String?           @db.Text
+  registroProfissional    String?           @db.VarChar(100)
+  statusVerificacao       StatusVerificacao @default(PENDENTE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
+  endereco Endereco @relation(fields: [enderecoId], references: [id])
+}
