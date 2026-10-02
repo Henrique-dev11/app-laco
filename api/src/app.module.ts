@@ -5,6 +5,7 @@ import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { UsuarioModule } from './usuario/usuario.module.js';
 import { ResponsavelModule } from './responsavel/responsavel.module.js';
+import { IdosoModule } from './idoso/idoso.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ResponsavelModule } from './responsavel/responsavel.module.js';
     PrismaModule,
     UsuarioModule,
     ResponsavelModule,
+    IdosoModule,
   ],
   controllers: [AppController],
   providers: [AppService],
