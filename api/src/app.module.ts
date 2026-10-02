@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { UsuarioModule } from './usuario/usuario.module.js';
 import { ResponsavelModule } from './responsavel/responsavel.module.js';
 import { IdosoModule } from './idoso/idoso.module.js';
+import { ResponsavelIdosoModule } from './responsavel-idoso/responsavel-idoso.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { IdosoModule } from './idoso/idoso.module.js';
     UsuarioModule,
     ResponsavelModule,
     IdosoModule,
+    ResponsavelIdosoModule,
   ],
   controllers: [AppController],
   providers: [AppService],
