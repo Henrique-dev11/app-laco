@@ -3,6 +3,8 @@ node_modules
 
 /src/generated/prisma
 
+*.tsbuildinfo
+
 .agents/
 .claude/
 .windsurf/
