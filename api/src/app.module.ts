@@ -4,6 +4,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { UsuarioModule } from './usuario/usuario.module.js';
+import { ResponsavelModule } from './responsavel/responsavel.module.js';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { UsuarioModule } from './usuario/usuario.module.js';
     }),
     PrismaModule,
     UsuarioModule,
+    ResponsavelModule,
   ],
   controllers: [AppController],
   providers: [AppService],
