@@ -7,13 +7,10 @@
   "license": "UNLICENSED",
   "type": "module",
   "packageManager": "npm@11.19.0",
-
   "engines": {
-  "node": "24.21.0",
-  "npm": "11.19.0"
-  
+    "node": "24.21.0",
+    "npm": "11.19.0"
   },
-
   "scripts": {
     "build": "nest build",
     "deploy": "nest deploy",
@@ -31,10 +28,14 @@
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
+    "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "dotenv": "^18.0.4",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
@@ -45,6 +46,7 @@
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
@@ -59,9 +61,4 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"
   }
-
-
-
 }
-
-
