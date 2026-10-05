@@ -7,6 +7,7 @@ import { UsuarioModule } from './usuario/usuario.module.js';
 import { ResponsavelModule } from './responsavel/responsavel.module.js';
 import { IdosoModule } from './idoso/idoso.module.js';
 import { ResponsavelIdosoModule } from './responsavel-idoso/responsavel-idoso.module.js';
+import { CuidadorModule } from './cuidador/cuidador.module.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ResponsavelIdosoModule } from './responsavel-idoso/responsavel-idoso.mo
     ResponsavelModule,
     IdosoModule,
     ResponsavelIdosoModule,
+    CuidadorModule,
   ],
   controllers: [AppController],
   providers: [AppService],
