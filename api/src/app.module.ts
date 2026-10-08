@@ -8,6 +8,8 @@ import { ResponsavelModule } from './responsavel/responsavel.module.js';
 import { IdosoModule } from './idoso/idoso.module.js';
 import { ResponsavelIdosoModule } from './responsavel-idoso/responsavel-idoso.module.js';
 import { CuidadorModule } from './cuidador/cuidador.module.js';
+import { CuidadorServicoModule } from './cuidador-servico/cuidador-servico.module.js';
+import { ServicoModule } from './servico/servico.module.js';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { CuidadorModule } from './cuidador/cuidador.module.js';
     IdosoModule,
     ResponsavelIdosoModule,
     CuidadorModule,
+    CuidadorServicoModule,
+    ServicoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -138,4 +138,35 @@ model Cuidador {
 
   usuario  Usuario  @relation(fields: [usuarioId], references: [id])
   endereco Endereco @relation(fields: [enderecoId], references: [id])
+
+  cuidadorServicos CuidadorServico[]
+}
+
+model Servico {
+  id        Int     @id @default(autoincrement())
+  nome      String  @unique @db.VarChar(150)
+  descricao String? @db.Text
+  ativo     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cuidadorServicos CuidadorServico[]
+}
+
+model CuidadorServico {
+  id             Int     @id @default(autoincrement())
+  cuidadorId     Int
+  servicoId      Int
+  preco          Decimal @db.Decimal(10, 2)
+  duracaoMinutos Int
+  ativo          Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cuidador Cuidador @relation(fields: [cuidadorId], references: [id])
+  servico  Servico  @relation(fields: [servicoId], references: [id])
+
+  @@unique([cuidadorId, servicoId])
 }
