@@ -11,6 +11,7 @@ import { CuidadorModule } from './cuidador/cuidador.module.js';
 import { CuidadorServicoModule } from './cuidador-servico/cuidador-servico.module.js';
 import { ServicoModule } from './servico/servico.module.js';
 import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module.js';
+import { ContratacaoModule } from './contratacao/contratacao.module.js';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module.
     CuidadorServicoModule,
     ServicoModule,
     DisponibilidadeModule,
+    ContratacaoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

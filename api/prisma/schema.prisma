@@ -46,6 +46,14 @@ enum DiaSemana {
   SABADO
 }
 
+enum StatusContratacao {
+  SOLICITADA
+  ACEITA
+  RECUSADA
+  CANCELADA
+  CONCLUIDA
+}
+
 model Usuario {
   id          Int           @id @default(autoincrement())
   nome        String        @db.VarChar(150)
@@ -94,6 +102,7 @@ model Responsavel {
   endereco Endereco @relation(fields: [enderecoId], references: [id])
 
   responsavelIdosos ResponsavelIdoso[]
+  contratacoes      Contratacao[]
 }
 
 model ResponsavelIdoso {
@@ -129,6 +138,7 @@ model Idoso {
   endereco Endereco @relation(fields: [enderecoId], references: [id])
 
   responsavelIdosos ResponsavelIdoso[]
+  contratacoes      Contratacao[]
 }
 
 model Cuidador {
@@ -179,6 +189,8 @@ model CuidadorServico {
   cuidador Cuidador @relation(fields: [cuidadorId], references: [id])
   servico  Servico  @relation(fields: [servicoId], references: [id])
 
+  contratacoes Contratacao[]
+
   @@unique([cuidadorId, servicoId])
 }
 
@@ -196,4 +208,21 @@ model Disponibilidade {
   cuidador Cuidador @relation(fields: [cuidadorId], references: [id])
 
   @@unique([cuidadorId, diaSemana, horaInicio, horaFim])
+}
+
+model Contratacao {
+  id                Int               @id @default(autoincrement())
+  responsavelId     Int
+  idosoId           Int
+  cuidadorServicoId Int
+  valorAcordado     Decimal           @db.Decimal(10, 2)
+  status            StatusContratacao @default(SOLICITADA)
+  observacoes       String?           @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  responsavel     Responsavel     @relation(fields: [responsavelId], references: [id])
+  idoso           Idoso           @relation(fields: [idosoId], references: [id])
+  cuidadorServico CuidadorServico @relation(fields: [cuidadorServicoId], references: [id])
 }
