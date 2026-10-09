@@ -10,6 +10,7 @@ import { ResponsavelIdosoModule } from './responsavel-idoso/responsavel-idoso.mo
 import { CuidadorModule } from './cuidador/cuidador.module.js';
 import { CuidadorServicoModule } from './cuidador-servico/cuidador-servico.module.js';
 import { ServicoModule } from './servico/servico.module.js';
+import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ServicoModule } from './servico/servico.module.js';
     CuidadorModule,
     CuidadorServicoModule,
     ServicoModule,
+    DisponibilidadeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

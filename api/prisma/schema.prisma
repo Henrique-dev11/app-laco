@@ -36,6 +36,16 @@ enum Parentesco {
   OUTRO
 }
 
+enum DiaSemana {
+  DOMINGO
+  SEGUNDA
+  TERCA
+  QUARTA
+  QUINTA
+  SEXTA
+  SABADO
+}
+
 model Usuario {
   id          Int           @id @default(autoincrement())
   nome        String        @db.VarChar(150)
@@ -140,6 +150,7 @@ model Cuidador {
   endereco Endereco @relation(fields: [enderecoId], references: [id])
 
   cuidadorServicos CuidadorServico[]
+  disponibilidades Disponibilidade[]
 }
 
 model Servico {
@@ -169,4 +180,20 @@ model CuidadorServico {
   servico  Servico  @relation(fields: [servicoId], references: [id])
 
   @@unique([cuidadorId, servicoId])
+}
+
+model Disponibilidade {
+  id         Int       @id @default(autoincrement())
+  cuidadorId Int
+  diaSemana  DiaSemana
+  horaInicio DateTime  @db.Time(0)
+  horaFim    DateTime  @db.Time(0)
+  ativo      Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cuidador Cuidador @relation(fields: [cuidadorId], references: [id])
+
+  @@unique([cuidadorId, diaSemana, horaInicio, horaFim])
 }
