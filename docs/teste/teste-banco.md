@@ -233,7 +233,32 @@ Se o mesmo serviço for vinculado novamente ao mesmo cuidador:
 
 ---
 
-### 10. Consultar dados cadastrados
+### 10. Vincular cuidador a Disponibilidade
+
+```bash
+curl -i \
+  -X POST http://localhost:3000/cuidadores/1/disponibilidades \
+  -H "Content-Type: application/json" \
+  -d '{
+    "diaSemana": "SEGUNDA",
+    "horaInicio": "08:00",
+    "horaFim": "12:00"
+  }'
+  ```
+  > **Outro hórario no mesmo dia**
+
+  ```bash
+curl -i \
+  -X POST http://localhost:3000/cuidadores/1/disponibilidades \
+  -H "Content-Type: application/json" \
+  -d '{
+    "diaSemana": "SEGUNDA",
+    "horaInicio": "14:00",
+    "horaFim": "18:00"
+  }'
+  ```
+
+### 12. Consultar dados cadastrados
 
 * **Usuários:**
   ```bash
@@ -254,6 +279,12 @@ Se o mesmo serviço for vinculado novamente ao mesmo cuidador:
 * **Serviços:**
   ```bash
   curl http://localhost:3000/servicos
+  ```
+
+* **Disponibilidades:**
+  ```bash
+  curl -i \
+  http://localhost:3000/cuidadores/1/disponibilidades
   ```
 
 ---
