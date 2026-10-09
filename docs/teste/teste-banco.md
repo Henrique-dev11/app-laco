@@ -258,7 +258,43 @@ curl -i \
   }'
   ```
 
-### 12. Consultar dados cadastrados
+### 12. Contratação 
+
+**Consultar por ID**
+```bash
+curl http://localhost:3000/contratacoes/1
+```
+**Criar uma contratação — POST**
+```bash
+curl -i -X POST http://localhost:3000/contratacoes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "responsavelId": 1,
+    "idosoId": 1,
+    "cuidadorServicoId": 1,
+    "observacoes": "Contratação para teste."
+  }'
+```
+**Atualizar o status — PATCH**
+
+*Aceitar uma contratação que esteja SOLICITADA:*
+
+```bash
+curl -i -X PATCH http://localhost:3000/contratacoes/1/status \
+  -H "Content-Type: application/json" \
+  -d '{"status":"ACEITA"}'
+```
+**Testar uma transição inválida**
+
+*Após aceitar a contratação, tente voltar para SOLICITADA:*
+
+```bahs
+curl -i -X PATCH http://localhost:3000/contratacoes/1/status \
+  -H "Content-Type: application/json" \
+  -d '{"status":"SOLICITADA"}'
+```
+
+### 13. Consultar dados cadastrados
 
 * **Usuários:**
   ```bash
@@ -285,6 +321,11 @@ curl -i \
   ```bash
   curl -i \
   http://localhost:3000/cuidadores/1/disponibilidades
+  ```
+
+* **Contratação:**
+  ```bash
+  curl -i http://localhost:3000/contratacoes/1
   ```
 
 ---
