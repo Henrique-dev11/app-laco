@@ -1,14 +1,12 @@
-import axios from 'axios';
+import { create } from 'axios';
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 
 if (!apiUrl) {
-  throw new Error(
-    'EXPO_PUBLIC_API_URL não foi configurada.',
-  );
+  throw new Error('EXPO_PUBLIC_API_URL não foi configurada.');
 }
 
-export const api = axios.create({
+export const api = create({
   baseURL: apiUrl,
   timeout: 10000,
 });

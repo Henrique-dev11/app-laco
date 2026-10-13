@@ -5,6 +5,4 @@ export type Servico = {
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
-
-  
 };
