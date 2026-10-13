@@ -122,6 +122,7 @@ async findOne(id: number) {
     select: {
       id: true,
       nome: true,
+      nomeSocial: true,
       dataNascimento: true,
       sexo: true,
       telefone: true,

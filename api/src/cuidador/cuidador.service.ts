@@ -15,6 +15,18 @@ import { UpdateCuidadorDto } from './dto/update-cuidador.dto.js';
 export class CuidadorService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async verificacao(
+    id: number,
+    statusVerificacao: 'PENDENTE' | 'APROVADO' | 'REJEITADO',
+  ) {
+    await this.findOne(id);
+    return this.prisma.cuidador.update({
+      where: { id },
+      data: { statusVerificacao },
+      select: { id: true, statusVerificacao: true },
+    });
+  }
+
   async create(dto: CreateCuidadorDto) {
     const usuario = await this.prisma.usuario.findUnique({
       where: {
@@ -27,9 +39,7 @@ export class CuidadorService {
     });
 
     if (!usuario) {
-      throw new NotFoundException(
-        'Usuário não encontrado.',
-      );
+      throw new NotFoundException('Usuário não encontrado.');
     }
 
     if (usuario.tipoUsuario !== TipoUsuario.CUIDADOR) {
@@ -44,34 +54,27 @@ export class CuidadorService {
       );
     }
 
-    const cpfExistente =
-      await this.prisma.cuidador.findUnique({
-        where: {
-          cpf: dto.cpf,
-        },
-      });
+    const cpfExistente = await this.prisma.cuidador.findUnique({
+      where: {
+        cpf: dto.cpf,
+      },
+    });
 
     if (cpfExistente) {
-      throw new ConflictException(
-        'CPF já cadastrado.',
-      );
+      throw new ConflictException('CPF já cadastrado.');
     }
 
     return this.prisma.cuidador.create({
       data: {
         telefone: dto.telefone,
         cpf: dto.cpf,
-        dataNascimento:
-          new Date(dto.dataNascimento),
+        dataNascimento: new Date(dto.dataNascimento),
 
-        biografia:
-          dto.biografia?.trim(),
+        biografia: dto.biografia?.trim(),
 
-        experienciaProfissional:
-          dto.experienciaProfissional?.trim(),
+        experienciaProfissional: dto.experienciaProfissional?.trim(),
 
-        registroProfissional:
-          dto.registroProfissional?.trim(),
+        registroProfissional: dto.registroProfissional?.trim(),
 
         usuario: {
           connect: {
@@ -83,14 +86,10 @@ export class CuidadorService {
           create: {
             rua: dto.endereco.rua.trim(),
             numero: dto.endereco.numero.trim(),
-            complemento:
-              dto.endereco.complemento?.trim(),
+            complemento: dto.endereco.complemento?.trim(),
             bairro: dto.endereco.bairro.trim(),
             cidade: dto.endereco.cidade.trim(),
-            estado:
-              dto.endereco.estado
-                .trim()
-                .toUpperCase(),
+            estado: dto.endereco.estado.trim().toUpperCase(),
             cep: dto.endereco.cep,
           },
         },
@@ -135,242 +134,218 @@ export class CuidadorService {
   }
 
   findAll() {
-  return this.prisma.cuidador.findMany({
-    select: {
-      id: true,
-      telefone: true,
-      cpf: true,
-      dataNascimento: true,
-      biografia: true,
-      experienciaProfissional: true,
-      registroProfissional: true,
-      statusVerificacao: true,
-      createdAt: true,
-      updatedAt: true,
+    return this.prisma.cuidador.findMany({
+      select: {
+        id: true,
+        telefone: true,
+        cpf: true,
+        dataNascimento: true,
+        biografia: true,
+        experienciaProfissional: true,
+        registroProfissional: true,
+        statusVerificacao: true,
+        createdAt: true,
+        updatedAt: true,
 
-      usuario: {
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          tipoUsuario: true,
-          status: true,
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            tipoUsuario: true,
+            status: true,
+          },
+        },
+
+        endereco: {
+          select: {
+            id: true,
+            rua: true,
+            numero: true,
+            complemento: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
         },
       },
-
-      endereco: {
-        select: {
-          id: true,
-          rua: true,
-          numero: true,
-          complemento: true,
-          bairro: true,
-          cidade: true,
-          estado: true,
-          cep: true,
-        },
-      },
-    },
-  });
-}
-
-async findOne(id: number) {
-  const cuidador = await this.prisma.cuidador.findUnique({
-    where: {
-      id,
-    },
-
-    select: {
-      id: true,
-      telefone: true,
-      cpf: true,
-      dataNascimento: true,
-      biografia: true,
-      experienciaProfissional: true,
-      registroProfissional: true,
-      statusVerificacao: true,
-      createdAt: true,
-      updatedAt: true,
-
-      usuario: {
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          tipoUsuario: true,
-          status: true,
-        },
-      },
-
-      endereco: {
-        select: {
-          id: true,
-          rua: true,
-          numero: true,
-          complemento: true,
-          bairro: true,
-          cidade: true,
-          estado: true,
-          cep: true,
-        },
-      },
-    },
-  });
-
-  if (!cuidador) {
-    throw new NotFoundException(
-      'Cuidador não encontrado.',
-    );
+    });
   }
 
-  return cuidador;
-}
+  async findOne(id: number) {
+    const cuidador = await this.prisma.cuidador.findUnique({
+      where: {
+        id,
+      },
 
-async update(
-  id: number,
-  dto: UpdateCuidadorDto,
-) {
-  const cuidador = await this.prisma.cuidador.findUnique({
-    where: {
-      id,
-    },
-  });
+      select: {
+        id: true,
+        telefone: true,
+        cpf: true,
+        dataNascimento: true,
+        biografia: true,
+        experienciaProfissional: true,
+        registroProfissional: true,
+        statusVerificacao: true,
+        createdAt: true,
+        updatedAt: true,
 
-  if (!cuidador) {
-    throw new NotFoundException(
-      'Cuidador não encontrado.',
-    );
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            tipoUsuario: true,
+            status: true,
+          },
+        },
+
+        endereco: {
+          select: {
+            id: true,
+            rua: true,
+            numero: true,
+            complemento: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
+        },
+      },
+    });
+
+    if (!cuidador) {
+      throw new NotFoundException('Cuidador não encontrado.');
+    }
+
+    return cuidador;
   }
 
-  if (dto.cpf) {
-    const cpfExistente =
-      await this.prisma.cuidador.findUnique({
+  async update(id: number, dto: UpdateCuidadorDto) {
+    const cuidador = await this.prisma.cuidador.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!cuidador) {
+      throw new NotFoundException('Cuidador não encontrado.');
+    }
+
+    if (dto.cpf) {
+      const cpfExistente = await this.prisma.cuidador.findUnique({
         where: {
           cpf: dto.cpf,
         },
       });
 
-    if (
-      cpfExistente &&
-      cpfExistente.id !== id
-    ) {
-      throw new ConflictException(
-        'CPF já cadastrado.',
-      );
+      if (cpfExistente && cpfExistente.id !== id) {
+        throw new ConflictException('CPF já cadastrado.');
+      }
     }
-  }
 
-  return this.prisma.cuidador.update({
-    where: {
-      id,
-    },
+    return this.prisma.cuidador.update({
+      where: {
+        id,
+      },
 
-    data: {
-      ...(dto.telefone !== undefined && {
-        telefone: dto.telefone,
-      }),
+      data: {
+        ...(dto.telefone !== undefined && {
+          telefone: dto.telefone,
+        }),
 
-      ...(dto.cpf !== undefined && {
-        cpf: dto.cpf,
-      }),
+        ...(dto.cpf !== undefined && {
+          cpf: dto.cpf,
+        }),
 
-      ...(dto.dataNascimento !== undefined && {
-        dataNascimento: new Date(
-          dto.dataNascimento,
-        ),
-      }),
+        ...(dto.dataNascimento !== undefined && {
+          dataNascimento: new Date(dto.dataNascimento),
+        }),
 
-      ...(dto.biografia !== undefined && {
-        biografia: dto.biografia.trim(),
-      }),
+        ...(dto.biografia !== undefined && {
+          biografia: dto.biografia.trim(),
+        }),
 
-      ...(dto.experienciaProfissional !== undefined && {
-        experienciaProfissional:
-          dto.experienciaProfissional.trim(),
-      }),
+        ...(dto.experienciaProfissional !== undefined && {
+          experienciaProfissional: dto.experienciaProfissional.trim(),
+        }),
 
-      ...(dto.registroProfissional !== undefined && {
-        registroProfissional:
-          dto.registroProfissional.trim(),
-      }),
+        ...(dto.registroProfissional !== undefined && {
+          registroProfissional: dto.registroProfissional.trim(),
+        }),
 
-      ...(dto.endereco !== undefined && {
-        endereco: {
-          update: {
-            ...(dto.endereco.rua !== undefined && {
-              rua: dto.endereco.rua.trim(),
-            }),
+        ...(dto.endereco !== undefined && {
+          endereco: {
+            update: {
+              ...(dto.endereco.rua !== undefined && {
+                rua: dto.endereco.rua.trim(),
+              }),
 
-            ...(dto.endereco.numero !== undefined && {
-              numero: dto.endereco.numero.trim(),
-            }),
+              ...(dto.endereco.numero !== undefined && {
+                numero: dto.endereco.numero.trim(),
+              }),
 
-            ...(dto.endereco.complemento !== undefined && {
-              complemento:
-                dto.endereco.complemento.trim(),
-            }),
+              ...(dto.endereco.complemento !== undefined && {
+                complemento: dto.endereco.complemento.trim(),
+              }),
 
-            ...(dto.endereco.bairro !== undefined && {
-              bairro:
-                dto.endereco.bairro.trim(),
-            }),
+              ...(dto.endereco.bairro !== undefined && {
+                bairro: dto.endereco.bairro.trim(),
+              }),
 
-            ...(dto.endereco.cidade !== undefined && {
-              cidade:
-                dto.endereco.cidade.trim(),
-            }),
+              ...(dto.endereco.cidade !== undefined && {
+                cidade: dto.endereco.cidade.trim(),
+              }),
 
-            ...(dto.endereco.estado !== undefined && {
-              estado:
-                dto.endereco.estado
-                  .trim()
-                  .toUpperCase(),
-            }),
+              ...(dto.endereco.estado !== undefined && {
+                estado: dto.endereco.estado.trim().toUpperCase(),
+              }),
 
-            ...(dto.endereco.cep !== undefined && {
-              cep: dto.endereco.cep,
-            }),
+              ...(dto.endereco.cep !== undefined && {
+                cep: dto.endereco.cep,
+              }),
+            },
+          },
+        }),
+      },
+
+      select: {
+        id: true,
+        telefone: true,
+        cpf: true,
+        dataNascimento: true,
+        biografia: true,
+        experienciaProfissional: true,
+        registroProfissional: true,
+        statusVerificacao: true,
+        createdAt: true,
+        updatedAt: true,
+
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            tipoUsuario: true,
+            status: true,
           },
         },
-      }),
-    },
 
-    select: {
-      id: true,
-      telefone: true,
-      cpf: true,
-      dataNascimento: true,
-      biografia: true,
-      experienciaProfissional: true,
-      registroProfissional: true,
-      statusVerificacao: true,
-      createdAt: true,
-      updatedAt: true,
-
-      usuario: {
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          tipoUsuario: true,
-          status: true,
+        endereco: {
+          select: {
+            id: true,
+            rua: true,
+            numero: true,
+            complemento: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
         },
       },
-
-      endereco: {
-        select: {
-          id: true,
-          rua: true,
-          numero: true,
-          complemento: true,
-          bairro: true,
-          cidade: true,
-          estado: true,
-          cep: true,
-        },
-      },
-    },
-  });
-}
-
+    });
+  }
 }

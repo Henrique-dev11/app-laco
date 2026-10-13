@@ -11,17 +11,14 @@ import {
 import { CreateCuidadorDto } from './dto/create-cuidador.dto.js';
 import { UpdateCuidadorDto } from './dto/update-cuidador.dto.js';
 import { CuidadorService } from './cuidador.service.js';
+import { VerificacaoCuidadorDto } from './dto/verificacao-cuidador.dto.js';
 
 @Controller('cuidadores')
 export class CuidadorController {
-  constructor(
-    private readonly cuidadorService: CuidadorService,
-  ) {}
+  constructor(private readonly cuidadorService: CuidadorService) {}
 
   @Post()
-  create(
-    @Body() dto: CreateCuidadorDto,
-  ) {
+  create(@Body() dto: CreateCuidadorDto) {
     return this.cuidadorService.create(dto);
   }
 
@@ -31,9 +28,7 @@ export class CuidadorController {
   }
 
   @Get(':id')
-  findOne(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.cuidadorService.findOne(id);
   }
 
@@ -42,9 +37,14 @@ export class CuidadorController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCuidadorDto,
   ) {
-    return this.cuidadorService.update(
-      id,
-      dto,
-    );
+    return this.cuidadorService.update(id, dto);
+  }
+
+  @Patch(':id/verificacao')
+  verificacao(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: VerificacaoCuidadorDto,
+  ) {
+    return this.cuidadorService.verificacao(id, dto.statusVerificacao);
   }
 }

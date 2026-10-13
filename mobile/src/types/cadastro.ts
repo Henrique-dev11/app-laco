@@ -13,6 +13,10 @@ export type Documentos = {
   cep: string;
   numeroCasa: string;
   complemento: string;
+  rua: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
   dataNascimento: string;
   senha: string;
 };
@@ -22,6 +26,9 @@ export type DadosIdoso = {
   nomeSocial: string;
   cpf: string;
   dataNascimento: string;
+  parentesco: 'FILHO' | 'FILHA' | 'CONJUGE' | 'NETO' | 'NETA' | 'OUTRO';
+  mesmoEndereco: boolean;
+  endereco: import('./auth').Endereco;
 };
 
 export type Curriculo = {
@@ -29,15 +36,17 @@ export type Curriculo = {
   uri: string;
   mimeType?: string;
   size?: number;
+  file?: File;
 };
 
-// Rascunho da interface. O contrato de envio será definido na integração com a API.
+// Os campos são mapeados ao DTO da API antes do envio.
 export type CadastroRascunho = {
   perfil: Perfil;
   pessoal: DadosPessoais;
   documentos: Documentos;
   idoso: DadosIdoso;
-  servicos: string[];
+  servicos: number[];
+  ofertas: { servicoId: number; preco: string; duracaoMinutos: string }[];
   curriculo: Curriculo | null;
   aceitoTermos: boolean;
 };

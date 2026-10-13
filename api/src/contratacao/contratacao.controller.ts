@@ -6,17 +6,18 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
 } from '@nestjs/common';
 
 import { ContratacaoService } from './contratacao.service.js';
 import { CreateContratacaoDto } from './dto/create-contratacao.dto.js';
 import { UpdateStatusContratacaoDto } from './dto/update-status-contratacao.dto.js';
+import type { Autenticado } from '../auth/session.guard.js';
+import { AgendarDto } from './dto/agendar.dto.js';
 
 @Controller('contratacoes')
 export class ContratacaoController {
-  constructor(
-    private readonly contratacaoService: ContratacaoService,
-  ) {}
+  constructor(private readonly contratacaoService: ContratacaoService) {}
 
   @Post()
   create(@Body() dto: CreateContratacaoDto) {
@@ -24,8 +25,8 @@ export class ContratacaoController {
   }
 
   @Get()
-  findAll() {
-    return this.contratacaoService.findAll();
+  findAll(@Req() req: Autenticado) {
+    return this.contratacaoService.findAll(req.usuario);
   }
 
   @Get(':id')
@@ -37,7 +38,17 @@ export class ContratacaoController {
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateStatusContratacaoDto,
+    @Req() req: Autenticado,
   ) {
-    return this.contratacaoService.updateStatus(id, dto);
+    return this.contratacaoService.updateStatus(id, dto, req.usuario);
+  }
+
+  @Post(':id/agendamento')
+  agendar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AgendarDto,
+    @Req() req: Autenticado,
+  ) {
+    return this.contratacaoService.agendar(id, dto.inicio, req.usuario);
   }
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
 import { PersonalStep } from '../components/registration/PersonalStep';
@@ -69,6 +70,68 @@ export function ResponsavelStep3Screen({
         error={errors.dataNascimento}
         onChangeText={(value) => change('dataNascimento', formatarData(value))}
       />
+      <Text>Seu parentesco com o idoso*</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {(['FILHO', 'FILHA', 'CONJUGE', 'NETO', 'NETA', 'OUTRO'] as const).map(
+          (parentesco) => (
+            <Button
+              key={parentesco}
+              title={parentesco}
+              variant={
+                cadastro.idoso.parentesco === parentesco ? 'filled' : 'outline'
+              }
+              onPress={() =>
+                atualizarCadastro({ idoso: { ...cadastro.idoso, parentesco } })
+              }
+            />
+          ),
+        )}
+      </View>
+      <TouchableOpacity
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: cadastro.idoso.mesmoEndereco }}
+        onPress={() =>
+          atualizarCadastro({
+            idoso: {
+              ...cadastro.idoso,
+              mesmoEndereco: !cadastro.idoso.mesmoEndereco,
+            },
+          })
+        }
+        style={{ minHeight: 44, justifyContent: 'center' }}
+      >
+        <Text>
+          {cadastro.idoso.mesmoEndereco ? '☑' : '☐'} Idoso mora no mesmo
+          endereço que eu
+        </Text>
+      </TouchableOpacity>
+      {!cadastro.idoso.mesmoEndereco &&
+        (
+          [
+            'rua',
+            'numero',
+            'complemento',
+            'bairro',
+            'cidade',
+            'estado',
+            'cep',
+          ] as const
+        ).map((field) => (
+          <FormField
+            key={field}
+            label={`Endereço do idoso · ${field}`}
+            value={cadastro.idoso.endereco[field] ?? ''}
+            onChangeText={(value) =>
+              atualizarCadastro({
+                idoso: {
+                  ...cadastro.idoso,
+                  endereco: { ...cadastro.idoso.endereco, [field]: value },
+                },
+              })
+            }
+          />
+        ))}
+      {!!errors.endereco && <Text>{errors.endereco}</Text>}
       <Button
         title="Finalizar"
         color={perfis.responsavel.color}

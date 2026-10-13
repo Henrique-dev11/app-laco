@@ -50,14 +50,25 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
   function continuar() {
     const nextErrors: typeof errors = validarDocumentos(
       cadastro.documentos,
-      !cuidador,
+      true,
     );
     if (!cadastro.servicos.length)
       nextErrors.servicos = 'Selecione pelo menos um serviço';
     if (cuidador && !cadastro.curriculo)
       nextErrors.curriculo = 'Anexe seu currículo em PDF';
-    if (cuidador && !cadastro.aceitoTermos)
+    if (!cadastro.aceitoTermos)
       nextErrors.termos = 'Você deve aceitar os termos';
+    if (
+      cuidador &&
+      cadastro.ofertas.some(
+        (oferta) =>
+          !Number.isFinite(Number(oferta.preco.replace(',', '.'))) ||
+          Number(oferta.preco.replace(',', '.')) < 0.01 ||
+          !Number.isInteger(Number(oferta.duracaoMinutos)) ||
+          Number(oferta.duracaoMinutos) < 1,
+      )
+    )
+      nextErrors.servicos = 'Informe preço e duração válidos para cada serviço';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     navigation.navigate(
@@ -80,7 +91,7 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
       <DocumentsForm
         value={cadastro.documentos}
         errors={errors}
-        showAddressNumber={!cuidador}
+        showAddressNumber
         showPassword={false}
         onChange={(documentos) => atualizarCadastro({ documentos })}
       />
@@ -120,8 +131,52 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
         }
         value={cadastro.servicos}
         error={errors.servicos}
-        onChange={(servicos) => atualizarCadastro({ servicos })}
+        onChange={(servicos) =>
+          atualizarCadastro({
+            servicos,
+            ofertas: servicos.map(
+              (servicoId) =>
+                cadastro.ofertas.find(
+                  (oferta) => oferta.servicoId === servicoId,
+                ) ?? { servicoId, preco: '', duracaoMinutos: '60' },
+            ),
+          })
+        }
       />
+      {cuidador &&
+        cadastro.ofertas.map((oferta, index) => (
+          <View key={oferta.servicoId} style={styles.group}>
+            <Text style={styles.label}>Serviço {index + 1}</Text>
+            <FormField
+              label="Preço (R$)*"
+              keyboardType="decimal-pad"
+              value={oferta.preco}
+              onChangeText={(preco) =>
+                atualizarCadastro({
+                  ofertas: cadastro.ofertas.map((item) =>
+                    item.servicoId === oferta.servicoId
+                      ? { ...item, preco }
+                      : item,
+                  ),
+                })
+              }
+            />
+            <FormField
+              label="Duração em minutos*"
+              keyboardType="numeric"
+              value={oferta.duracaoMinutos}
+              onChangeText={(duracaoMinutos) =>
+                atualizarCadastro({
+                  ofertas: cadastro.ofertas.map((item) =>
+                    item.servicoId === oferta.servicoId
+                      ? { ...item, duracaoMinutos }
+                      : item,
+                  ),
+                })
+              }
+            />
+          </View>
+        ))}
       <FormField
         label="Senha*"
         password
@@ -132,7 +187,7 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
           atualizarCadastro({ documentos: { ...cadastro.documentos, senha } })
         }
       />
-      {cuidador && (
+      {
         <View style={styles.group}>
           <TouchableOpacity
             accessibilityRole="checkbox"
@@ -154,7 +209,7 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
           </TouchableOpacity>
           {errors.termos && <Text style={styles.error}>{errors.termos}</Text>}
         </View>
-      )}
+      }
       <Button
         title="Continuar"
         color={perfis[perfil].color}

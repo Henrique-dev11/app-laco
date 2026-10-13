@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../theme';
 
 type Props = {
+  activeTab?: 'Início' | 'Buscar' | 'Agenda' | 'Mensagens' | 'Perfil';
   onHome: () => void;
   onSearch: () => void;
   onAgenda: () => void;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function BottomNavigation({
+  activeTab = 'Início',
   onHome,
   onSearch,
   onAgenda,
@@ -50,16 +52,19 @@ export function BottomNavigation({
         <TouchableOpacity
           key={item.title}
           accessibilityRole="button"
-          accessibilityState={{ selected: item.active }}
+          accessibilityLabel={item.title}
+          accessibilityState={{ selected: item.title === activeTab }}
           onPress={item.onPress}
           style={styles.item}
         >
           <Ionicons
             name={item.icon}
             size={22}
-            color={item.active ? colors.surface : '#CFBECD'}
+            color={item.title === activeTab ? colors.surface : '#CFBECD'}
           />
-          <Text style={[styles.text, item.active && styles.active]}>
+          <Text
+            style={[styles.text, item.title === activeTab && styles.active]}
+          >
             {item.title}
           </Text>
         </TouchableOpacity>

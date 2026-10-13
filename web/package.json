@@ -1,0 +1,15 @@
+{
+  "name": "laco-admin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node scripts/server.mjs",
+    "start": "node scripts/server.mjs",
+    "check": "node --check admin/assets/admin.js && node --check admin/assets/api.js && node --check scripts/server.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

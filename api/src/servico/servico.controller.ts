@@ -10,41 +10,32 @@ import {
 
 import { CreateServicoDto } from './dto/create-servico.dto.js';
 import { UpdateServicoDto } from './dto/update-servico.dto.js';
+import { Public } from '../auth/session.guard.js';
 import { ServicoService } from './servico.service.js';
 
 @Controller('servicos')
 export class ServicoController {
-  constructor(
-    private readonly servicoService: ServicoService,
-  ) {}
+  constructor(private readonly servicoService: ServicoService) {}
 
   @Post()
-  create(
-    @Body() dto: CreateServicoDto,
-  ) {
+  create(@Body() dto: CreateServicoDto) {
     return this.servicoService.create(dto);
   }
 
   @Get()
+  @Public()
   findAll() {
     return this.servicoService.findAll();
   }
 
   @Get(':id')
-  findOne(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  @Public()
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.servicoService.findOne(id);
   }
 
   @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateServicoDto,
-  ) {
-    return this.servicoService.update(
-      id,
-      dto,
-    );
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateServicoDto) {
+    return this.servicoService.update(id, dto);
   }
 }

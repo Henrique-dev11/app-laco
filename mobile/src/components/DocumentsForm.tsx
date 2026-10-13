@@ -47,6 +47,24 @@ export function DocumentsForm({
           />
         </View>
       </View>
+      {(['rua', 'bairro', 'cidade', 'estado'] as const).map((field) => (
+        <FormField
+          key={field}
+          label={
+            {
+              rua: 'Rua*',
+              bairro: 'Bairro*',
+              cidade: 'Cidade*',
+              estado: 'UF*',
+            }[field]
+          }
+          value={value[field]}
+          error={errors[field]}
+          maxLength={field === 'estado' ? 2 : 100}
+          autoCapitalize={field === 'estado' ? 'characters' : 'words'}
+          onChangeText={(text) => change(field, text)}
+        />
+      ))}
       {showAddressNumber && (
         <View style={styles.row}>
           <View style={styles.half}>

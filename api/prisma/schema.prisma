@@ -57,6 +57,9 @@ enum StatusContratacao {
 model Usuario {
   id          Int           @id @default(autoincrement())
   nome        String        @db.VarChar(150)
+  nomeSocial  String?       @db.VarChar(150)
+  telefone2   String?       @db.VarChar(20)
+  termosAceitosEm DateTime?
   email       String        @unique @db.VarChar(255)
   senhaHash   String        @db.VarChar(255)
   tipoUsuario TipoUsuario
@@ -67,6 +70,8 @@ model Usuario {
 
   responsavel Responsavel?
   cuidador    Cuidador?
+  sessoes     Sessao[]
+  preferencias PreferenciaServico[]
 }
 
 model Endereco {
@@ -125,6 +130,7 @@ model Idoso {
   id                    Int      @id @default(autoincrement())
   enderecoId            Int
   nome                  String   @db.VarChar(150)
+  nomeSocial            String?  @db.VarChar(150)
   dataNascimento        DateTime
   sexo                  String?  @db.VarChar(30)
   telefone              String?  @db.VarChar(20)
@@ -161,6 +167,8 @@ model Cuidador {
 
   cuidadorServicos CuidadorServico[]
   disponibilidades Disponibilidade[]
+  curriculo Curriculo?
+  agendamentos Agendamento[]
 }
 
 model Servico {
@@ -173,6 +181,7 @@ model Servico {
   updatedAt DateTime @updatedAt
 
   cuidadorServicos CuidadorServico[]
+  preferencias PreferenciaServico[]
 }
 
 model CuidadorServico {
@@ -225,4 +234,46 @@ model Contratacao {
   responsavel     Responsavel     @relation(fields: [responsavelId], references: [id])
   idoso           Idoso           @relation(fields: [idosoId], references: [id])
   cuidadorServico CuidadorServico @relation(fields: [cuidadorServicoId], references: [id])
+  agendamento Agendamento?
+}
+
+model Agendamento {
+  id Int @id @default(autoincrement())
+  contratacaoId Int @unique
+  cuidadorId Int
+  inicio DateTime @db.Timestamptz(3)
+  fim DateTime @db.Timestamptz(3)
+  ativo Boolean @default(true)
+  createdAt DateTime @default(now())
+  contratacao Contratacao @relation(fields: [contratacaoId], references: [id])
+  cuidador Cuidador @relation(fields: [cuidadorId], references: [id])
+  @@index([cuidadorId, inicio])
+}
+
+model Sessao {
+  id String @id @default(uuid())
+  tokenHash String @unique @db.Char(64)
+  usuarioId Int
+  expiraEm DateTime
+  createdAt DateTime @default(now())
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  @@index([usuarioId])
+  @@index([expiraEm])
+}
+
+model Curriculo {
+  id Int @id @default(autoincrement())
+  cuidadorId Int @unique
+  nome String @db.VarChar(255)
+  conteudo Bytes
+  createdAt DateTime @default(now())
+  cuidador Cuidador @relation(fields: [cuidadorId], references: [id], onDelete: Cascade)
+}
+
+model PreferenciaServico {
+  usuarioId Int
+  servicoId Int
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  servico Servico @relation(fields: [servicoId], references: [id])
+  @@id([usuarioId, servicoId])
 }

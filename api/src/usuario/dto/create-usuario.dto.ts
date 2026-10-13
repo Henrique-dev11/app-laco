@@ -21,11 +21,9 @@ export class CreateUsuarioDto {
 
   @IsString()
   @MinLength(8)
+  @MaxLength(72)
   senha: string;
 
-  @IsIn([
-    TipoUsuario.RESPONSAVEL,
-    TipoUsuario.CUIDADOR,
-  ])
+  @IsIn([TipoUsuario.RESPONSAVEL, TipoUsuario.CUIDADOR])
   tipoUsuario: TipoUsuario;
 }
