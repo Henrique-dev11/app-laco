@@ -1,11 +1,47 @@
-import { NavigationContainer } from '@react-navigation/native';
-
+import { useState } from 'react';
+import {
+  DefaultTheme,
+  NavigationContainer,
+  useNavigationContainerRef,
+} from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { CadastroProvider } from './src/contexts/CadastroContext';
 import { AppRoutes } from './src/routes/AppRoutes';
+import { colors } from './src/theme';
+import type { RootStackParamList } from './src/types/navigation';
+
+const theme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: colors.primaryDark,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.text,
+    border: colors.border,
+  },
+};
 
 export default function App() {
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const [activeRoute, setActiveRoute] = useState('LoginType');
+  function updateRoute() {
+    setActiveRoute(navigationRef.getCurrentRoute()?.name ?? 'LoginType');
+  }
   return (
-    <NavigationContainer>
-      <AppRoutes />
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <CadastroProvider>
+        <NavigationContainer
+          ref={navigationRef}
+          theme={theme}
+          onReady={updateRoute}
+          onStateChange={updateRoute}
+        >
+          <StatusBar style={activeRoute === 'Home' ? 'light' : 'dark'} />
+          <AppRoutes />
+        </NavigationContainer>
+      </CadastroProvider>
+    </SafeAreaProvider>
   );
 }
