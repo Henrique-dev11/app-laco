@@ -1,50 +1,99 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { servicosCadastro } from '../constants/cadastro';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { listarServicos } from '../services/servicos';
+import type { Servico } from '../types/servico';
 import { colors } from '../theme';
+import { Button } from './Button';
 
 type Props = {
   label: string;
-  value: string[];
-  onChange: (value: string[]) => void;
+  value: number[];
+  onChange: (value: number[]) => void;
   error?: string;
 };
-
 export function ServiceSelector({ label, value, onChange, error }: Props) {
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [falha, setFalha] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    listarServicos(controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted)
+          setServicos(data.filter((item) => item.ativo));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setFalha(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCarregando(false);
+      });
+    return () => controller.abort();
+  }, [tentativa]);
   return (
     <View style={styles.group}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.row}>
-        {servicosCadastro.map((service) => {
-          const selected = value.includes(service);
-          return (
-            <TouchableOpacity
-              key={service}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: selected }}
-              onPress={() =>
-                onChange(
-                  selected
-                    ? value.filter((item) => item !== service)
-                    : [...value, service],
-                )
-              }
-              style={[styles.chip, selected && styles.selected]}
-            >
-              <Text style={[styles.text, selected && styles.selectedText]}>
-                {service}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {carregando ? (
+        <ActivityIndicator color={colors.primary} />
+      ) : falha ? (
+        <>
+          <Text>Não foi possível consultar os serviços.</Text>
+          <Button
+            title="Tentar novamente"
+            onPress={() => {
+              setCarregando(true);
+              setFalha(false);
+              setTentativa((value) => value + 1);
+            }}
+          />
+        </>
+      ) : (
+        <>
+          {!servicos.length && (
+            <Text>
+              Nenhum serviço cadastrado. Aguarde o catálogo estar disponível.
+            </Text>
+          )}
+          <View style={styles.row}>
+            {servicos.map((service) => {
+              const selected = value.includes(service.id);
+              return (
+                <TouchableOpacity
+                  key={service.id}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selected }}
+                  onPress={() =>
+                    onChange(
+                      selected
+                        ? value.filter((item) => item !== service.id)
+                        : [...value, service.id],
+                    )
+                  }
+                  style={[styles.chip, selected && styles.selected]}
+                >
+                  <Text style={[styles.text, selected && styles.selectedText]}>
+                    {service.nome}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </>
+      )}
+      {!!error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   group: { gap: 8 },
-  label: { color: colors.primaryDark, fontSize: 14, fontWeight: '700' },
+  label: { color: colors.primaryDark, fontWeight: '700' },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     minHeight: 44,
@@ -56,7 +105,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   selected: { backgroundColor: colors.primaryDark },
-  text: { color: colors.primaryDark, fontSize: 12, fontWeight: '600' },
+  text: { color: colors.primaryDark, fontSize: 12 },
   selectedText: { color: colors.surface },
   error: { color: colors.error, fontSize: 12 },
 });

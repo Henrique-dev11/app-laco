@@ -1,14 +1,6 @@
 import { colors } from '../theme';
 import type { Perfil } from '../types/cadastro';
 
-// Opções visuais do projeto original, independentes do catálogo da API.
-export const servicosCadastro = [
-  'Rotina diária',
-  'Fisioterapia',
-  'Acompanhamento a exames',
-  'Cuidados noturnos',
-];
-
 export const perfis = {
   responsavel: {
     titulo: 'Responsável',

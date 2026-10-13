@@ -13,6 +13,7 @@ export function QuickAccessCard({ title, icon, onPress }: Props) {
   return (
     <TouchableOpacity
       accessibilityRole="button"
+      accessibilityLabel={title}
       onPress={onPress}
       style={styles.card}
       activeOpacity={0.8}

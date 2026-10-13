@@ -17,6 +17,8 @@ export type RootStackParamList = {
   BuscarCuidador: undefined;
   Historico: undefined;
   Agenda: undefined;
+  Disponibilidade: undefined;
+  IdosoDetalhes: { idosoId: number };
   Mensagens: undefined;
   Perfil: ResumoPerfil | undefined;
   Notificacoes: undefined;

@@ -24,7 +24,11 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "node test/run-e2e.mjs",
+    "db:generate": "prisma generate --config prisma7.config.ts",
+    "db:migrate": "prisma migrate deploy --config prisma7.config.ts",
+    "db:seed": "prisma db seed --config prisma7.config.ts",
+    "admin:criar": "node scripts/create-admin.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

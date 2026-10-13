@@ -76,7 +76,11 @@ O aplicativo mobile e a aplicação web utilizarão a mesma API e o mesmo banco 
 
 Projeto em desenvolvimento.
 
-Atualmente estamos trabalhando na organização do projeto, arquitetura, modelagem do banco de dados e estruturação do backend.
+A integração de desenvolvimento já inclui cadastro transacional, login, sessão, perfil, serviços, busca de cuidadores aprovados, contratação, disponibilidade e agenda persistidos no PostgreSQL. O painel administrativo funcional está em `web/admin/`, e `web/site/` está reservado para o site público.
+
+Para aprovar cuidadores, consulte o [painel administrativo](web/README.md). O [padrão visual](docs/arquitetura/frontend/padrao-front-laco.md) segue a referência local `front-laco`.
+
+Consulte o [roteiro de execução e integração](docs/teste/integracao-frontend-banco.md) e o [guia de testes](docs/teste/teste-banco.md).
 
 ## Projeto acadêmico
 

@@ -3,7 +3,8 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
 import { Notice } from '../components/Notice';
-import { useCadastro } from '../contexts/CadastroContext';
+import { useAuth } from '../contexts/AuthContext';
+import { mensagemErro } from '../services/api';
 import { ScreenLayout } from '../layouts/ScreenLayout';
 import { colors } from '../theme';
 import type { ScreenProps } from '../types/navigation';
@@ -14,19 +15,27 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
   const [senha, setSenha] = useState('');
   const [errors, setErrors] = useState<{ email?: string; senha?: string }>({});
   const [notice, setNotice] = useState('');
-  const { limparCadastro } = useCadastro();
+  const { entrar: autenticar } = useAuth();
+  const [enviando, setEnviando] = useState(false);
 
-  function entrar() {
+  async function entrar() {
+    if (enviando) return;
     const nextErrors = {
       email: emailValido(email) ? undefined : 'Digite um e-mail válido',
-      senha: senha.trim() ? undefined : 'Preencha a senha',
+      senha: senha ? undefined : 'Preencha a senha',
     };
     setErrors(nextErrors);
-    setNotice(
-      !nextErrors.email && !nextErrors.senha
-        ? 'O login ficará disponível após a integração. Você pode explorar a demonstração abaixo.'
-        : '',
-    );
+    setNotice('');
+    if (nextErrors.email || nextErrors.senha) return;
+    setEnviando(true);
+    try {
+      await autenticar(email, senha);
+      setSenha('');
+    } catch (error) {
+      setNotice(mensagemErro(error));
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -59,16 +68,23 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
         style={styles.forgot}
         onPress={() =>
           setNotice(
-            'A recuperação de senha ficará disponível após a integração do login.',
+            'A recuperação de senha ainda não está disponível. Procure a equipe do Laço se precisar de ajuda.',
           )
         }
       >
         <Text style={styles.link}>Esqueci minha senha</Text>
       </TouchableOpacity>
-      <Button title="Entrar" color={colors.elderly} onPress={entrar} />
+      <Button
+        title={enviando ? 'Entrando...' : 'Entrar'}
+        color={colors.elderly}
+        disabled={enviando}
+        onPress={() => {
+          void entrar();
+        }}
+      />
       {notice && <Notice>{notice}</Notice>}
       <View style={styles.social}>
-        <Text style={styles.muted}>Ou entre com</Text>
+        <Text style={styles.muted}>Outras formas de acesso · em breve</Text>
         <View style={styles.row}>
           {[
             {
@@ -96,15 +112,6 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
           ))}
         </View>
       </View>
-      <Button
-        title="Explorar demonstração"
-        variant="outline"
-        onPress={() => {
-          setSenha('');
-          limparCadastro();
-          navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-        }}
-      />
       <Text style={styles.footer}>
         Não tem uma conta?{' '}
         <Text

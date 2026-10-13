@@ -64,6 +64,10 @@ export function validarDocumentos(
     errors.cep = 'CEP deve ter 8 dígitos';
   if (exigeNumero && !dados.numeroCasa.trim())
     errors.numeroCasa = 'Preencha o número';
+  for (const field of ['rua', 'bairro', 'cidade'] as const)
+    if (!dados[field].trim()) errors[field] = 'Preencha este campo';
+  if (!/^[A-Za-z]{2}$/.test(dados.estado))
+    errors.estado = 'Informe a UF com duas letras';
   if (!dataValida(dados.dataNascimento))
     errors.dataNascimento = 'Digite uma data válida (DD/MM/AAAA)';
   if (dados.senha.length < 8)
@@ -79,5 +83,17 @@ export function validarIdoso(dados: DadosIdoso): ErrosFormulario<DadosIdoso> {
     errors.cpf = 'CPF deve ter 11 dígitos';
   if (!dataValida(dados.dataNascimento))
     errors.dataNascimento = 'Digite uma data válida (DD/MM/AAAA)';
+  if (
+    !dados.mesmoEndereco &&
+    (![
+      dados.endereco.rua,
+      dados.endereco.numero,
+      dados.endereco.bairro,
+      dados.endereco.cidade,
+    ].every((value) => value.trim()) ||
+      !/^[A-Za-z]{2}$/.test(dados.endereco.estado) ||
+      somenteNumeros(dados.endereco.cep).length !== 8)
+  )
+    errors.endereco = 'Preencha o endereço completo do idoso';
   return errors;
 }

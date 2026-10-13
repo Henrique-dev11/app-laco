@@ -16,20 +16,17 @@ export class ServicoService {
   async create(dto: CreateServicoDto) {
     const nome = dto.nome.trim();
 
-    const servicoExistente =
-      await this.prisma.servico.findFirst({
-        where: {
-          nome: {
-            equals: nome,
-            mode: 'insensitive',
-          },
+    const servicoExistente = await this.prisma.servico.findFirst({
+      where: {
+        nome: {
+          equals: nome,
+          mode: 'insensitive',
         },
-      });
+      },
+    });
 
     if (servicoExistente) {
-      throw new ConflictException(
-        'Serviço já cadastrado.',
-      );
+      throw new ConflictException('Serviço já cadastrado.');
     }
 
     return this.prisma.servico.create({
@@ -42,6 +39,7 @@ export class ServicoService {
 
   findAll() {
     return this.prisma.servico.findMany({
+      where: { ativo: true },
       orderBy: {
         nome: 'asc',
       },
@@ -49,26 +47,20 @@ export class ServicoService {
   }
 
   async findOne(id: number) {
-    const servico =
-      await this.prisma.servico.findUnique({
-        where: {
-          id,
-        },
-      });
+    const servico = await this.prisma.servico.findUnique({
+      where: {
+        id,
+      },
+    });
 
     if (!servico) {
-      throw new NotFoundException(
-        'Serviço não encontrado.',
-      );
+      throw new NotFoundException('Serviço não encontrado.');
     }
 
     return servico;
   }
 
-  async update(
-    id: number,
-    dto: UpdateServicoDto,
-  ) {
+  async update(id: number, dto: UpdateServicoDto) {
     await this.findOne(id);
 
     let nome: string | undefined;
@@ -76,24 +68,21 @@ export class ServicoService {
     if (dto.nome !== undefined) {
       nome = dto.nome.trim();
 
-      const servicoComMesmoNome =
-        await this.prisma.servico.findFirst({
-          where: {
-            nome: {
-              equals: nome,
-              mode: 'insensitive',
-            },
-
-            NOT: {
-              id,
-            },
+      const servicoComMesmoNome = await this.prisma.servico.findFirst({
+        where: {
+          nome: {
+            equals: nome,
+            mode: 'insensitive',
           },
-        });
+
+          NOT: {
+            id,
+          },
+        },
+      });
 
       if (servicoComMesmoNome) {
-        throw new ConflictException(
-          'Serviço já cadastrado.',
-        );
+        throw new ConflictException('Serviço já cadastrado.');
       }
     }
 

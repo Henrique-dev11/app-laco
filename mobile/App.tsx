@@ -7,6 +7,7 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { CadastroProvider } from './src/contexts/CadastroContext';
+import { AuthProvider } from './src/contexts/AuthContext';
 import { AppRoutes } from './src/routes/AppRoutes';
 import { colors } from './src/theme';
 import type { RootStackParamList } from './src/types/navigation';
@@ -31,17 +32,36 @@ export default function App() {
   }
   return (
     <SafeAreaProvider>
-      <CadastroProvider>
-        <NavigationContainer
-          ref={navigationRef}
-          theme={theme}
-          onReady={updateRoute}
-          onStateChange={updateRoute}
-        >
-          <StatusBar style={activeRoute === 'Home' ? 'light' : 'dark'} />
-          <AppRoutes />
-        </NavigationContainer>
-      </CadastroProvider>
+      <AuthProvider>
+        <CadastroProvider>
+          <NavigationContainer
+            ref={navigationRef}
+            theme={theme}
+            onReady={updateRoute}
+            onStateChange={updateRoute}
+          >
+            <StatusBar
+              style={
+                [
+                  'Home',
+                  'BuscarCuidador',
+                  'Historico',
+                  'Agenda',
+                  'Disponibilidade',
+                  'Perfil',
+                  'IdosoDetalhes',
+                  'Servicos',
+                  'Mensagens',
+                  'Notificacoes',
+                ].includes(activeRoute)
+                  ? 'light'
+                  : 'dark'
+              }
+            />
+            <AppRoutes />
+          </NavigationContainer>
+        </CadastroProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
