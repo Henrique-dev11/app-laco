@@ -109,3 +109,45 @@ test('servidor entrega o painel e impede acesso a configurações e arquivos pri
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test('novas consultas administrativas enviam filtros e paginação à API', async () => {
+  const chamadas = [];
+  const api = createApi({
+    getToken: () => 'admin',
+    fetcher: async (url, options) => {
+      chamadas.push({ url, options });
+      return new Response(JSON.stringify({ dados: [], total: 0 }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    },
+  });
+  await api.usuarios('cuidadores', {
+    pagina: 2,
+    limite: 10,
+    busca: 'Maria & João',
+    situacao: 'ATIVO',
+    verificacao: 'PENDENTE',
+  });
+  const url = new URL(chamadas[0].url, 'http://teste');
+  assert.equal(url.pathname, '/api/admin/usuarios/cuidadores');
+  assert.equal(url.searchParams.get('busca'), 'Maria & João');
+  assert.equal(url.searchParams.get('pagina'), '2');
+  assert.equal(chamadas[0].options.headers.Authorization, 'Bearer admin');
+  await api.relatorios({
+    inicio: '2027-02-01',
+    fim: '2027-02-03',
+    agrupamento: 'semana',
+  });
+  assert.equal(
+    new URL(chamadas[1].url, 'http://teste').searchParams.get('agrupamento'),
+    'semana',
+  );
+  await api.detalhe('idosos', 12);
+  assert.equal(chamadas[2].url, '/api/admin/usuarios/idosos/12');
+  await api.contratacao(3);
+  assert.equal(chamadas[3].url, '/api/admin/contratacoes/3');
+  await api.contratacoes({ status: 'ACEITA', pagina: 1 });
+  assert.match(chamadas[4].url, /status=ACEITA/);
+  await api.resumo();
+  assert.equal(chamadas[5].url, '/api/admin/resumo');
+});

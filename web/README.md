@@ -1,6 +1,6 @@
 # Painel administrativo do Laço
 
-MVP funcional em HTML, CSS e JavaScript, usando a mesma API e o mesmo PostgreSQL do aplicativo. O visual usa as cores, o logo e os componentes visuais do `front-laco`.
+Painel administrativo em HTML, CSS e JavaScript, integrado à API NestJS e ao PostgreSQL do aplicativo. Mantém as cores e o logo do Laço, sem adicionar dependências de frontend.
 
 ## Executar
 
@@ -38,7 +38,7 @@ O cadastro público do aplicativo não cria administradores. Contas de responsá
 
 1. O cuidador cadastra sua conta, serviços e currículo pelo aplicativo. O perfil começa **Pendente**.
 2. Entre no painel com a conta administrativa.
-3. Abra **Ver perfil** para consultar dados, endereço, serviços e baixar o PDF.
+3. No menu **Cuidadores**, pesquise o cadastro e abra **Ver perfil** para consultar dados, endereço, serviços e baixar o PDF.
 4. Se estiver tudo correto, clique em **Aprovar e ativar** e confirme.
 5. O perfil recebe `APROVADO`, a conta fica `ATIVO` e o cuidador aparece na busca do aplicativo.
 
@@ -81,3 +81,18 @@ npm test
 Os testes do cliente verificam sessão, erros, PDF e logout; os testes do servidor verificam a entrega da página e o bloqueio a arquivos privados. A suíte do backend também testa que somente administradores podem listar, aprovar, rejeitar, bloquear e baixar currículos.
 
 O painel foi inspecionado em navegador em resoluções de computador e celular, usando registros fictícios de teste. O backend foi validado separadamente em PostgreSQL temporário com os endpoints reais.
+
+
+## Dashboard, gerenciamento e relatórios
+
+O painel abre em **Visão geral**, com contagens reais de cuidadores, responsáveis, idosos, autocuidado e contratações por status. O menu lateral oferece telas separadas para cuidadores, responsáveis, idosos independentes e idosos, além de contratações e relatórios. Em telas pequenas, a navegação vira uma faixa horizontal rolável.
+
+As listagens pesquisam e paginam no backend. Cuidadores têm filtros de verificação e situação da conta; responsáveis têm filtros de situação e vínculo; idosos têm filtro de vínculo; independentes têm filtro da conta de autocuidado. As páginas de detalhes permitem navegar entre responsáveis e idosos. Aprovação, bloqueio, reativação, currículo e fotos de cuidadores continuam disponíveis.
+
+Os relatórios apresentam valores contratados, quantidades, status, serviços e crescimento de cadastros. O período usa datas inclusivas no fuso de São Paulo e pode ser agrupado por dia, semana, mês ou ano. Cada gráfico SVG tem uma tabela equivalente com os valores completos. Não há biblioteca externa nem cálculo de estatísticas a partir de listagens no navegador.
+
+**Valor contratado** corresponde à soma das contratações atualmente aceitas e concluídas. **Valor total registrado** inclui também solicitações, recusas e cancelamentos. Os valores não representam pagamentos recebidos: o projeto ainda não tem controle de pagamentos. A seleção temporal considera a data de criação da contratação e seu status atual, não a data de recebimento, conclusão ou agendamento.
+
+O autocuidado já existe na modelagem: um idoso com vínculo `PROPRIO` é contado como independente. Esse grupo está incluído no total de idosos. Não foi criado outro tipo de conta.
+
+Não houve alteração no Prisma ou migration para esta melhoria. Reinicie a API atualizada e recarregue o painel para acessar os novos endpoints. Consulte o [roteiro completo de testes e endpoints](../docs/teste/dashboard-admin.md).

@@ -1,3 +1,10 @@
+export function adminQuery(params = {}) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params))
+    if (value !== undefined && value !== null && value !== '')
+      query.set(key, String(value));
+  return query.size ? `?${query}` : '';
+}
 export class ApiError extends Error {
   constructor(message, status) {
     super(message);
@@ -64,6 +71,17 @@ export function createApi({
         token: null,
       }),
     perfil: () => request('/auth/me'),
+    resumo: () => request('/admin/resumo'),
+    usuarios: (categoria, params) =>
+      request(
+        `/admin/usuarios/${encodeURIComponent(categoria)}${adminQuery(params)}`,
+      ),
+    detalhe: (categoria, id) =>
+      request(`/admin/usuarios/${encodeURIComponent(categoria)}/${id}`),
+    contratacoes: (params) =>
+      request(`/admin/contratacoes${adminQuery(params)}`),
+    contratacao: (id) => request(`/admin/contratacoes/${id}`),
+    relatorios: (params) => request(`/admin/relatorios${adminQuery(params)}`),
     listar: () => request('/admin/cuidadores'),
     verificar: (id, statusVerificacao) =>
       request(`/admin/cuidadores/${id}/verificacao`, {
@@ -79,8 +97,7 @@ export function createApi({
       request(`/admin/cuidadores/${id}/curriculo`, { binary: true }),
     // Fotos de cuidadores pendentes são privadas: precisam do token, então
     // não dá para usar <img src> direto; baixamos o binário e criamos um blob.
-    foto: (usuarioId) =>
-      request(`/fotos/${usuarioId}`, { binary: 'imagem' }),
+    foto: (usuarioId) => request(`/fotos/${usuarioId}`, { binary: 'imagem' }),
     logout: (token) =>
       request('/auth/logout', { method: 'POST', token: token ?? getToken() }),
   };
