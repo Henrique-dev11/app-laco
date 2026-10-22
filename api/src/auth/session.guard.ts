@@ -124,6 +124,8 @@ export class SessionGuard implements CanActivate {
         if (!contrato) return true; // o serviço responde 404
         return contrato.responsavelId === user.responsavelId;
       }
+      case 'MensagemController':
+        return true; // o serviço só atende participantes com contratação entre si
       case 'UsuarioController':
         return handler !== 'findAll' && handler !== 'create' && id === user.id;
       case 'ResponsavelController':

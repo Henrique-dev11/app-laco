@@ -82,7 +82,7 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
           void entrar();
         }}
       />
-      {notice && <Notice>{notice}</Notice>}
+      {!!notice && <Notice>{notice}</Notice>}
       <View style={styles.social}>
         <Text style={styles.muted}>Outras formas de acesso · em breve</Text>
         <View style={styles.row}>

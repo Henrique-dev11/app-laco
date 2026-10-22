@@ -58,7 +58,7 @@ export function FormField({
           </TouchableOpacity>
         )}
       </View>
-      {error && (
+      {!!error && (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}
         </Text>

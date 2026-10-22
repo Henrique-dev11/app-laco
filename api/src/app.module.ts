@@ -13,6 +13,7 @@ import { ServicoModule } from './servico/servico.module.js';
 import { DisponibilidadeModule } from './disponibilidade/disponibilidade.module.js';
 import { ContratacaoModule } from './contratacao/contratacao.module.js';
 import { AvaliacaoModule } from './avaliacao/avaliacao.module.js';
+import { MensagemModule } from './mensagem/mensagem.module.js';
 import { AuthModule } from './auth/auth.module.js';
 
 @Module({
@@ -31,6 +32,7 @@ import { AuthModule } from './auth/auth.module.js';
     DisponibilidadeModule,
     ContratacaoModule,
     AvaliacaoModule,
+    MensagemModule,
     AuthModule,
   ],
   controllers: [AppController],

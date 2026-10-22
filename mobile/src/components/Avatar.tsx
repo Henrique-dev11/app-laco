@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { api } from '../services/api';
-import { urlFoto } from '../services/foto';
+import { carregarFoto } from '../services/foto';
 import { useTheme } from '../theme/ThemeContext';
 
 type Props = {
@@ -25,27 +24,33 @@ export function Avatar({
   corInicial,
 }: Props) {
   const colors = useTheme();
-  // Guarda qual foto falhou: ao trocar a foto, tenta carregar de novo.
+  const [carregada, setCarregada] = useState<{
+    chave: string;
+    uri: string;
+  } | null>(null);
   const chave = `${usuarioId}:${versao}`;
-  const [falhouEm, setFalhouEm] = useState<string | null>(null);
-  const falhou = falhouEm === chave;
+  useEffect(() => {
+    if (!usuarioId || !versao) return;
+    let ativo = true;
+    carregarFoto(usuarioId, versao)
+      .then((uri) => ativo && setCarregada({ chave, uri }))
+      .catch(() => {
+        /* Sem foto (ou falhou): fica a inicial do nome. */
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioId, versao, chave]);
   const forma = {
     width: tamanho,
     height: tamanho,
     borderRadius: tamanho / 2,
   };
-  if (usuarioId && versao && !falhou) {
-    const token = api.defaults.headers.common.Authorization;
+  if (usuarioId && versao && carregada?.chave === chave) {
     return (
       <Image
         accessibilityLabel={`Foto de ${nome}`}
-        source={{
-          uri: urlFoto(usuarioId, versao),
-          ...(typeof token === 'string'
-            ? { headers: { Authorization: token } }
-            : {}),
-        }}
-        onError={() => setFalhouEm(chave)}
+        source={{ uri: carregada.uri }}
         style={[forma, { backgroundColor: colors.avatarBg }]}
       />
     );

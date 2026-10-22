@@ -73,6 +73,8 @@ model Usuario {
   sessoes     Sessao[]
   preferencias PreferenciaServico[]
   foto        FotoPerfil?
+  mensagensEnviadas  Mensagem[] @relation("MensagensEnviadas")
+  mensagensRecebidas Mensagem[] @relation("MensagensRecebidas")
 }
 
 model Endereco {
@@ -318,4 +320,21 @@ model Avaliacao {
   cuidador    Cuidador    @relation(fields: [cuidadorId], references: [id])
 
   @@index([cuidadorId, createdAt])
+}
+
+// Mensagem direta entre dois usuários. Só trocam mensagens um responsável e um
+// cuidador que tenham ao menos uma contratação entre si (regra no serviço).
+model Mensagem {
+  id             Int       @id @default(autoincrement())
+  remetenteId    Int
+  destinatarioId Int
+  conteudo       String    @db.VarChar(1000)
+  lidaEm         DateTime?
+  createdAt      DateTime  @default(now())
+
+  remetente    Usuario @relation("MensagensEnviadas", fields: [remetenteId], references: [id])
+  destinatario Usuario @relation("MensagensRecebidas", fields: [destinatarioId], references: [id])
+
+  @@index([remetenteId, destinatarioId, id])
+  @@index([destinatarioId, remetenteId, lidaEm])
 }

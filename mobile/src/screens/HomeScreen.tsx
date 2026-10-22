@@ -14,6 +14,7 @@ import { BottomNavigation } from '../components/BottomNavigation';
 import { Notice } from '../components/Notice';
 import { QuickAccessCard } from '../components/QuickAccessCard';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotificacoes } from '../hooks/useNotificacoes';
 import { api, mensagemErro } from '../services/api';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
@@ -53,6 +54,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const { usuario, atualizar } = useAuth();
+  const { pendentes } = useNotificacoes();
   const [proximo, setProximo] = useState<Atendimento | null>(null);
   const [agendados, setAgendados] = useState<Atendimento[]>([]);
   const [erroAgenda, setErroAgenda] = useState(false);
@@ -131,6 +133,13 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
               size={22}
               color={colors.surface}
             />
+            {pendentes > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {pendentes > 9 ? '9+' : pendentes}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
         <ScrollView
@@ -393,6 +402,23 @@ const criarStyles = (colors: Paleta) =>
       backgroundColor: colors.headerSoft,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    notificationBadge: {
+      position: 'absolute',
+      top: -2,
+      right: -2,
+      minWidth: 18,
+      height: 18,
+      paddingHorizontal: 4,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.error,
+    },
+    notificationBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.surface,
     },
     scroll: { padding: 24, flexGrow: 1 },
     content: { gap: 20, width: '100%', maxWidth: 640, alignSelf: 'center' },

@@ -8,7 +8,11 @@ import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useCadastro } from '../contexts/CadastroContext';
 import { mensagemErro } from '../services/api';
-import { escolherEEnviarFoto, removerFoto } from '../services/foto';
+import {
+  escolherEEnviarFoto,
+  removerFoto,
+  tirarEEnviarFoto,
+} from '../services/foto';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
 import { statusLabels, useAppStyles } from '../theme/appStyles';
@@ -50,7 +54,17 @@ export function PerfilScreen({ navigation }: ScreenProps<'Perfil'>) {
         />
         <View style={styles.fotoAcoes}>
           <Button
-            title={usuario.foto ? 'Trocar foto' : 'Adicionar foto'}
+            title="Tirar foto"
+            variant="outline"
+            disabled={enviando}
+            onPress={() => {
+              void executar(async () => {
+                if (await tirarEEnviarFoto()) await atualizar();
+              }, '');
+            }}
+          />
+          <Button
+            title="Escolher da galeria"
             variant="outline"
             disabled={enviando}
             onPress={() => {

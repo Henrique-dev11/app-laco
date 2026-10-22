@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { CadastroProvider } from './src/contexts/CadastroContext';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { AvisosMensagens } from './src/components/AvisosMensagens';
 import { AppRoutes } from './src/routes/AppRoutes';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import type { RootStackParamList } from './src/types/navigation';
@@ -59,6 +60,7 @@ function Shell() {
         }
       />
       <AppRoutes />
+      <AvisosMensagens navigationRef={navigationRef} />
     </NavigationContainer>
   );
 }

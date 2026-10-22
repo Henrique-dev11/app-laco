@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { isAxiosError } from 'axios';
 import { api, definirToken, mensagemErro } from '../services/api';
+import { recuperarFotoPendente } from '../services/foto';
 import { lerToken, gravarToken } from '../services/sessao';
 import type { Sessao, UsuarioAtual } from '../types/auth';
 
@@ -58,6 +59,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (token) {
           const response = await api.get<UsuarioAtual>('/auth/me');
           if (ativo) setUsuario(response.data);
+          try {
+            // App reiniciado pelo Android enquanto a câmera estava aberta.
+            if (await recuperarFotoPendente()) {
+              const atual = await api.get<UsuarioAtual>('/auth/me');
+              if (ativo) setUsuario(atual.data);
+            }
+          } catch {
+            /* A foto pendente não deve impedir o login. */
+          }
         }
       } catch (error) {
         if (ativo && !(isAxiosError(error) && error.response?.status === 401))
