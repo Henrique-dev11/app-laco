@@ -7,13 +7,14 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { calcularHorarios, partesLocais, FUSO } from './horarios.js';
+import { FUSO } from './horarios.js';
+import { consultarAgenda, validarJanela } from './agenda-disponivel.js';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'node:crypto';
 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StatusContratacao } from '../generated/prisma/client.js';
-import type { DiaSemana } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
 
 import { CreateContratacaoDto } from './dto/create-contratacao.dto.js';
 import { UpdateStatusContratacaoDto } from './dto/update-status-contratacao.dto.js';
@@ -26,6 +27,9 @@ const MAX_TENTATIVAS_CODIGO = 5;
 const contratacaoOmit = { codigoConclusaoHash: true, tentativasCodigo: true };
 
 const contratacaoInclude = {
+  itemProposta: {
+    select: { propostaId: true, proposta: { select: { versao: true } } },
+  },
   agendamento: true,
   avaliacao: {
     select: { id: true, nota: true, comentario: true, createdAt: true },
@@ -113,146 +117,73 @@ export class ContratacaoService {
       oferta.cuidador.usuario.status !== 'ATIVO'
     )
       throw new BadRequestException('Cuidador ou serviço indisponível.');
-    const agora = new Date();
-    const mesAtual = partesLocais(agora).data.slice(0, 7);
-    const limite = `${Number(mesAtual.slice(0, 4)) + 1}${mesAtual.slice(4)}`;
-    if (mes < mesAtual || mes > limite)
-      throw new BadRequestException(
-        'Consulte do mês atual até os próximos 12 meses.',
-      );
-    const inicio = new Date(`${mes}-01T00:00:00Z`);
-    const fim = new Date(inicio);
-    fim.setUTCMonth(fim.getUTCMonth() + 1);
-    fim.setUTCDate(fim.getUTCDate() + 1);
-    const [disponibilidades, ocupados] = await Promise.all([
-      this.prisma.disponibilidade.findMany({
-        where: { cuidadorId: oferta.cuidadorId, ativo: true },
-      }),
-      this.prisma.agendamento.findMany({
-        where: {
-          cuidadorId: oferta.cuidadorId,
-          ativo: true,
-          inicio: { lt: fim },
-          fim: { gt: inicio },
-        },
-        select: { inicio: true, fim: true },
-      }),
-    ]);
     return {
       mes,
       fuso: FUSO,
       duracaoMinutos: contrato.duracaoMinutos,
       intervaloMinutos: 15,
-      datas: calcularHorarios(
+      datas: await consultarAgenda(
+        this.prisma,
+        oferta.cuidadorId,
         mes,
         contrato.duracaoMinutos,
-        disponibilidades,
-        ocupados,
-        agora,
       ),
     };
   }
 
   async agendar(id: number, dataInicio: string, usuario: Identidade) {
-    const inicio = new Date(dataInicio);
+    return this.prisma.$transaction((tx) =>
+      this.agendarEmTransacao(tx, id, dataInicio, usuario),
+    );
+  }
+
+  /** Compartilhado pelo agendamento manual e pela confirmação de proposta. */
+  async agendarEmTransacao(
+    tx: Prisma.TransactionClient,
+    id: number,
+    dataInicio: string,
+    usuario: Identidade,
+  ) {
+    await tx.$queryRaw`SELECT id FROM "Contratacao" WHERE id = ${id} FOR UPDATE`;
+    const contrato = await tx.contratacao.findUnique({
+      where: { id },
+      include: {
+        agendamento: true,
+        cuidadorServico: {
+          include: { cuidador: { include: { usuario: true } }, servico: true },
+        },
+      },
+    });
+    if (!contrato) throw new NotFoundException('Contratação não encontrada.');
     if (
-      !Number.isFinite(inicio.getTime()) ||
-      inicio <= new Date() ||
-      inicio.getUTCSeconds() !== 0 ||
-      inicio.getUTCMilliseconds() !== 0
+      !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario) &&
+      contrato.responsavelId !== usuario.responsavelId
     )
+      throw new ForbiddenException('Apenas o responsável pode agendar.');
+    if (contrato.status !== 'ACEITA')
       throw new BadRequestException(
-        'Informe uma data futura com precisão de minutos.',
+        'O cuidador precisa aceitar a contratação antes do agendamento.',
       );
-    return this.prisma.$transaction(async (tx) => {
-      // Serializa agendamento e mudança de status da mesma contratação.
-      await tx.$queryRaw`SELECT id FROM "Contratacao" WHERE id = ${id} FOR UPDATE`;
-      const contrato = await tx.contratacao.findUnique({
-        where: { id },
-        include: {
-          cuidadorServico: {
-            include: {
-              cuidador: { include: { usuario: true } },
-              servico: true,
-            },
-          },
-        },
-      });
-      if (!contrato) throw new NotFoundException('Contratação não encontrada.');
-      if (
-        !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario) &&
-        contrato.responsavelId !== usuario.responsavelId
-      )
-        throw new ForbiddenException('Apenas o responsável pode agendar.');
-      if (contrato.status !== 'ACEITA')
-        throw new BadRequestException(
-          'O cuidador precisa aceitar a contratação antes do agendamento.',
-        );
-      const oferta = contrato.cuidadorServico;
-      if (
-        !oferta.ativo ||
-        !oferta.servico.ativo ||
-        oferta.cuidador.statusVerificacao !== 'APROVADO' ||
-        oferta.cuidador.usuario.status !== 'ATIVO'
-      )
-        throw new BadRequestException('Cuidador ou serviço indisponível.');
-      // A edição da disponibilidade usa a mesma trava, evitando validar uma janela que mudou durante a reserva.
-      await tx.$queryRaw`SELECT id FROM "Cuidador" WHERE id = ${oferta.cuidadorId} FOR UPDATE`;
-      if (inicio <= new Date())
-        throw new BadRequestException('Escolha um horário futuro.');
-      const fim = new Date(inicio.getTime() + contrato.duracaoMinutos * 60000);
-      const local = (data: Date) =>
-        Object.fromEntries(
-          new Intl.DateTimeFormat('en-US', {
-            timeZone: 'America/Sao_Paulo',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            weekday: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-            hourCycle: 'h23',
-          })
-            .formatToParts(data)
-            .map((part) => [part.type, part.value]),
-        );
-      const comeco = local(inicio);
-      const final = local(fim);
-      if (
-        comeco.year !== final.year ||
-        comeco.month !== final.month ||
-        comeco.day !== final.day
-      )
-        throw new BadRequestException(
-          'O atendimento deve terminar no mesmo dia.',
-        );
-      const dias: Record<string, DiaSemana> = {
-        Sun: 'DOMINGO',
-        Mon: 'SEGUNDA',
-        Tue: 'TERCA',
-        Wed: 'QUARTA',
-        Thu: 'QUINTA',
-        Fri: 'SEXTA',
-        Sat: 'SABADO',
-      };
-      const hora = (p: Record<string, string>) =>
-        new Date(`1970-01-01T${p.hour}:${p.minute}:00.000Z`);
-      const disponivel = await tx.disponibilidade.findFirst({
-        where: {
-          cuidadorId: oferta.cuidadorId,
-          ativo: true,
-          diaSemana: dias[comeco.weekday],
-          horaInicio: { lte: hora(comeco) },
-          horaFim: { gte: hora(final) },
-        },
-      });
-      if (!disponivel)
-        throw new BadRequestException(
-          'O horário não está dentro da disponibilidade do cuidador (horário de São Paulo).',
-        );
-      return tx.agendamento.create({
-        data: { contratacaoId: id, cuidadorId: oferta.cuidadorId, inicio, fim },
-      });
+    if (contrato.agendamento)
+      throw new ConflictException('A contratação já possui agendamento.');
+    const oferta = contrato.cuidadorServico;
+    if (
+      !oferta.ativo ||
+      !oferta.servico.ativo ||
+      oferta.cuidador.statusVerificacao !== 'APROVADO' ||
+      oferta.cuidador.usuario.status !== 'ATIVO'
+    )
+      throw new BadRequestException('Cuidador ou serviço indisponível.');
+    await tx.$queryRaw`SELECT id FROM "Cuidador" WHERE id = ${oferta.cuidadorId} FOR UPDATE`;
+    const inicio = new Date(dataInicio);
+    const fim = await validarJanela(
+      tx,
+      oferta.cuidadorId,
+      inicio,
+      contrato.duracaoMinutos,
+    );
+    return tx.agendamento.create({
+      data: { contratacaoId: id, cuidadorId: oferta.cuidadorId, inicio, fim },
     });
   }
 

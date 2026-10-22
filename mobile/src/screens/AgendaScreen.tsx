@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
@@ -18,6 +19,9 @@ type Agendamento = {
     id: number;
     nomeServico: string;
     status: string;
+    duracaoMinutos: number;
+    valorAcordado: string;
+    observacoes: string | null;
     idoso: { id: number; nome: string; nomeSocial: string | null };
     cuidadorServico: { cuidador: { usuario: { nome: string } } };
   };
@@ -36,6 +40,13 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
   const [idosoId, setIdosoId] = useState<number | null>(null);
   const agenda = useListaApi<Agendamento>(
     `/agendamentos${idosoId ? `?idosoId=${idosoId}` : ''}`,
+  );
+  const atualizarAgenda = agenda.atualizar;
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setInterval(atualizarAgenda, 10000);
+      return () => clearInterval(timer);
+    }, [atualizarAgenda]),
   );
   const semanal = useListaApi<Disponibilidade>(
     usuario?.cuidador
@@ -126,7 +137,11 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
         <View key={a.id} style={styles.card}>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
-              {a.ativo ? statusLabels[a.contratacao.status] : 'Cancelado'}
+              {a.ativo
+                ? a.contratacao.status === 'ACEITA'
+                  ? 'Confirmado'
+                  : statusLabels[a.contratacao.status]
+                : 'Cancelado'}
             </Text>
           </View>
           <Text style={styles.name}>{a.contratacao.nomeServico}</Text>
@@ -138,6 +153,21 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
           </Text>
           <Text style={styles.text}>Início: {formato(a.inicio)}</Text>
           <Text style={styles.text}>Término: {formato(a.fim)}</Text>
+          <Text style={styles.text}>
+            Duração: {a.contratacao.duracaoMinutos} minutos
+          </Text>
+          <Text style={styles.text}>
+            Valor acordado:{' '}
+            {Number(a.contratacao.valorAcordado).toLocaleString('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+            })}
+          </Text>
+          {!!a.contratacao.observacoes && (
+            <Text style={styles.text}>
+              Observações: {a.contratacao.observacoes}
+            </Text>
+          )}
         </View>
       ))}
       <Button

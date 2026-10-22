@@ -26,7 +26,8 @@ export class MensagemController {
   @Get('conversas/:usuarioId')
   listar(
     @Param('usuarioId', ParseIntPipe) usuarioId: number,
-    @Query('depois', new ParseIntPipe({ optional: true })) depois: number | undefined,
+    @Query('depois', new ParseIntPipe({ optional: true }))
+    depois: number | undefined,
     @Req() req: Autenticado,
   ) {
     return this.mensagemService.listar(req.usuario, usuarioId, depois);

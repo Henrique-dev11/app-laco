@@ -19,6 +19,7 @@ type Contratacao = {
   precoReferencia: string;
   duracaoMinutos: number;
   nomeServico: string;
+  itemProposta: { propostaId: number; proposta: { versao: number } } | null;
   observacoes: string | null;
   agendamento: null | { inicio: string };
   idoso: { nome: string };
@@ -102,6 +103,12 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
           <Text style={appStyles.text}>
             {contrato.nomeServico} · {statusLabels[contrato.status]}
           </Text>
+          {!!contrato.itemProposta && (
+            <Text style={appStyles.text}>
+              Proposta #{contrato.itemProposta.propostaId} · versão{' '}
+              {contrato.itemProposta.proposta.versao}
+            </Text>
+          )}
           <Text style={appStyles.text}>Idoso: {contrato.idoso.nome}</Text>
           <Text style={appStyles.text}>
             Cuidador: {contrato.cuidadorServico.cuidador.usuario.nome}

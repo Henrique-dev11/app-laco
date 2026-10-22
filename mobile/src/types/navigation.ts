@@ -30,6 +30,10 @@ export type RootStackParamList = {
   IdosoDetalhes: { idosoId: number };
   Mensagens: undefined;
   Conversa: { usuarioId: number; nome: string; fotoVersao: string | null };
+  CriarProposta: {
+    usuarioId: number;
+    anterior?: import('../services/propostas').Proposta;
+  };
   Perfil: ResumoPerfil | undefined;
   Notificacoes: undefined;
 };
