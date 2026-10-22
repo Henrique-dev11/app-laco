@@ -15,10 +15,17 @@ import { Button } from './Button';
 type Props = {
   label: string;
   value: number[];
-  onChange: (value: number[]) => void;
+  onChange: (value: number[], catalogo: Servico[]) => void;
   error?: string;
+  onCatalogo?: (servicos: Servico[]) => void;
 };
-export function ServiceSelector({ label, value, onChange, error }: Props) {
+export function ServiceSelector({
+  label,
+  value,
+  onChange,
+  error,
+  onCatalogo,
+}: Props) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -29,8 +36,11 @@ export function ServiceSelector({ label, value, onChange, error }: Props) {
     const controller = new AbortController();
     listarServicos(controller.signal)
       .then((data) => {
-        if (!controller.signal.aborted)
-          setServicos(data.filter((item) => item.ativo));
+        if (!controller.signal.aborted) {
+          const ativos = data.filter((item) => item.ativo);
+          setServicos(ativos);
+          onCatalogo?.(ativos);
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted) setFalha(true);
@@ -39,7 +49,7 @@ export function ServiceSelector({ label, value, onChange, error }: Props) {
         if (!controller.signal.aborted) setCarregando(false);
       });
     return () => controller.abort();
-  }, [tentativa]);
+  }, [tentativa, onCatalogo]);
   return (
     <View style={styles.group}>
       <Text style={styles.label}>{label}</Text>
@@ -77,6 +87,7 @@ export function ServiceSelector({ label, value, onChange, error }: Props) {
                       selected
                         ? value.filter((item) => item !== service.id)
                         : [...value, service.id],
+                      servicos,
                     )
                   }
                   style={[styles.chip, selected && styles.selected]}

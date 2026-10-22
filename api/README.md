@@ -52,3 +52,15 @@ O responsável avalia o atendimento depois que a contratação estiver `CONCLUID
 
 A nota é validada também no banco (`CHECK` de 1 a 5) e a unicidade por contratação é garantida por índice, o que cobre requisições simultâneas. Depois de atualizar o código, rode `npm run db:migrate` e `npm run db:generate`.
 
+
+## Serviços e contratações
+
+O cadastro do cuidador separa seleção de serviços e configuração de preço-base/duração. Serviços personalizados usam as entidades existentes, sem entrar no catálogo padrão. As contratações preservam nome, preço e duração da solicitação; a agenda usa a duração registrada no contrato.
+
+Consulte o [roteiro de serviços e contratações](../docs/teste/servicos-contratacoes.md) para testar o cadastro, a edição pelo perfil, aceite/recusa, a migration e os pontos de integração para negociação futura.
+
+## Agenda e perfis
+
+Disponibilidade semanal e atendimentos datados aparecem separados na agenda do cuidador. O responsável agenda pelo calendário de horários livres de uma contratação aceita, pode filtrar a agenda por idoso e gerenciar múltiplos idosos. As edições de perfil permitem atualizar usuário, contato e endereço na mesma operação.
+
+Consulte [agenda, disponibilidade e perfis](../docs/teste/agenda-perfis.md) para endpoints, regras e roteiro manual.

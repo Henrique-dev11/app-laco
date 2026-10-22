@@ -19,6 +19,7 @@ export type UsuarioAtual = {
     id: number;
     telefone: string;
     cpf: string;
+    dataNascimento: string;
     endereco: Endereco;
     responsavelIdosos: {
       parentesco: string;
@@ -34,13 +35,18 @@ export type UsuarioAtual = {
     id: number;
     telefone: string;
     cpf: string;
+    dataNascimento: string;
     statusVerificacao: string;
+    biografia: string | null;
+    experienciaProfissional: string | null;
+    registroProfissional: string | null;
     endereco: Endereco;
     curriculo: { id: number; nome: string } | null;
     cuidadorServicos: {
       id: number;
       preco: string;
       duracaoMinutos: number;
+      ativo: boolean;
       servico: { id: number; nome: string };
     }[];
   };

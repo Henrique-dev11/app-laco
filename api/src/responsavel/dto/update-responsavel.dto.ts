@@ -1,8 +1,9 @@
+import { UpdateUsuarioDto } from '../../usuario/dto/update-usuario.dto.js';
 import { Type } from 'class-transformer';
 
 import {
   IsDateString,
-  IsOptional,
+  ValidateIf,
   Matches,
   ValidateNested,
 } from 'class-validator';
@@ -10,19 +11,24 @@ import {
 import { UpdateEnderecoDto } from './update-endereco.dto.js';
 
 export class UpdateResponsavelDto {
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @ValidateNested()
+  @Type(() => UpdateUsuarioDto)
+  usuario?: UpdateUsuarioDto;
+
+  @ValidateIf((_object, value) => value !== undefined)
   @Matches(/^\d{10,13}$/)
   telefone?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @Matches(/^\d{11}$/)
   cpf?: string;
 
-  @IsOptional()
-  @IsDateString()
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsDateString({ strict: true })
   dataNascimento?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @ValidateNested()
   @Type(() => UpdateEnderecoDto)
   endereco?: UpdateEnderecoDto;

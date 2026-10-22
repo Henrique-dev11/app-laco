@@ -1,3 +1,4 @@
+import { validarPessoa } from '../common/pessoas.js';
 import {
   BadRequestException,
   ConflictException,
@@ -102,47 +103,46 @@ export class ResponsavelService {
     });
   }
 
-// Este método é responsável por buscar todos os responsáveis cadastrados no banco de dados. Ele retorna uma lista de responsáveis, incluindo informações do usuário associado e do endereço.
+  // Este método é responsável por buscar todos os responsáveis cadastrados no banco de dados. Ele retorna uma lista de responsáveis, incluindo informações do usuário associado e do endereço.
   findAll() {
-  return this.prisma.responsavel.findMany({
-    select: {
-      id: true,
-      telefone: true,
-      cpf: true,
-      dataNascimento: true,
-      createdAt: true,
-      updatedAt: true,
+    return this.prisma.responsavel.findMany({
+      select: {
+        id: true,
+        telefone: true,
+        cpf: true,
+        dataNascimento: true,
+        createdAt: true,
+        updatedAt: true,
 
-      usuario: {
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          tipoUsuario: true,
-          status: true,
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            tipoUsuario: true,
+            status: true,
+          },
+        },
+
+        endereco: {
+          select: {
+            id: true,
+            rua: true,
+            numero: true,
+            complemento: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
         },
       },
+    });
+  }
 
-      endereco: {
-        select: {
-          id: true,
-          rua: true,
-          numero: true,
-          complemento: true,
-          bairro: true,
-          cidade: true,
-          estado: true,
-          cep: true,
-        },
-      },
-    },
-  });
-}
-
-// Este método é responsável por buscar um responsável pelo id. Ele recebe o id do responsável, valida se o responsável existe e, caso exista, retorna o responsável encontrado, incluindo informações do usuário associado e do endereço.
-async findOne(id: number) {
-  const responsavel =
-    await this.prisma.responsavel.findUnique({
+  // Este método é responsável por buscar um responsável pelo id. Ele recebe o id do responsável, valida se o responsável existe e, caso exista, retorna o responsável encontrado, incluindo informações do usuário associado e do endereço.
+  async findOne(id: number) {
+    const responsavel = await this.prisma.responsavel.findUnique({
       where: {
         id,
       },
@@ -180,143 +180,123 @@ async findOne(id: number) {
       },
     });
 
-  if (!responsavel) {
-    throw new NotFoundException(
-      'Responsável não encontrado.',
-    );
+    if (!responsavel) {
+      throw new NotFoundException('Responsável não encontrado.');
+    }
+
+    return responsavel;
   }
 
-  return responsavel;
-}
+  // Este método é responsável por atualizar as informações de um responsável no banco de dados. Ele recebe o id do responsável e um DTO contendo as informações a serem atualizadas, como telefone, CPF, data de nascimento e endereço. O método realiza validações para garantir que o responsável existe e que o CPF não está duplicado antes de atualizar o registro no banco de dados.
+  async update(id: number, dto: UpdateResponsavelDto) {
+    validarPessoa(dto);
+    const responsavel = await this.prisma.responsavel.findUnique({
+      where: {
+        id,
+      },
+    });
 
-// Este método é responsável por atualizar as informações de um responsável no banco de dados. Ele recebe o id do responsável e um DTO contendo as informações a serem atualizadas, como telefone, CPF, data de nascimento e endereço. O método realiza validações para garantir que o responsável existe e que o CPF não está duplicado antes de atualizar o registro no banco de dados.
-async update(
-  id: number,
-  dto: UpdateResponsavelDto,
-) {
-  const responsavel = await this.prisma.responsavel.findUnique({
-    where: {
-      id,
-    },
-  });
+    if (!responsavel) {
+      throw new NotFoundException('Responsável não encontrado.');
+    }
 
-  if (!responsavel) {
-    throw new NotFoundException(
-      'Responsável não encontrado.',
-    );
-  }
-
-  if (dto.cpf) {
-    const cpfExistente =
-      await this.prisma.responsavel.findUnique({
+    if (dto.cpf) {
+      const cpfExistente = await this.prisma.responsavel.findUnique({
         where: {
           cpf: dto.cpf,
         },
       });
 
-    if (
-      cpfExistente &&
-      cpfExistente.id !== id
-    ) {
-      throw new ConflictException(
-        'CPF já cadastrado.',
-      );
+      if (cpfExistente && cpfExistente.id !== id) {
+        throw new ConflictException('CPF já cadastrado.');
+      }
     }
-  }
 
-  return this.prisma.responsavel.update({
-    where: {
-      id,
-    },
+    return this.prisma.responsavel.update({
+      where: {
+        id,
+      },
 
-    data: {
-      ...(dto.telefone !== undefined && {
-        telefone: dto.telefone,
-      }),
+      data: {
+        ...(dto.usuario !== undefined && { usuario: { update: dto.usuario } }),
+        ...(dto.telefone !== undefined && {
+          telefone: dto.telefone,
+        }),
 
-      ...(dto.cpf !== undefined && {
-        cpf: dto.cpf,
-      }),
+        ...(dto.cpf !== undefined && {
+          cpf: dto.cpf,
+        }),
 
-      ...(dto.dataNascimento !== undefined && {
-        dataNascimento:
-          new Date(dto.dataNascimento),
-      }),
+        ...(dto.dataNascimento !== undefined && {
+          dataNascimento: new Date(dto.dataNascimento),
+        }),
 
-      ...(dto.endereco !== undefined && {
-        endereco: {
-          update: {
-            ...(dto.endereco.rua !== undefined && {
-              rua: dto.endereco.rua.trim(),
-            }),
+        ...(dto.endereco !== undefined && {
+          endereco: {
+            update: {
+              ...(dto.endereco.rua !== undefined && {
+                rua: dto.endereco.rua.trim(),
+              }),
 
-            ...(dto.endereco.numero !== undefined && {
-              numero:
-                dto.endereco.numero.trim(),
-            }),
+              ...(dto.endereco.numero !== undefined && {
+                numero: dto.endereco.numero.trim(),
+              }),
 
-            ...(dto.endereco.complemento !== undefined && {
-              complemento:
-                dto.endereco.complemento.trim(),
-            }),
+              ...(dto.endereco.complemento !== undefined && {
+                complemento: dto.endereco.complemento.trim(),
+              }),
 
-            ...(dto.endereco.bairro !== undefined && {
-              bairro:
-                dto.endereco.bairro.trim(),
-            }),
+              ...(dto.endereco.bairro !== undefined && {
+                bairro: dto.endereco.bairro.trim(),
+              }),
 
-            ...(dto.endereco.cidade !== undefined && {
-              cidade:
-                dto.endereco.cidade.trim(),
-            }),
+              ...(dto.endereco.cidade !== undefined && {
+                cidade: dto.endereco.cidade.trim(),
+              }),
 
-            ...(dto.endereco.estado !== undefined && {
-              estado:
-                dto.endereco.estado
-                  .trim()
-                  .toUpperCase(),
-            }),
+              ...(dto.endereco.estado !== undefined && {
+                estado: dto.endereco.estado.trim().toUpperCase(),
+              }),
 
-            ...(dto.endereco.cep !== undefined && {
-              cep: dto.endereco.cep,
-            }),
+              ...(dto.endereco.cep !== undefined && {
+                cep: dto.endereco.cep,
+              }),
+            },
+          },
+        }),
+      },
+
+      select: {
+        id: true,
+        telefone: true,
+        cpf: true,
+        dataNascimento: true,
+        createdAt: true,
+        updatedAt: true,
+
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            tipoUsuario: true,
+            status: true,
           },
         },
-      }),
-    },
 
-    select: {
-      id: true,
-      telefone: true,
-      cpf: true,
-      dataNascimento: true,
-      createdAt: true,
-      updatedAt: true,
-
-      usuario: {
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          tipoUsuario: true,
-          status: true,
+        endereco: {
+          select: {
+            id: true,
+            rua: true,
+            numero: true,
+            complemento: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
         },
       },
-
-      endereco: {
-        select: {
-          id: true,
-          rua: true,
-          numero: true,
-          complemento: true,
-          bairro: true,
-          cidade: true,
-          estado: true,
-          cep: true,
-        },
-      },
-    },
-  });
-}
-
+    });
+  }
 }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { Button } from '../components/Button';
@@ -19,26 +20,34 @@ type Idoso = {
   necessidadesEspeciais: string | null;
   observacoes: string | null;
 };
-export function IdosoDetalhesScreen({ route }: ScreenProps<'IdosoDetalhes'>) {
+export function IdosoDetalhesScreen({
+  route,
+  navigation,
+}: ScreenProps<'IdosoDetalhes'>) {
   const appStyles = useAppStyles();
   const colors = useTheme();
   const [idoso, setIdoso] = useState<Idoso | null>(null);
   const [erro, setErro] = useState('');
   const [tentativa, setTentativa] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    api
-      .get<Idoso>(`/idosos/${route.params.idosoId}`, {
-        signal: controller.signal,
-      })
-      .then((response) => {
-        if (!controller.signal.aborted) setIdoso(response.data);
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) setErro(mensagemErro(error));
-      });
-    return () => controller.abort();
-  }, [route.params.idosoId, tentativa]);
+  useFocusEffect(
+    useCallback(() => {
+      setIdoso(null);
+      setErro('');
+      const controller = new AbortController();
+      api
+        .get<Idoso>(`/idosos/${route.params.idosoId}`, {
+          signal: controller.signal,
+        })
+        .then((response) => {
+          if (!controller.signal.aborted) setIdoso(response.data);
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted) setErro(mensagemErro(error));
+        });
+      return () => controller.abort();
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- tentativa permite repetir a consulta após erro ou alteração.
+    }, [route.params.idosoId, tentativa]),
+  );
   return (
     <AppScreenLayout
       title="Perfil do idoso"
@@ -57,6 +66,16 @@ export function IdosoDetalhesScreen({ route }: ScreenProps<'IdosoDetalhes'>) {
             }}
           />
         </>
+      )}
+      {!!idoso && (
+        <Button
+          title="Editar dados do idoso"
+          onPress={() =>
+            navigation.navigate('EditarIdoso', {
+              idosoId: route.params.idosoId,
+            })
+          }
+        />
       )}
       {!!idoso && (
         <View style={appStyles.card}>

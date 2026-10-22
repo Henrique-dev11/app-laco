@@ -7,6 +7,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { calcularHorarios, partesLocais, FUSO } from './horarios.js';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'node:crypto';
 
@@ -82,9 +83,80 @@ const contratacaoInclude = {
 export class ContratacaoService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async horarios(id: number, mes: string, usuario: Identidade) {
+    const contrato = await this.prisma.contratacao.findUnique({
+      where: { id },
+      include: {
+        agendamento: true,
+        cuidadorServico: {
+          include: { servico: true, cuidador: { include: { usuario: true } } },
+        },
+      },
+    });
+    if (!contrato) throw new NotFoundException('Contratação não encontrada.');
+    if (
+      !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario) &&
+      contrato.responsavelId !== usuario.responsavelId
+    )
+      throw new ForbiddenException(
+        'Apenas o responsável pode consultar horários para agendar.',
+      );
+    if (contrato.status !== 'ACEITA' || contrato.agendamento)
+      throw new BadRequestException(
+        'A contratação deve estar aceita e ainda não ter agendamento.',
+      );
+    const oferta = contrato.cuidadorServico;
+    if (
+      !oferta.ativo ||
+      !oferta.servico.ativo ||
+      oferta.cuidador.statusVerificacao !== 'APROVADO' ||
+      oferta.cuidador.usuario.status !== 'ATIVO'
+    )
+      throw new BadRequestException('Cuidador ou serviço indisponível.');
+    const agora = new Date();
+    const mesAtual = partesLocais(agora).data.slice(0, 7);
+    const limite = `${Number(mesAtual.slice(0, 4)) + 1}${mesAtual.slice(4)}`;
+    if (mes < mesAtual || mes > limite)
+      throw new BadRequestException(
+        'Consulte do mês atual até os próximos 12 meses.',
+      );
+    const inicio = new Date(`${mes}-01T00:00:00Z`);
+    const fim = new Date(inicio);
+    fim.setUTCMonth(fim.getUTCMonth() + 1);
+    fim.setUTCDate(fim.getUTCDate() + 1);
+    const [disponibilidades, ocupados] = await Promise.all([
+      this.prisma.disponibilidade.findMany({
+        where: { cuidadorId: oferta.cuidadorId, ativo: true },
+      }),
+      this.prisma.agendamento.findMany({
+        where: {
+          cuidadorId: oferta.cuidadorId,
+          ativo: true,
+          inicio: { lt: fim },
+          fim: { gt: inicio },
+        },
+        select: { inicio: true, fim: true },
+      }),
+    ]);
+    return {
+      mes,
+      fuso: FUSO,
+      duracaoMinutos: contrato.duracaoMinutos,
+      intervaloMinutos: 15,
+      datas: calcularHorarios(
+        mes,
+        contrato.duracaoMinutos,
+        disponibilidades,
+        ocupados,
+        agora,
+      ),
+    };
+  }
+
   async agendar(id: number, dataInicio: string, usuario: Identidade) {
     const inicio = new Date(dataInicio);
     if (
+      !Number.isFinite(inicio.getTime()) ||
       inicio <= new Date() ||
       inicio.getUTCSeconds() !== 0 ||
       inicio.getUTCMilliseconds() !== 0
@@ -124,7 +196,11 @@ export class ContratacaoService {
         oferta.cuidador.usuario.status !== 'ATIVO'
       )
         throw new BadRequestException('Cuidador ou serviço indisponível.');
-      const fim = new Date(inicio.getTime() + oferta.duracaoMinutos * 60000);
+      // A edição da disponibilidade usa a mesma trava, evitando validar uma janela que mudou durante a reserva.
+      await tx.$queryRaw`SELECT id FROM "Cuidador" WHERE id = ${oferta.cuidadorId} FOR UPDATE`;
+      if (inicio <= new Date())
+        throw new BadRequestException('Escolha um horário futuro.');
+      const fim = new Date(inicio.getTime() + contrato.duracaoMinutos * 60000);
       const local = (data: Date) =>
         Object.fromEntries(
           new Intl.DateTimeFormat('en-US', {
@@ -238,12 +314,25 @@ export class ContratacaoService {
       );
     }
 
+    if (
+      (dto.precoReferenciaEsperado !== undefined &&
+        !oferta.preco.equals(dto.precoReferenciaEsperado)) ||
+      (dto.duracaoEsperadaMinutos !== undefined &&
+        oferta.duracaoMinutos !== dto.duracaoEsperadaMinutos)
+    )
+      throw new ConflictException(
+        'A oferta mudou. Atualize a busca e revise o preço e a duração antes de solicitar.',
+      );
+
     return this.prisma.contratacao.create({
       data: {
         responsavelId: dto.responsavelId,
         idosoId: dto.idosoId,
         cuidadorServicoId: dto.cuidadorServicoId,
         valorAcordado: oferta.preco,
+        precoReferencia: oferta.preco,
+        duracaoMinutos: oferta.duracaoMinutos,
+        nomeServico: oferta.servico.nome,
         ...(dto.observacoes !== undefined
           ? { observacoes: dto.observacoes }
           : {}),
@@ -373,7 +462,8 @@ export class ContratacaoService {
       where: { id },
       select: { responsavelId: true, status: true },
     });
-    if (!contratacao) throw new NotFoundException('Contratação não encontrada.');
+    if (!contratacao)
+      throw new NotFoundException('Contratação não encontrada.');
     if (contratacao.responsavelId !== usuario.responsavelId)
       throw new ForbiddenException(
         'Somente o responsável por esta contratação pode gerar o código.',

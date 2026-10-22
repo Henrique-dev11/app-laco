@@ -1,26 +1,21 @@
-import {
-  IsBoolean,
-  IsEnum,
-  IsOptional,
-  Matches,
-} from 'class-validator';
+import { IsBoolean, IsEnum, ValidateIf, Matches } from 'class-validator';
 
 import { DiaSemana } from '../../generated/prisma/client.js';
 
 export class UpdateDisponibilidadeDto {
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsEnum(DiaSemana)
   diaSemana?: DiaSemana;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   horaInicio?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   horaFim?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsBoolean()
   ativo?: boolean;
 }

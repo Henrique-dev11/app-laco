@@ -3,6 +3,8 @@ export type Servico = {
   nome: string;
   descricao: string | null;
   ativo: boolean;
+  precoSugerido?: string | null;
+  duracaoSugeridaMinutos?: number | null;
   createdAt: string;
   updatedAt: string;
 };

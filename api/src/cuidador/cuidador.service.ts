@@ -1,3 +1,4 @@
+import { validarPessoa } from '../common/pessoas.js';
 import {
   BadRequestException,
   ConflictException,
@@ -224,6 +225,7 @@ export class CuidadorService {
   }
 
   async update(id: number, dto: UpdateCuidadorDto) {
+    validarPessoa(dto);
     const cuidador = await this.prisma.cuidador.findUnique({
       where: {
         id,
@@ -252,6 +254,7 @@ export class CuidadorService {
       },
 
       data: {
+        ...(dto.usuario !== undefined && { usuario: { update: dto.usuario } }),
         ...(dto.telefone !== undefined && {
           telefone: dto.telefone,
         }),

@@ -1,6 +1,7 @@
 import { Type, Transform } from 'class-transformer';
 import {
-  ArrayNotEmpty,
+  ArrayMaxSize,
+  Max,
   ArrayUnique,
   Equals,
   IsArray,
@@ -20,6 +21,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CreateEnderecoDto } from '../responsavel/dto/create-endereco.dto.js';
+import { CreatePersonalizadoDto } from '../cuidador-servico/dto/create-personalizado.dto.js';
 import { Parentesco } from '../generated/prisma/client.js';
 
 export class LoginDto {
@@ -34,8 +36,8 @@ export class LoginDto {
 
 class OfertaDto {
   @IsInt() @Min(1) servicoId: number;
-  @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) preco: number;
-  @IsInt() @Min(1) duracaoMinutos: number;
+  @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) @Max(99999999.99) preco: number;
+  @IsInt() @Min(1) @Max(1440) duracaoMinutos: number;
 }
 
 class IdosoCadastroDto {
@@ -61,7 +63,7 @@ export class CadastroDto extends LoginDto {
   @Equals(true, { message: 'É necessário aceitar os termos.' })
   aceitoTermos: boolean;
   @IsArray()
-  @ArrayNotEmpty()
+  @ArrayMaxSize(50)
   @ArrayUnique()
   @IsInt({ each: true })
   @Min(1, { each: true })
@@ -74,5 +76,13 @@ export class CadastroDto extends LoginDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => OfertaDto)
+  @ArrayMaxSize(50)
   ofertas?: OfertaDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => CreatePersonalizadoDto)
+  servicosPersonalizados?: CreatePersonalizadoDto[];
 }

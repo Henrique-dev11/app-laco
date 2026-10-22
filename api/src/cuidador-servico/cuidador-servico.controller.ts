@@ -8,6 +8,7 @@ import {
   Patch,
 } from '@nestjs/common';
 
+import { CreatePersonalizadoDto } from './dto/create-personalizado.dto.js';
 import { CreateCuidadorServicoDto } from './dto/create-cuidador-servico.dto.js';
 import { CuidadorServicoService } from './cuidador-servico.service.js';
 import { UpdateCuidadorServicoDto } from './dto/update-cuidador-servico.dto.js';
@@ -15,13 +16,18 @@ import { UpdateCuidadorServicoDto } from './dto/update-cuidador-servico.dto.js';
 @Controller()
 export class CuidadorServicoController {
   constructor(
-    private readonly cuidadorServicoService:
-      CuidadorServicoService,
+    private readonly cuidadorServicoService: CuidadorServicoService,
   ) {}
 
-  @Post(
-    'cuidadores/:cuidadorId/servicos/:servicoId',
-  )
+  @Post('cuidadores/:cuidadorId/servicos')
+  createPersonalizado(
+    @Param('cuidadorId', ParseIntPipe) cuidadorId: number,
+    @Body() dto: CreatePersonalizadoDto,
+  ) {
+    return this.cuidadorServicoService.createPersonalizado(cuidadorId, dto);
+  }
+
+  @Post('cuidadores/:cuidadorId/servicos/:servicoId')
   create(
     @Param('cuidadorId', ParseIntPipe)
     cuidadorId: number,
@@ -32,41 +38,28 @@ export class CuidadorServicoController {
     @Body()
     dto: CreateCuidadorServicoDto,
   ) {
-    return this.cuidadorServicoService.create(
-      cuidadorId,
-      servicoId,
-      dto,
-    );
+    return this.cuidadorServicoService.create(cuidadorId, servicoId, dto);
   }
 
   @Get('cuidadores/:cuidadorId/servicos')
-findByCuidador(
-  @Param('cuidadorId', ParseIntPipe)
-  cuidadorId: number,
-) {
-  return this.cuidadorServicoService
-    .findByCuidador(cuidadorId);
-}
+  findByCuidador(
+    @Param('cuidadorId', ParseIntPipe)
+    cuidadorId: number,
+  ) {
+    return this.cuidadorServicoService.findByCuidador(cuidadorId);
+  }
 
+  @Patch('cuidadores/:cuidadorId/servicos/:servicoId')
+  update(
+    @Param('cuidadorId', ParseIntPipe)
+    cuidadorId: number,
 
+    @Param('servicoId', ParseIntPipe)
+    servicoId: number,
 
-@Patch(
-  'cuidadores/:cuidadorId/servicos/:servicoId',
-)
-update(
-  @Param('cuidadorId', ParseIntPipe)
-  cuidadorId: number,
-
-  @Param('servicoId', ParseIntPipe)
-  servicoId: number,
-
-  @Body()
-  dto: UpdateCuidadorServicoDto,
-) {
-  return this.cuidadorServicoService.update(
-    cuidadorId,
-    servicoId,
-    dto,
-  );
-}
+    @Body()
+    dto: UpdateCuidadorServicoDto,
+  ) {
+    return this.cuidadorServicoService.update(cuidadorId, servicoId, dto);
+  }
 }

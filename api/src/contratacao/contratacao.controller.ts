@@ -7,12 +7,14 @@ import {
   Patch,
   Post,
   Req,
+  Query,
 } from '@nestjs/common';
 
 import { ContratacaoService } from './contratacao.service.js';
 import { CreateContratacaoDto } from './dto/create-contratacao.dto.js';
 import { UpdateStatusContratacaoDto } from './dto/update-status-contratacao.dto.js';
 import type { Autenticado } from '../auth/session.guard.js';
+import { HorariosDto } from './dto/horarios.dto.js';
 import { AgendarDto } from './dto/agendar.dto.js';
 
 @Controller('contratacoes')
@@ -49,6 +51,15 @@ export class ContratacaoController {
     @Req() req: Autenticado,
   ) {
     return this.contratacaoService.gerarCodigoConclusao(id, req.usuario);
+  }
+
+  @Get(':id/horarios')
+  horarios(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: HorariosDto,
+    @Req() req: Autenticado,
+  ) {
+    return this.contratacaoService.horarios(id, query.mes, req.usuario);
   }
 
   @Post(':id/agendamento')

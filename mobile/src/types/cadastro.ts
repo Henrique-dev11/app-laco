@@ -46,7 +46,7 @@ export type CadastroRascunho = {
   documentos: Documentos;
   idoso: DadosIdoso;
   servicos: number[];
-  ofertas: { servicoId: number; preco: string; duracaoMinutos: string }[];
+  ofertas: OfertaRascunho[];
   curriculo: Curriculo | null;
   aceitoTermos: boolean;
 };
@@ -59,4 +59,15 @@ export type ResumoPerfil = Pick<
 > & {
   perfil: Perfil;
   nomeCompletoIdoso?: string;
+};
+
+export type OfertaRascunho = {
+  servicoId?: number;
+  nome: string;
+  descricao?: string;
+  preco: string;
+  duracao: string;
+  unidade: 'minutos' | 'horas';
+  precoSugerido?: string | null;
+  duracaoSugeridaMinutos?: number | null;
 };

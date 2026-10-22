@@ -1,8 +1,9 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 import {
   IsDateString,
-  IsOptional,
+  IsNotEmpty,
+  ValidateIf,
   IsString,
   Matches,
   MaxLength,
@@ -12,37 +13,55 @@ import {
 import { UpdateEnderecoDto } from '../../responsavel/dto/update-endereco.dto.js';
 
 export class UpdateIdosoDto {
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsString()
+  @MaxLength(150)
+  nomeSocial?: string;
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @IsNotEmpty()
   @MaxLength(150)
   nome?: string;
 
-  @IsOptional()
-  @IsDateString()
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsDateString({ strict: true })
   dataNascimento?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @MaxLength(30)
   sexo?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
   @Matches(/^\d{10,13}$/)
-  telefone?: string;
+  telefone?: string | null;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
   @Matches(/^\d{11}$/)
-  cpf?: string;
+  cpf?: string | null;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   observacoes?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   necessidadesEspeciais?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @ValidateNested()
   @Type(() => UpdateEnderecoDto)
   endereco?: UpdateEnderecoDto;

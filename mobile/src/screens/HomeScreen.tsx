@@ -248,6 +248,13 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
             )}
             <Text style={styles.section}>Acesso rápido</Text>
             <View style={styles.quick}>
+              {!cuidador && (
+                <QuickAccessCard
+                  title="Meus idosos"
+                  icon="people-outline"
+                  onPress={() => navigation.navigate('MeusIdosos')}
+                />
+              )}
               <QuickAccessCard
                 title={cuidador ? 'Disponibilidade' : 'Buscar cuidador'}
                 icon={cuidador ? 'time-outline' : 'search-outline'}

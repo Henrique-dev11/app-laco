@@ -1,3 +1,4 @@
+import type { ScreenProps } from '../types/navigation';
 import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Button } from '../components/Button';
@@ -15,6 +16,10 @@ type Contratacao = {
   id: number;
   status: string;
   valorAcordado: string;
+  precoReferencia: string;
+  duracaoMinutos: number;
+  nomeServico: string;
+  observacoes: string | null;
   agendamento: null | { inicio: string };
   idoso: { nome: string };
   responsavel: { usuario: { nome: string } };
@@ -30,7 +35,7 @@ type Contratacao = {
     servico: { nome: string };
   };
 };
-export function HistoricoScreen() {
+export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
   const appStyles = useAppStyles();
   const colors = useTheme();
   const { usuario } = useAuth();
@@ -43,34 +48,6 @@ export function HistoricoScreen() {
   const [codigosGerados, setCodigosGerados] = useState<Record<number, string>>(
     {},
   );
-  const [horarios, setHorarios] = useState<
-    Record<number, { data: string; hora: string }>
-  >({});
-  async function agendar(id: number) {
-    const horario = horarios[id];
-    if (
-      !horario ||
-      !/^\d{2}\/\d{2}\/\d{4}$/.test(horario.data) ||
-      !/^([01]\d|2[0-3]):[0-5]\d$/.test(horario.hora)
-    ) {
-      setMensagem('Informe data e hora válidas.');
-      return;
-    }
-    const [dia, mes, ano] = horario.data.split('/');
-    setEnviando(true);
-    setMensagem('');
-    try {
-      await api.post(`/contratacoes/${id}/agendamento`, {
-        inicio: `${ano}-${mes}-${dia}T${horario.hora}:00-03:00`,
-      });
-      atualizar();
-      setMensagem('Atendimento agendado.');
-    } catch (error) {
-      setMensagem(mensagemErro(error));
-    } finally {
-      setEnviando(false);
-    }
-  }
   async function gerarCodigo(id: number) {
     setEnviando(true);
     setMensagem('');
@@ -123,8 +100,7 @@ export function HistoricoScreen() {
       {dados.map((contrato) => (
         <View key={contrato.id} style={appStyles.card}>
           <Text style={appStyles.text}>
-            {contrato.cuidadorServico.servico.nome} ·{' '}
-            {statusLabels[contrato.status]}
+            {contrato.nomeServico} · {statusLabels[contrato.status]}
           </Text>
           <Text style={appStyles.text}>Idoso: {contrato.idoso.nome}</Text>
           <Text style={appStyles.text}>
@@ -134,9 +110,23 @@ export function HistoricoScreen() {
             Responsável: {contrato.responsavel.usuario.nome}
           </Text>
           <Text style={appStyles.text}>
-            Valor acordado: R${' '}
-            {Number(contrato.valorAcordado).toFixed(2).replace('.', ',')}
+            {contrato.status === 'SOLICITADA'
+              ? 'Valor solicitado'
+              : 'Valor acordado'}
+            : R$ {Number(contrato.valorAcordado).toFixed(2).replace('.', ',')}
           </Text>
+          <Text style={appStyles.text}>
+            Duração registrada: {contrato.duracaoMinutos} minutos
+          </Text>
+          <Text style={appStyles.text}>
+            Preço-base na solicitação: R${' '}
+            {Number(contrato.precoReferencia).toFixed(2).replace('.', ',')}
+          </Text>
+          {!!contrato.observacoes && (
+            <Text style={appStyles.text}>
+              Observações: {contrato.observacoes}
+            </Text>
+          )}
           {!!contrato.agendamento && (
             <Text style={appStyles.text}>
               Agendado:{' '}
@@ -148,60 +138,15 @@ export function HistoricoScreen() {
           {!!usuario?.responsavel &&
             contrato.status === 'ACEITA' &&
             !contrato.agendamento && (
-              <>
-                <Text style={appStyles.text}>
-                  Escolha o atendimento no horário de São Paulo
-                </Text>
-                {contrato.cuidadorServico.cuidador.disponibilidades.map(
-                  (slot, index) => (
-                    <Text key={index}>
-                      {statusLabels[slot.diaSemana]}:{' '}
-                      {new Date(slot.horaInicio).toISOString().slice(11, 16)}–
-                      {new Date(slot.horaFim).toISOString().slice(11, 16)}
-                    </Text>
-                  ),
-                )}
-                {!contrato.cuidadorServico.cuidador.disponibilidades.length && (
-                  <Text style={appStyles.text}>
-                    O cuidador ainda precisa definir seus horários.
-                  </Text>
-                )}
-                <FormField
-                  label="Data (DD/MM/AAAA)"
-                  value={horarios[contrato.id]?.data ?? ''}
-                  maxLength={10}
-                  onChangeText={(data) =>
-                    setHorarios((current) => ({
-                      ...current,
-                      [contrato.id]: {
-                        data,
-                        hora: current[contrato.id]?.hora ?? '',
-                      },
-                    }))
-                  }
-                />
-                <FormField
-                  label="Hora (HH:MM)"
-                  value={horarios[contrato.id]?.hora ?? ''}
-                  maxLength={5}
-                  onChangeText={(hora) =>
-                    setHorarios((current) => ({
-                      ...current,
-                      [contrato.id]: {
-                        hora,
-                        data: current[contrato.id]?.data ?? '',
-                      },
-                    }))
-                  }
-                />
-                <Button
-                  title="Agendar atendimento"
-                  disabled={enviando}
-                  onPress={() => {
-                    void agendar(contrato.id);
-                  }}
-                />
-              </>
+              <Button
+                title="Agendar atendimento"
+                disabled={enviando}
+                onPress={() =>
+                  navigation.navigate('AgendarAtendimento', {
+                    contratacaoId: contrato.id,
+                  })
+                }
+              />
             )}
           {usuario?.cuidador && contrato.status === 'SOLICITADA' && (
             <>

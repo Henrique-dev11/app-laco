@@ -176,7 +176,11 @@ model Cuidador {
 
 model Servico {
   id        Int     @id @default(autoincrement())
-  nome      String  @unique @db.VarChar(150)
+  nome      String  @db.VarChar(150)
+  // Unicidade de nome no catálogo é garantida por índice parcial na migration.
+  catalogo Boolean @default(true)
+  precoSugerido Decimal? @db.Decimal(10, 2)
+  duracaoSugeridaMinutos Int?
   descricao String? @db.Text
   ativo     Boolean @default(true)
 
@@ -185,6 +189,7 @@ model Servico {
 
   cuidadorServicos CuidadorServico[]
   preferencias PreferenciaServico[]
+  @@index([nome])
 }
 
 model CuidadorServico {
@@ -227,6 +232,9 @@ model Contratacao {
   responsavelId     Int
   idosoId           Int
   cuidadorServicoId Int
+  nomeServico       String            @db.VarChar(150)
+  precoReferencia   Decimal           @db.Decimal(10, 2)
+  duracaoMinutos    Int
   valorAcordado     Decimal           @db.Decimal(10, 2)
   status            StatusContratacao @default(SOLICITADA)
   observacoes       String?           @db.Text

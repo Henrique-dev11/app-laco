@@ -153,7 +153,8 @@ export class SessionGuard implements CanActivate {
         return slot?.cuidadorId === user.cuidadorId;
       }
       case 'IdosoController': {
-        if (handler === 'create' || handler === 'findAll') return false;
+        if (handler === 'create' || handler === 'findAll')
+          return user.responsavelId !== null;
         return !!(await this.prisma.responsavelIdoso.findFirst({
           where: {
             idosoId: Number.isInteger(id) ? id : -1,

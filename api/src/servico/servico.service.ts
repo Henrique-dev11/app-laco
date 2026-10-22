@@ -18,6 +18,7 @@ export class ServicoService {
 
     const servicoExistente = await this.prisma.servico.findFirst({
       where: {
+        catalogo: true,
         nome: {
           equals: nome,
           mode: 'insensitive',
@@ -33,13 +34,15 @@ export class ServicoService {
       data: {
         nome,
         descricao: dto.descricao?.trim(),
+        precoSugerido: dto.precoSugerido,
+        duracaoSugeridaMinutos: dto.duracaoSugeridaMinutos,
       },
     });
   }
 
   findAll() {
     return this.prisma.servico.findMany({
-      where: { ativo: true },
+      where: { ativo: true, catalogo: true },
       orderBy: {
         nome: 'asc',
       },
@@ -53,7 +56,7 @@ export class ServicoService {
       },
     });
 
-    if (!servico) {
+    if (!servico || !servico.catalogo) {
       throw new NotFoundException('Serviço não encontrado.');
     }
 
@@ -70,6 +73,7 @@ export class ServicoService {
 
       const servicoComMesmoNome = await this.prisma.servico.findFirst({
         where: {
+          catalogo: true,
           nome: {
             equals: nome,
             mode: 'insensitive',
@@ -92,6 +96,12 @@ export class ServicoService {
       },
 
       data: {
+        ...(dto.precoSugerido !== undefined && {
+          precoSugerido: dto.precoSugerido,
+        }),
+        ...(dto.duracaoSugeridaMinutos !== undefined && {
+          duracaoSugeridaMinutos: dto.duracaoSugeridaMinutos,
+        }),
         ...(nome !== undefined && {
           nome,
         }),

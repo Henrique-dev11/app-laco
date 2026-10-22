@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { valoresOferta, erroOferta } from '../utils/ofertas';
 import { api } from './api';
 import type { CadastroRascunho } from '../types/cadastro';
 import { somenteNumeros } from '../utils/validation';
@@ -8,6 +9,11 @@ function dataIso(value: string) {
   return `${ano}-${mes}-${dia}`;
 }
 export async function salvarCadastro(rascunho: CadastroRascunho) {
+  if (
+    rascunho.perfil === 'cuidador' &&
+    (!rascunho.ofertas.length || rascunho.ofertas.some((o) => erroOferta(o)))
+  )
+    throw new Error('Configure preço e duração de todos os serviços.');
   const d = rascunho.documentos;
   const endereco = {
     rua: d.rua.trim(),
@@ -53,11 +59,19 @@ export async function salvarCadastro(rascunho: CadastroRascunho) {
       : {}),
     ...(rascunho.perfil === 'cuidador'
       ? {
-          ofertas: rascunho.ofertas.map((oferta) => ({
-            servicoId: oferta.servicoId,
-            preco: Number(oferta.preco.replace(',', '.')),
-            duracaoMinutos: Number(oferta.duracaoMinutos),
-          })),
+          ofertas: rascunho.ofertas
+            .filter((o) => o.servicoId !== undefined)
+            .map((oferta) => ({
+              servicoId: oferta.servicoId,
+              ...valoresOferta(oferta),
+            })),
+          servicosPersonalizados: rascunho.ofertas
+            .filter((o) => o.servicoId === undefined)
+            .map((oferta) => ({
+              nome: oferta.nome.trim(),
+              descricao: oferta.descricao?.trim(),
+              ...valoresOferta(oferta),
+            })),
         }
       : {}),
   };

@@ -1,25 +1,28 @@
 import {
+  ValidateIf,
   IsBoolean,
   IsInt,
   IsNumber,
-  IsOptional,
   Min,
+  Max,
 } from 'class-validator';
 
 export class UpdateCuidadorServicoDto {
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsNumber({
     maxDecimalPlaces: 2,
   })
   @Min(0.01)
+  @Max(99999999.99)
   preco?: number;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsInt()
   @Min(1)
+  @Max(1440)
   duracaoMinutos?: number;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsBoolean()
   ativo?: boolean;
 }

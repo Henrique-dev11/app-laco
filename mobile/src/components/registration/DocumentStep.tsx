@@ -52,27 +52,20 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
       cadastro.documentos,
       true,
     );
-    if (!cadastro.servicos.length)
+    if (!cuidador && !cadastro.servicos.length)
       nextErrors.servicos = 'Selecione pelo menos um serviço';
     if (cuidador && !cadastro.curriculo)
       nextErrors.curriculo = 'Anexe seu currículo em PDF';
     if (!cadastro.aceitoTermos)
       nextErrors.termos = 'Você deve aceitar os termos';
-    if (
-      cuidador &&
-      cadastro.ofertas.some(
-        (oferta) =>
-          !Number.isFinite(Number(oferta.preco.replace(',', '.'))) ||
-          Number(oferta.preco.replace(',', '.')) < 0.01 ||
-          !Number.isInteger(Number(oferta.duracaoMinutos)) ||
-          Number(oferta.duracaoMinutos) < 1,
-      )
-    )
-      nextErrors.servicos = 'Informe preço e duração válidos para cada serviço';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     navigation.navigate(
-      perfil === 'responsavel' ? 'ResponsavelStep3' : 'CadastroPreview',
+      cuidador
+        ? 'CuidadorServicos'
+        : perfil === 'responsavel'
+          ? 'ResponsavelStep3'
+          : 'CadastroPreview',
     );
   }
 
@@ -80,10 +73,10 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
     <RegistrationLayout
       perfil={perfil}
       step={2}
-      title="Documentos e serviços"
+      title={cuidador ? 'Documentos e acesso' : 'Documentos e serviços'}
       subtitle={
         cuidador
-          ? 'Quase lá — conte quais serviços você oferece'
+          ? 'Informe seus documentos e anexe seu currículo'
           : 'Quase lá — conte quais cuidados você precisa'
       }
       showLogo={false}
@@ -123,60 +116,14 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
           )}
         </View>
       )}
-      <ServiceSelector
-        label={
-          cuidador
-            ? 'Quais serviços você oferece?*'
-            : 'Quais serviços você deseja?*'
-        }
-        value={cadastro.servicos}
-        error={errors.servicos}
-        onChange={(servicos) =>
-          atualizarCadastro({
-            servicos,
-            ofertas: servicos.map(
-              (servicoId) =>
-                cadastro.ofertas.find(
-                  (oferta) => oferta.servicoId === servicoId,
-                ) ?? { servicoId, preco: '', duracaoMinutos: '60' },
-            ),
-          })
-        }
-      />
-      {cuidador &&
-        cadastro.ofertas.map((oferta, index) => (
-          <View key={oferta.servicoId} style={styles.group}>
-            <Text style={styles.label}>Serviço {index + 1}</Text>
-            <FormField
-              label="Preço (R$)*"
-              keyboardType="decimal-pad"
-              value={oferta.preco}
-              onChangeText={(preco) =>
-                atualizarCadastro({
-                  ofertas: cadastro.ofertas.map((item) =>
-                    item.servicoId === oferta.servicoId
-                      ? { ...item, preco }
-                      : item,
-                  ),
-                })
-              }
-            />
-            <FormField
-              label="Duração em minutos*"
-              keyboardType="numeric"
-              value={oferta.duracaoMinutos}
-              onChangeText={(duracaoMinutos) =>
-                atualizarCadastro({
-                  ofertas: cadastro.ofertas.map((item) =>
-                    item.servicoId === oferta.servicoId
-                      ? { ...item, duracaoMinutos }
-                      : item,
-                  ),
-                })
-              }
-            />
-          </View>
-        ))}
+      {!cuidador && (
+        <ServiceSelector
+          label="Quais serviços você deseja?*"
+          value={cadastro.servicos}
+          error={errors.servicos}
+          onChange={(servicos) => atualizarCadastro({ servicos })}
+        />
+      )}
       <FormField
         label="Senha*"
         password

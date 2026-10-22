@@ -104,7 +104,7 @@ describe('Avaliação de atendimentos', () => {
     ).id;
     const contrato = () =>
       prisma.contratacao.create({
-        data: { responsavelId, idosoId, cuidadorServicoId: ofertaId, valorAcordado: 35, status: 'ACEITA' },
+        data: { responsavelId, idosoId, cuidadorServicoId: ofertaId, valorAcordado: 35, precoReferencia: 35, duracaoMinutos: 60, nomeServico: 'Companhia Avaliação', status: 'ACEITA' },
       });
     contratoA = (await contrato()).id;
     contratoB = (await contrato()).id;
@@ -219,7 +219,7 @@ describe('Avaliação de atendimentos', () => {
 
   it('o banco recusa nota fora de 1 a 5 mesmo sem passar pela API', async () => {
     const contrato = await prisma.contratacao.create({
-      data: { responsavelId, idosoId, cuidadorServicoId: ofertaId, valorAcordado: 35, status: 'CONCLUIDA' },
+      data: { responsavelId, idosoId, cuidadorServicoId: ofertaId, valorAcordado: 35, precoReferencia: 35, duracaoMinutos: 60, nomeServico: 'Companhia Avaliação', status: 'CONCLUIDA' },
     });
     await expect(
       prisma.avaliacao.create({

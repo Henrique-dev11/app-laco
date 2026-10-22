@@ -1,7 +1,9 @@
+import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
+import { FormField } from '../components/FormField';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useAppStyles } from '../theme/appStyles';
@@ -30,6 +32,7 @@ type Cuidador = {
 };
 export function BuscarCuidadorScreen({
   navigation,
+  route,
 }: ScreenProps<'BuscarCuidador'>) {
   const appStyles = useAppStyles();
   const colors = useTheme();
@@ -38,11 +41,24 @@ export function BuscarCuidadorScreen({
     '/catalogo/cuidadores',
   );
   const idosos = usuario?.responsavel?.responsavelIdosos ?? [];
-  const [idosoId, setIdosoId] = useState(idosos[0]?.idoso.id);
+  const [escolhaId, setIdosoId] = useState(
+    route.params?.idosoId ?? idosos[0]?.idoso.id,
+  );
+  const idosoId = idosos.some((i) => i.idoso.id === escolhaId)
+    ? escolhaId
+    : idosos[0]?.idoso.id;
   const [enviando, setEnviando] = useState(false);
   const [mensagem, setMensagem] = useState('');
+  const [selecionada, setSelecionada] = useState<{
+    id: number;
+    nome: string;
+    cuidador: string;
+    preco: string;
+    duracaoMinutos: number;
+  } | null>(null);
+  const [observacoes, setObservacoes] = useState('');
   async function solicitar(cuidadorServicoId: number) {
-    if (!idosoId || !usuario?.responsavel || enviando) return;
+    if (!idosoId || !usuario?.responsavel || !selecionada || enviando) return;
     setEnviando(true);
     setMensagem('');
     try {
@@ -50,10 +66,21 @@ export function BuscarCuidadorScreen({
         responsavelId: usuario.responsavel.id,
         idosoId,
         cuidadorServicoId,
+        precoReferenciaEsperado: Number(selecionada?.preco),
+        duracaoEsperadaMinutos: selecionada?.duracaoMinutos,
+        ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
       });
-      setMensagem('Solicitação salva. Aguarde a resposta do cuidador.');
+      setMensagem(
+        'Solicitação salva. Aguarde a resposta do cuidador em Minhas contratações.',
+      );
+      setSelecionada(null);
+      setObservacoes('');
     } catch (error) {
       setMensagem(mensagemErro(error));
+      if (isAxiosError(error) && error.response?.status === 409) {
+        setSelecionada(null);
+        atualizar();
+      }
     } finally {
       setEnviando(false);
     }
@@ -78,6 +105,47 @@ export function BuscarCuidadorScreen({
         <Notice>
           É necessário ter um idoso vinculado para solicitar uma contratação.
         </Notice>
+      )}
+      {selecionada && (
+        <View style={appStyles.card}>
+          <Text style={appStyles.name}>Revisar solicitação</Text>
+          <Text style={appStyles.text}>
+            {selecionada.cuidador} · {selecionada.nome}
+          </Text>
+          <Text style={appStyles.text}>
+            Idoso: {idosos.find((i) => i.idoso.id === idosoId)?.idoso.nome}
+          </Text>
+          <Text style={appStyles.text}>
+            Preço de referência: R${' '}
+            {Number(selecionada.preco).toFixed(2).replace('.', ',')} ·{' '}
+            {selecionada.duracaoMinutos} minutos
+          </Text>
+          <Notice>
+            O preço-base e a duração acima serão usados nesta solicitação.
+            Aguarde o aceite do cuidador.
+          </Notice>
+          <FormField
+            label="Informações sobre o atendimento (opcional)"
+            value={observacoes}
+            onChangeText={setObservacoes}
+            maxLength={2000}
+            multiline
+            editable={!enviando}
+          />
+          <Button
+            title={enviando ? 'Enviando...' : 'Confirmar solicitação'}
+            disabled={enviando || !idosoId}
+            onPress={() => {
+              void solicitar(selecionada.id);
+            }}
+          />
+          <Button
+            title="Voltar à escolha de serviços"
+            disabled={enviando}
+            variant="outline"
+            onPress={() => setSelecionada(null)}
+          />
+        </View>
       )}
       {!!mensagem && <Notice>{mensagem}</Notice>}
       {carregando && <ActivityIndicator color={colors.primary} />}
@@ -109,13 +177,20 @@ export function BuscarCuidadorScreen({
               <Text style={appStyles.text}>
                 {oferta.servico.nome} · R${' '}
                 {Number(oferta.preco).toFixed(2).replace('.', ',')} ·{' '}
-                {oferta.duracaoMinutos} minutos
+                {oferta.duracaoMinutos} minutos (referência)
               </Text>
               <Button
-                title={enviando ? 'Aguarde...' : 'Solicitar contratação'}
+                title="Selecionar serviço"
                 disabled={enviando || !idosoId}
                 onPress={() => {
-                  void solicitar(oferta.id);
+                  setSelecionada({
+                    id: oferta.id,
+                    nome: oferta.servico.nome,
+                    cuidador:
+                      cuidador.usuario.nomeSocial || cuidador.usuario.nome,
+                    preco: oferta.preco,
+                    duracaoMinutos: oferta.duracaoMinutos,
+                  });
                 }}
               />
             </View>
