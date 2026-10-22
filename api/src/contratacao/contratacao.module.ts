@@ -8,5 +8,6 @@ import { ContratacaoService } from './contratacao.service.js';
   imports: [PrismaModule],
   controllers: [ContratacaoController, AgendaController],
   providers: [ContratacaoService],
+  exports: [ContratacaoService],
 })
 export class ContratacaoModule {}

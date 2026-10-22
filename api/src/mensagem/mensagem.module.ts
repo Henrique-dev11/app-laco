@@ -7,5 +7,6 @@ import { MensagemService } from './mensagem.service.js';
   imports: [PrismaModule],
   controllers: [MensagemController],
   providers: [MensagemService],
+  exports: [MensagemService],
 })
 export class MensagemModule {}

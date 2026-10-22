@@ -10,6 +10,7 @@ export type Contato = {
 export type Mensagem = {
   id: number;
   remetenteId: number;
+  propostaId: number | null;
   conteudo: string;
   lidaEm: string | null;
   createdAt: string;

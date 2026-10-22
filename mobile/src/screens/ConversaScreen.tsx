@@ -1,3 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native';
+import { Button } from '../components/Button';
+import { PropostaCard } from '../components/PropostaCard';
+import { listarPropostas, type Proposta } from '../services/propostas';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -42,15 +46,17 @@ function juntar(atuais: Mensagem[], novas: Mensagem[]) {
   return [...porId.values()].sort((a, b) => a.id - b.id);
 }
 
-export function ConversaScreen({
-  navigation,
-  route,
-}: ScreenProps<'Conversa'>) {
+export function ConversaScreen(props: ScreenProps<'Conversa'>) {
+  return <ConversaConteudo key={props.route.params.usuarioId} {...props} />;
+}
+function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
   const { usuarioId, nome, fotoVersao } = route.params;
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const { usuario } = useAuth();
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [propostas, setPropostas] = useState<Proposta[]>([]);
+  const [menuProposta, setMenuProposta] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [texto, setTexto] = useState('');
@@ -82,10 +88,14 @@ export function ConversaScreen({
   }, []);
 
   const atualizar = useCallback(
-    async (ativo: () => boolean) => {
+    async (ativo: () => boolean = () => true) => {
       try {
-        const novas = await listarMensagens(usuarioId, ultimoId.current);
+        const [novas, propostasAtuais] = await Promise.all([
+          listarMensagens(usuarioId, ultimoId.current),
+          listarPropostas(usuarioId),
+        ]);
         if (!ativo()) return;
+        setPropostas(propostasAtuais);
         if (novas.length) {
           ultimoId.current = novas[novas.length - 1].id;
           setMensagens((atuais) => juntar(atuais, novas));
@@ -100,16 +110,24 @@ export function ConversaScreen({
     [usuarioId],
   );
 
-  useEffect(() => {
-    let ativo = true;
-    const estaAtivo = () => ativo;
-    void atualizar(estaAtivo);
-    const timer = setInterval(() => void atualizar(estaAtivo), INTERVALO_MS);
-    return () => {
-      ativo = false;
-      clearInterval(timer);
-    };
-  }, [atualizar]);
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+      let timer: ReturnType<typeof setTimeout>;
+      async function consultar() {
+        await atualizar(() => ativo);
+        if (ativo)
+          timer = setTimeout(() => {
+            void consultar();
+          }, INTERVALO_MS);
+      }
+      void consultar();
+      return () => {
+        ativo = false;
+        clearTimeout(timer);
+      };
+    }, [atualizar]),
+  );
 
   async function enviar() {
     const conteudo = texto.trim();
@@ -117,7 +135,6 @@ export function ConversaScreen({
     setEnviando(true);
     try {
       const enviada = await enviarMensagem(usuarioId, conteudo);
-      ultimoId.current = Math.max(ultimoId.current ?? 0, enviada.id);
       setMensagens((atuais) => juntar(atuais, [enviada]));
       setTexto('');
       setErro('');
@@ -185,6 +202,43 @@ export function ConversaScreen({
               }
               renderItem={({ item }) => {
                 const minha = item.remetenteId === usuario?.id;
+                const proposta = propostas.find(
+                  (p) => p.id === item.propostaId,
+                );
+                if (proposta) {
+                  const ultima = !propostas.some(
+                    (p) =>
+                      p.negociacaoId === proposta.negociacaoId &&
+                      p.versao > proposta.versao,
+                  );
+                  return (
+                    <View style={{ gap: 4 }}>
+                      <PropostaCard
+                        proposta={proposta}
+                        contatoId={usuarioId}
+                        podeRevisar={
+                          ultima &&
+                          [
+                            'PENDENTE',
+                            'RECUSADA',
+                            'ALTERACOES_SOLICITADAS',
+                          ].includes(proposta.status)
+                        }
+                        atualizar={() => atualizar()}
+                        novaVersao={() =>
+                          navigation.navigate('CriarProposta', {
+                            usuarioId,
+                            anterior: proposta,
+                          })
+                        }
+                        verAgenda={() => navigation.navigate('Agenda')}
+                      />
+                      <Text style={styles.horaDele}>
+                        {rotuloHora(item.createdAt)}
+                      </Text>
+                    </View>
+                  );
+                }
                 return (
                   <View
                     style={[
@@ -208,7 +262,33 @@ export function ConversaScreen({
               <Notice>{erro}</Notice>
             </View>
           )}
+          {!!usuario?.cuidador && menuProposta && (
+            <View style={styles.aviso}>
+              <Button
+                title="Criar proposta de atendimento"
+                onPress={() => {
+                  setMenuProposta(false);
+                  navigation.navigate('CriarProposta', { usuarioId });
+                }}
+              />
+            </View>
+          )}
           <View style={styles.barra}>
+            {!!usuario?.cuidador && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Opções de proposta"
+                accessibilityState={{ expanded: menuProposta }}
+                onPress={() => setMenuProposta((v) => !v)}
+                style={styles.enviar}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={22}
+                  color={colors.surface}
+                />
+              </TouchableOpacity>
+            )}
             <TextInput
               style={styles.campo}
               value={texto}
@@ -288,7 +368,12 @@ const criarStyles = (colors: Paleta) =>
     },
     textoMeu: { fontSize: 15, lineHeight: 21, color: colors.surface },
     textoDele: { fontSize: 15, lineHeight: 21, color: colors.text },
-    horaMeu: { alignSelf: 'flex-end', fontSize: 11, color: colors.surface, opacity: 0.8 },
+    horaMeu: {
+      alignSelf: 'flex-end',
+      fontSize: 11,
+      color: colors.surface,
+      opacity: 0.8,
+    },
     horaDele: { alignSelf: 'flex-end', fontSize: 11, color: colors.muted },
     aviso: { paddingHorizontal: 16, paddingBottom: 8 },
     barra: {

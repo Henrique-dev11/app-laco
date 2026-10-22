@@ -96,6 +96,7 @@ model Endereco {
 }
 
 model Responsavel {
+  propostasAtendimento PropostaAtendimento[]
   id             Int      @id @default(autoincrement())
   usuarioId      Int      @unique
   enderecoId     Int
@@ -131,6 +132,7 @@ model ResponsavelIdoso {
 }
 
 model Idoso {
+  propostasAtendimento PropostaAtendimento[]
   id                    Int      @id @default(autoincrement())
   enderecoId            Int
   nome                  String   @db.VarChar(150)
@@ -152,6 +154,7 @@ model Idoso {
 }
 
 model Cuidador {
+  propostasAtendimento PropostaAtendimento[]
   id                      Int               @id @default(autoincrement())
   usuarioId               Int               @unique
   enderecoId              Int
@@ -195,6 +198,7 @@ model Servico {
 }
 
 model CuidadorServico {
+  itensProposta ItemPropostaAtendimento[]
   id             Int     @id @default(autoincrement())
   cuidadorId     Int
   servicoId      Int
@@ -230,6 +234,11 @@ model Disponibilidade {
 }
 
 model Contratacao {
+  itemPropostaId Int?
+  sessaoProposta Int?
+  itemProposta ItemPropostaAtendimento? @relation("ContratosProposta", fields: [itemPropostaId], references: [id])
+  origensProposta ItemPropostaAtendimento[] @relation("OrigemProposta")
+  @@unique([itemPropostaId, sessaoProposta])
   id                Int               @id @default(autoincrement())
   responsavelId     Int
   idosoId           Int
@@ -325,6 +334,8 @@ model Avaliacao {
 // Mensagem direta entre dois usuários. Só trocam mensagens um responsável e um
 // cuidador que tenham ao menos uma contratação entre si (regra no serviço).
 model Mensagem {
+  propostaId Int? @unique
+  proposta PropostaAtendimento? @relation(fields: [propostaId], references: [id])
   id             Int       @id @default(autoincrement())
   remetenteId    Int
   destinatarioId Int
@@ -337,4 +348,51 @@ model Mensagem {
 
   @@index([remetenteId, destinatarioId, id])
   @@index([destinatarioId, remetenteId, lidaEm])
+}
+
+
+enum StatusPropostaAtendimento {
+  PENDENTE
+  ACEITA
+  RECUSADA
+  ALTERACOES_SOLICITADAS
+  SUBSTITUIDA
+}
+
+model PropostaAtendimento {
+  id Int @id @default(autoincrement())
+  negociacaoId String @default(uuid())
+  versao Int @default(1)
+  responsavelId Int
+  cuidadorId Int
+  idosoId Int
+  status StatusPropostaAtendimento @default(PENDENTE)
+  total Decimal @db.Decimal(10, 2)
+  observacoes String? @db.VarChar(2000)
+  resposta String? @db.VarChar(2000)
+  createdAt DateTime @default(now())
+  respondidaEm DateTime?
+  responsavel Responsavel @relation(fields: [responsavelId], references: [id])
+  cuidador Cuidador @relation(fields: [cuidadorId], references: [id])
+  idoso Idoso @relation(fields: [idosoId], references: [id])
+  mensagem Mensagem?
+  itens ItemPropostaAtendimento[]
+  @@unique([negociacaoId, versao])
+  @@index([responsavelId, cuidadorId, id])
+}
+
+model ItemPropostaAtendimento {
+  id Int @id @default(autoincrement())
+  propostaId Int
+  cuidadorServicoId Int
+  contratacaoOrigemId Int?
+  nomeServico String @db.VarChar(150)
+  precoReferencia Decimal @db.Decimal(10, 2)
+  preco Decimal @db.Decimal(10, 2)
+  duracaoMinutos Int
+  inicios DateTime[] @db.Timestamptz(3)
+  proposta PropostaAtendimento @relation(fields: [propostaId], references: [id])
+  cuidadorServico CuidadorServico @relation(fields: [cuidadorServicoId], references: [id])
+  contratacaoOrigem Contratacao? @relation("OrigemProposta", fields: [contratacaoOrigemId], references: [id])
+  contratacoes Contratacao[] @relation("ContratosProposta")
 }

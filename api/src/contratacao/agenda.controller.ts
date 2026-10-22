@@ -33,6 +33,9 @@ export class AgendaController {
             id: true,
             status: true,
             nomeServico: true,
+            duracaoMinutos: true,
+            valorAcordado: true,
+            observacoes: true,
             idoso: { select: { id: true, nome: true, nomeSocial: true } },
             cuidadorServico: {
               select: {
