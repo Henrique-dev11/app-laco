@@ -13,8 +13,9 @@ import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useListaApi } from '../hooks/useListaApi';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
-import { colors } from '../theme';
-import { appStyles, statusLabels } from '../theme/appStyles';
+import type { Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
+import { statusLabels, useAppStyles } from '../theme/appStyles';
 
 type Disponibilidade = {
   id: number;
@@ -40,6 +41,9 @@ function formatarHora(value: string) {
     : digits;
 }
 function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
+  const appStyles = useAppStyles();
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
   const { dados, carregando, erro, atualizar } = useListaApi<Disponibilidade>(
     `/cuidadores/${cuidadorId}/disponibilidades`,
   );
@@ -200,22 +204,23 @@ export function DisponibilidadeScreen() {
     </AppScreenLayout>
   );
 }
-const styles = StyleSheet.create({
-  days: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginVertical: 4 },
-  day: {
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    minHeight: 44,
-  },
-  selectedDay: {
-    backgroundColor: colors.caregiver,
-    borderColor: colors.caregiver,
-  },
-  dayText: { color: colors.primaryDark, fontWeight: '600', fontSize: 12 },
-  selectedText: { color: colors.surface },
-  hours: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-  half: { flex: 1, minWidth: 120 },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    days: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginVertical: 4 },
+    day: {
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+      minHeight: 44,
+    },
+    selectedDay: {
+      backgroundColor: colors.caregiver,
+      borderColor: colors.caregiver,
+    },
+    dayText: { color: colors.primaryDark, fontWeight: '600', fontSize: 12 },
+    selectedText: { color: colors.surface },
+    hours: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+    half: { flex: 1, minWidth: 120 },
+  });

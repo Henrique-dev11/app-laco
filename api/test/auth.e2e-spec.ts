@@ -4,6 +4,7 @@ import request from 'supertest';
 import bcrypt from 'bcrypt';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { hashToken } from '../src/auth/auth.service.js';
 
 function cpf(base: string) {
   let value = base;
@@ -597,6 +598,86 @@ describe('Cadastro, sessão e isolamento de dados', () => {
           .expect(200)
       ).body,
     ).toEqual([]);
+  });
+
+  it('salva foto de perfil, valida o conteúdo e controla quem pode ver', async () => {
+    const http = () => request(app.getHttpServer());
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    await http().post('/auth/foto').auth(token, { type: 'bearer' }).expect(400);
+    await http()
+      .post('/auth/foto')
+      .auth(token, { type: 'bearer' })
+      .attach('foto', Buffer.from('não sou imagem, mas tenho tamanho'), {
+        filename: 'x.png',
+        contentType: 'image/png',
+      })
+      .expect(400);
+    await http()
+      .post('/auth/foto')
+      .auth(token, { type: 'bearer' })
+      .attach('foto', Buffer.alloc(3 * 1024 * 1024 + 1), 'grande.png')
+      .expect(413);
+    await http().post('/auth/foto').attach('foto', png, 'a.png').expect(401);
+    await http()
+      .post('/auth/foto')
+      .auth(token, { type: 'bearer' })
+      .attach('foto', png, { filename: 'a.png', contentType: 'image/png' })
+      .expect(201);
+    const me = await http()
+      .get('/auth/me')
+      .auth(token, { type: 'bearer' })
+      .expect(200);
+    expect(me.body.foto.updatedAt).toBeTruthy();
+    // Dono vê; sem sessão ou outro usuário sem vínculo não vê.
+    const dono = await http()
+      .get(`/fotos/${usuarioId}`)
+      .auth(token, { type: 'bearer' })
+      .expect(200);
+    expect(dono.headers['content-type']).toBe('image/png');
+    await http().get(`/fotos/${usuarioId}`).expect(401);
+    // Sessão criada direto no banco para não consumir o limite de logins.
+    const outro = 'f'.repeat(64);
+    const alheio = await prisma.usuario.findUniqueOrThrow({
+      where: { email: 'pessoa4@teste.local' },
+    });
+    await prisma.sessao.create({
+      data: {
+        usuarioId: alheio.id,
+        tokenHash: hashToken(outro),
+        expiraEm: new Date(Date.now() + 3600_000),
+      },
+    });
+    await http()
+      .get(`/fotos/${usuarioId}`)
+      .auth(outro, { type: 'bearer' })
+      .expect(403);
+    // Cuidador aprovado: foto pública (aparece na busca).
+    await http()
+      .post('/auth/foto')
+      .auth(cuidadorToken, { type: 'bearer' })
+      .attach('foto', png, { filename: 'c.png', contentType: 'image/png' })
+      .expect(201);
+    const cuidador = await prisma.cuidador.findUniqueOrThrow({
+      where: { id: cuidadorId },
+    });
+    await http().get(`/fotos/${cuidador.usuarioId}`).expect(200);
+    const catalogo = await http().get('/catalogo/cuidadores').expect(200);
+    expect(
+      catalogo.body.find((c: { id: number }) => c.id === cuidadorId).usuario
+        .foto.updatedAt,
+    ).toBeTruthy();
+    // Remoção.
+    await http()
+      .delete('/auth/foto')
+      .auth(token, { type: 'bearer' })
+      .expect(204);
+    await http()
+      .get(`/fotos/${usuarioId}`)
+      .auth(token, { type: 'bearer' })
+      .expect(404);
   });
 
   it('revoga sessão no logout, expiração e bloqueio', async () => {

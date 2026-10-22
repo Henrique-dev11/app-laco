@@ -115,6 +115,15 @@ export class SessionGuard implements CanActivate {
           contrato.cuidadorServico.cuidadorId === user.cuidadorId
         );
       }
+      case 'AvaliacaoController': {
+        // Só criar passa por aqui (a listagem é pública): precisa ser o responsável do contrato.
+        const contrato = await this.prisma.contratacao.findUnique({
+          where: { id: Number.isInteger(id) ? id : -1 },
+          select: { responsavelId: true },
+        });
+        if (!contrato) return true; // o serviço responde 404
+        return contrato.responsavelId === user.responsavelId;
+      }
       case 'UsuarioController':
         return handler !== 'findAll' && handler !== 'create' && id === user.id;
       case 'ResponsavelController':

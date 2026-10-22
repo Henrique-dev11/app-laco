@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DefaultTheme,
   NavigationContainer,
@@ -9,58 +9,69 @@ import { StatusBar } from 'expo-status-bar';
 import { CadastroProvider } from './src/contexts/CadastroContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { AppRoutes } from './src/routes/AppRoutes';
-import { colors } from './src/theme';
+import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import type { RootStackParamList } from './src/types/navigation';
 
-const theme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: colors.primaryDark,
-    background: colors.background,
-    card: colors.surface,
-    text: colors.text,
-    border: colors.border,
-  },
-};
-
-export default function App() {
+function Shell() {
+  const colors = useTheme();
+  const theme = useMemo(
+    () => ({
+      ...DefaultTheme,
+      colors: {
+        ...DefaultTheme.colors,
+        primary: colors.primaryDark,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.text,
+        border: colors.border,
+      },
+    }),
+    [colors],
+  );
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [activeRoute, setActiveRoute] = useState('LoginType');
   function updateRoute() {
     setActiveRoute(navigationRef.getCurrentRoute()?.name ?? 'LoginType');
   }
   return (
+    <NavigationContainer
+      ref={navigationRef}
+      theme={theme}
+      onReady={updateRoute}
+      onStateChange={updateRoute}
+    >
+      <StatusBar
+        style={
+          [
+            'Home',
+            'BuscarCuidador',
+            'Historico',
+            'Agenda',
+            'Disponibilidade',
+            'Perfil',
+            'IdosoDetalhes',
+            'Servicos',
+            'Mensagens',
+            'Notificacoes',
+          ].includes(activeRoute)
+            ? 'light'
+            : 'dark'
+        }
+      />
+      <AppRoutes />
+    </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
     <SafeAreaProvider>
       <AuthProvider>
-        <CadastroProvider>
-          <NavigationContainer
-            ref={navigationRef}
-            theme={theme}
-            onReady={updateRoute}
-            onStateChange={updateRoute}
-          >
-            <StatusBar
-              style={
-                [
-                  'Home',
-                  'BuscarCuidador',
-                  'Historico',
-                  'Agenda',
-                  'Disponibilidade',
-                  'Perfil',
-                  'IdosoDetalhes',
-                  'Servicos',
-                  'Mensagens',
-                  'Notificacoes',
-                ].includes(activeRoute)
-                  ? 'light'
-                  : 'dark'
-              }
-            />
-            <AppRoutes />
-          </NavigationContainer>
-        </CadastroProvider>
+        <ThemeProvider>
+          <CadastroProvider>
+            <Shell />
+          </CadastroProvider>
+        </ThemeProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

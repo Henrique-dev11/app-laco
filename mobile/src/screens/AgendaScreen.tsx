@@ -2,10 +2,10 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
-import { appStyles, statusLabels } from '../theme/appStyles';
+import { statusLabels, useAppStyles } from '../theme/appStyles';
 import { useListaApi } from '../hooks/useListaApi';
 import { useAuth } from '../contexts/AuthContext';
-import { colors } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import type { ScreenProps } from '../types/navigation';
 
 type Agendamento = {
@@ -23,6 +23,8 @@ type Agendamento = {
   };
 };
 export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
+  const appStyles = useAppStyles();
+  const colors = useTheme();
   const { usuario } = useAuth();
   const { dados, carregando, erro, atualizar } =
     useListaApi<Agendamento>('/agendamentos');

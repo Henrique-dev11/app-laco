@@ -4,8 +4,8 @@ import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { api, mensagemErro } from '../services/api';
-import { appStyles } from '../theme/appStyles';
-import { colors } from '../theme';
+import { useAppStyles } from '../theme/appStyles';
+import { useTheme } from '../theme/ThemeContext';
 import type { Endereco } from '../types/auth';
 import type { ScreenProps } from '../types/navigation';
 
@@ -20,6 +20,8 @@ type Idoso = {
   observacoes: string | null;
 };
 export function IdosoDetalhesScreen({ route }: ScreenProps<'IdosoDetalhes'>) {
+  const appStyles = useAppStyles();
+  const colors = useTheme();
   const [idoso, setIdoso] = useState<Idoso | null>(null);
   const [erro, setErro] = useState('');
   const [tentativa, setTentativa] = useState(0);

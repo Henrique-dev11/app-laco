@@ -5,7 +5,8 @@ import {
   TouchableOpacity,
   type ImageSourcePropType,
 } from 'react-native';
-import { colors } from '../theme';
+import type { Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 
 type Props = {
   title: string;
@@ -19,11 +20,14 @@ type Props = {
 export function Button({
   title,
   onPress,
-  color = colors.primary,
+  color,
   imageSource,
   variant = 'filled',
   disabled,
 }: Props) {
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
+  const cor = color ?? colors.primary;
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -34,8 +38,8 @@ export function Button({
       style={[
         styles.button,
         {
-          backgroundColor: variant === 'outline' ? colors.surface : color,
-          borderColor: color,
+          backgroundColor: variant === 'outline' ? colors.surface : cor,
+          borderColor: cor,
         },
         disabled && styles.disabled,
       ]}
@@ -44,7 +48,7 @@ export function Button({
       <Text
         style={[
           styles.text,
-          { color: variant === 'outline' ? color : colors.surface },
+          { color: variant === 'outline' ? cor : colors.surface },
         ]}
       >
         {title}
@@ -53,19 +57,20 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    minHeight: 48,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 28,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  text: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
-  icon: { width: 24, height: 24, resizeMode: 'contain' },
-  disabled: { opacity: 0.5 },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    button: {
+      minHeight: 48,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderRadius: 28,
+      borderWidth: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+    },
+    text: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
+    icon: { width: 24, height: 24, resizeMode: 'contain' },
+    disabled: { opacity: 0.5 },
+  });

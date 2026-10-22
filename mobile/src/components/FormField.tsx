@@ -8,7 +8,8 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
-import { colors } from '../theme';
+import type { Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 
 type Props = TextInputProps & {
   label: string;
@@ -23,6 +24,8 @@ export function FormField({
   style,
   ...props
 }: Props) {
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
   const [hidden, setHidden] = useState(true);
   return (
     <View style={styles.group}>
@@ -64,33 +67,34 @@ export function FormField({
   );
 }
 
-const styles = StyleSheet.create({
-  group: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.primaryDark },
-  field: {
-    minHeight: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    backgroundColor: colors.input,
-  },
-  input: {
-    flex: 1,
-    minWidth: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: colors.text,
-  },
-  invalid: { borderColor: colors.error },
-  error: { fontSize: 12, color: colors.error },
-  eye: {
-    minHeight: 44,
-    width: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  icon: { width: 22, height: 22, resizeMode: 'contain' },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    group: { gap: 6 },
+    label: { fontSize: 13, fontWeight: '600', color: colors.primaryDark },
+    field: {
+      minHeight: 46,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      backgroundColor: colors.input,
+    },
+    input: {
+      flex: 1,
+      minWidth: 0,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 14,
+      color: colors.text,
+    },
+    invalid: { borderColor: colors.error },
+    error: { fontSize: 12, color: colors.error },
+    eye: {
+      minHeight: 44,
+      width: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    icon: { width: 22, height: 22, resizeMode: 'contain' },
+  });

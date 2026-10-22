@@ -43,6 +43,14 @@ export class ContratacaoController {
     return this.contratacaoService.updateStatus(id, dto, req.usuario);
   }
 
+  @Post(':id/codigo-conclusao')
+  codigoConclusao(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Autenticado,
+  ) {
+    return this.contratacaoService.gerarCodigoConclusao(id, req.usuario);
+  }
+
   @Post(':id/agendamento')
   agendar(
     @Param('id', ParseIntPipe) id: number,

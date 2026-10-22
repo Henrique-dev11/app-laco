@@ -16,7 +16,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ServicosScreen } from '../screens/ServicosScreen';
 import { FeaturePreviewScreen } from '../screens/FeaturePreviewScreen';
 import { PerfilScreen } from '../screens/PerfilScreen';
-import { colors } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { ActivityIndicator, Text } from 'react-native';
@@ -35,6 +35,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // React Navigation mantido por escolha explícita do usuário nesta migração.
 export function AppRoutes() {
   const { usuario, carregando, erroInicial, tentarRestaurar } = useAuth();
+  const colors = useTheme();
   if (carregando)
     return (
       <ScreenLayout>

@@ -1,18 +1,24 @@
 import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
+import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
-import { appStyles } from '../theme/appStyles';
+import { useAppStyles } from '../theme/appStyles';
 import { useListaApi } from '../hooks/useListaApi';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
-import { colors } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import type { ScreenProps } from '../types/navigation';
 
 type Cuidador = {
   id: number;
-  usuario: { nome: string; nomeSocial: string | null };
+  usuario: {
+    id: number;
+    nome: string;
+    nomeSocial: string | null;
+    foto: { updatedAt: string } | null;
+  };
   endereco: { cidade: string; estado: string };
   biografia: string | null;
   cuidadorServicos: {
@@ -25,6 +31,8 @@ type Cuidador = {
 export function BuscarCuidadorScreen({
   navigation,
 }: ScreenProps<'BuscarCuidador'>) {
+  const appStyles = useAppStyles();
+  const colors = useTheme();
   const { usuario } = useAuth();
   const { dados, carregando, erro, atualizar } = useListaApi<Cuidador>(
     '/catalogo/cuidadores',
@@ -79,9 +87,17 @@ export function BuscarCuidadorScreen({
       )}
       {dados.map((cuidador) => (
         <View key={cuidador.id} style={appStyles.card}>
-          <Text style={appStyles.name}>
-            {cuidador.usuario.nomeSocial || cuidador.usuario.nome}
-          </Text>
+          <View style={appStyles.row}>
+            <Avatar
+              nome={cuidador.usuario.nomeSocial || cuidador.usuario.nome}
+              usuarioId={cuidador.usuario.id}
+              versao={cuidador.usuario.foto?.updatedAt}
+              tamanho={56}
+            />
+            <Text style={appStyles.name}>
+              {cuidador.usuario.nomeSocial || cuidador.usuario.nome}
+            </Text>
+          </View>
           <Text style={appStyles.text}>
             {cuidador.endereco.cidade}/{cuidador.endereco.estado}
           </Text>

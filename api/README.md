@@ -40,3 +40,15 @@ Cadastro: `POST /auth/cadastro`. Login: `POST /auth/login`. Perfil atual: `GET /
 A proteção de horários concorrentes usa a extensão PostgreSQL `btree_gist`. A agenda segue `America/Sao_Paulo`; um atendimento deve terminar no mesmo dia e a contratação precisa ter sido aceita.
 
 Confira o [roteiro de testes manuais](../docs/teste/teste-banco.md) e o [guia completo de execução e integração](../docs/teste/integracao-frontend-banco.md).
+
+## Avaliações
+
+O responsável avalia o atendimento depois que a contratação estiver `CONCLUIDA`, com nota de 1 a 5 e comentário opcional (até 1000 caracteres). Cada contratação tem no máximo uma avaliação, e ela não pode ser editada.
+
+- `POST /contratacoes/:id/avaliacao` — corpo `{ "nota": 5, "comentario": "opcional" }`. Exige login como o responsável da contratação (cuidador e administrador não avaliam). Responde 400 se o atendimento não foi concluído ou a nota é inválida, 403 se não é o responsável e 409 se já foi avaliado.
+- `GET /catalogo/cuidadores/:id/avaliacoes` — público. Devolve `media` (uma casa decimal, ou `null`), `total` e as 50 avaliações mais recentes, com apenas o primeiro nome do autor.
+- `GET /catalogo/cuidadores` agora traz `avaliacaoMedia` e `totalAvaliacoes` em cada cuidador.
+- `GET /contratacoes` e `GET /contratacoes/:id` trazem o campo `avaliacao` (ou `null`), para o app saber se ainda falta avaliar.
+
+A nota é validada também no banco (`CHECK` de 1 a 5) e a unicidade por contratação é garantida por índice, o que cobre requisições simultâneas. Depois de atualizar o código, rode `npm run db:migrate` e `npm run db:generate`.
+

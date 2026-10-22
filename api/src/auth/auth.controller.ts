@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Injectable,
@@ -16,7 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import type { Request, Response } from 'express';
-import { AuthService, type Pdf } from './auth.service.js';
+import { AuthService, type Imagem, type Pdf } from './auth.service.js';
 import { CadastroDto, LoginDto } from './cadastro.dto.js';
 import { Public, type Autenticado } from './session.guard.js';
 
@@ -80,6 +81,22 @@ export class AuthController {
   @HttpCode(204)
   async logout(@Req() req: Autenticado) {
     await this.auth.logout(req.usuario.sessaoId);
+  }
+
+  @Post('foto')
+  @UseInterceptors(
+    FileInterceptor('foto', {
+      limits: { fileSize: 3 * 1024 * 1024, files: 1, fields: 0 },
+    }),
+  )
+  salvarFoto(@Req() req: Autenticado, @UploadedFile() imagem?: Imagem) {
+    return this.auth.salvarFoto(req.usuario.id, imagem);
+  }
+
+  @Delete('foto')
+  @HttpCode(204)
+  async removerFoto(@Req() req: Autenticado) {
+    await this.auth.removerFoto(req.usuario.id);
   }
 
   @Get('curriculo')

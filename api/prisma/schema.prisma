@@ -72,6 +72,7 @@ model Usuario {
   cuidador    Cuidador?
   sessoes     Sessao[]
   preferencias PreferenciaServico[]
+  foto        FotoPerfil?
 }
 
 model Endereco {
@@ -108,6 +109,7 @@ model Responsavel {
 
   responsavelIdosos ResponsavelIdoso[]
   contratacoes      Contratacao[]
+  avaliacoes        Avaliacao[]
 }
 
 model ResponsavelIdoso {
@@ -169,6 +171,7 @@ model Cuidador {
   disponibilidades Disponibilidade[]
   curriculo Curriculo?
   agendamentos Agendamento[]
+  avaliacoes Avaliacao[]
 }
 
 model Servico {
@@ -228,6 +231,10 @@ model Contratacao {
   status            StatusContratacao @default(SOLICITADA)
   observacoes       String?           @db.Text
 
+  // Código de conclusão: só o hash é guardado; o código em si é mostrado apenas ao responsável.
+  codigoConclusaoHash String?
+  tentativasCodigo    Int     @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -235,6 +242,7 @@ model Contratacao {
   idoso           Idoso           @relation(fields: [idosoId], references: [id])
   cuidadorServico CuidadorServico @relation(fields: [cuidadorServicoId], references: [id])
   agendamento Agendamento?
+  avaliacao Avaliacao?
 }
 
 model Agendamento {
@@ -276,4 +284,30 @@ model PreferenciaServico {
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   servico Servico @relation(fields: [servicoId], references: [id])
   @@id([usuarioId, servicoId])
+}
+
+model FotoPerfil {
+  usuarioId Int      @id
+  mime      String   @db.VarChar(20)
+  conteudo  Bytes
+  updatedAt DateTime @updatedAt
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+// Avaliação do responsável sobre um atendimento concluído (uma por contratação).
+// A nota (1 a 5) é validada também no banco, por CHECK na migration.
+model Avaliacao {
+  id            Int      @id @default(autoincrement())
+  contratacaoId Int      @unique
+  responsavelId Int
+  cuidadorId    Int
+  nota          Int
+  comentario    String?  @db.VarChar(1000)
+  createdAt     DateTime @default(now())
+
+  contratacao Contratacao @relation(fields: [contratacaoId], references: [id])
+  responsavel Responsavel @relation(fields: [responsavelId], references: [id])
+  cuidador    Cuidador    @relation(fields: [cuidadorId], references: [id])
+
+  @@index([cuidadorId, createdAt])
 }

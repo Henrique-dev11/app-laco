@@ -13,7 +13,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BottomNavigation } from '../components/BottomNavigation';
-import { colors } from '../theme';
+import type { Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
 
 type Props = PropsWithChildren<{
@@ -29,6 +30,8 @@ export function AppScreenLayout({
   tab = 'Início',
   headerRight,
 }: Props) {
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return (
@@ -78,41 +81,42 @@ export function AppScreenLayout({
     </SafeAreaView>
   );
 }
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.text },
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    backgroundColor: colors.text,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  back: {
-    width: 40,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 22,
-    backgroundColor: '#5C2D51',
-  },
-  grow: { flex: 1 },
-  overline: {
-    color: '#E0D4DC',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-  title: {
-    color: colors.surface,
-    fontSize: 21,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  subtitle: { color: '#E0D4DC', fontSize: 12, marginTop: 5 },
-  scroll: { flexGrow: 1, padding: 24 },
-  content: { width: '100%', maxWidth: 640, alignSelf: 'center', gap: 20 },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.header },
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      backgroundColor: colors.header,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
+      paddingHorizontal: 20,
+      paddingVertical: 18,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    back: {
+      width: 40,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 22,
+      backgroundColor: colors.headerSoft,
+    },
+    grow: { flex: 1 },
+    overline: {
+      color: colors.onHeader,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 1.5,
+    },
+    title: {
+      color: colors.surface,
+      fontSize: 21,
+      fontWeight: '700',
+      marginTop: 3,
+    },
+    subtitle: { color: colors.onHeader, fontSize: 12, marginTop: 5 },
+    scroll: { flexGrow: 1, padding: 24 },
+    content: { width: '100%', maxWidth: 640, alignSelf: 'center', gap: 20 },
+  });

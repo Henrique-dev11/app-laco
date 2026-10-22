@@ -61,6 +61,25 @@ test('download mantém autorização e retorna PDF binário; logout aceita 204',
   assert.equal(await api.logout(), null);
 });
 
+test('foto de perfil é baixada com a sessão (fotos privadas exigem token) como imagem binária', async () => {
+  let chamada;
+  const api = createApi({
+    getToken: () => 'sessao',
+    fetcher: async (url, options) => {
+      chamada = { url, options };
+      return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
+        headers: { 'Content-Type': 'image/jpeg' },
+      });
+    },
+  });
+  const foto = await api.foto(7);
+  assert.equal(chamada.url, '/api/fotos/7');
+  assert.equal(chamada.options.headers.Authorization, 'Bearer sessao');
+  assert.equal(chamada.options.headers.Accept, 'image/*');
+  assert.equal(foto.type, 'image/jpeg');
+  assert.equal(foto.size, 4);
+});
+
 test('servidor entrega o painel e impede acesso a configurações e arquivos privados', async () => {
   const server = createServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -72,6 +91,11 @@ test('servidor entrega o painel e impede acesso a configurações e arquivos pri
     assert.match(
       home.headers.get('Content-Security-Policy'),
       /frame-ancestors 'none'/,
+    );
+    // Fotos privadas chegam como blob: a política precisa permitir.
+    assert.match(
+      home.headers.get('Content-Security-Policy'),
+      /img-src 'self' data: blob:/,
     );
     for (const path of [
       '/.env',

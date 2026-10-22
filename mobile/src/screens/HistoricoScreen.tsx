@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
+import { CodigoDestaque } from '../components/CodigoDestaque';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
-import { appStyles, statusLabels } from '../theme/appStyles';
+import { statusLabels, useAppStyles } from '../theme/appStyles';
 import { useListaApi } from '../hooks/useListaApi';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
-import { colors } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import { FormField } from '../components/FormField';
 
 type Contratacao = {
@@ -30,11 +31,18 @@ type Contratacao = {
   };
 };
 export function HistoricoScreen() {
+  const appStyles = useAppStyles();
+  const colors = useTheme();
   const { usuario } = useAuth();
   const { dados, carregando, erro, atualizar } =
     useListaApi<Contratacao>('/contratacoes');
   const [enviando, setEnviando] = useState(false);
   const [mensagem, setMensagem] = useState('');
+  // Código digitado pelo cuidador e código mostrado ao responsável, por contratação.
+  const [codigos, setCodigos] = useState<Record<number, string>>({});
+  const [codigosGerados, setCodigosGerados] = useState<Record<number, string>>(
+    {},
+  );
   const [horarios, setHorarios] = useState<
     Record<number, { data: string; hora: string }>
   >({});
@@ -63,11 +71,36 @@ export function HistoricoScreen() {
       setEnviando(false);
     }
   }
-  async function mudarStatus(id: number, status: string) {
+  async function gerarCodigo(id: number) {
     setEnviando(true);
     setMensagem('');
     try {
-      await api.patch(`/contratacoes/${id}/status`, { status });
+      const { data } = await api.post<{ codigo: string }>(
+        `/contratacoes/${id}/codigo-conclusao`,
+      );
+      setCodigosGerados((current) => ({ ...current, [id]: data.codigo }));
+    } catch (error) {
+      setMensagem(mensagemErro(error));
+    } finally {
+      setEnviando(false);
+    }
+  }
+  async function concluir(id: number) {
+    const codigo = (codigos[id] ?? '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(codigo)) {
+      setMensagem('Informe o código de 6 letras ou números do responsável.');
+      return;
+    }
+    await mudarStatus(id, 'CONCLUIDA', codigo);
+  }
+  async function mudarStatus(id: number, status: string, codigo?: string) {
+    setEnviando(true);
+    setMensagem('');
+    try {
+      await api.patch(`/contratacoes/${id}/status`, {
+        status,
+        ...(codigo ? { codigo } : {}),
+      });
       atualizar();
     } catch (error) {
       setMensagem(mensagemErro(error));
@@ -190,13 +223,47 @@ export function HistoricoScreen() {
             </>
           )}
           {usuario?.cuidador && contrato.status === 'ACEITA' && (
-            <Button
-              title="Concluir atendimento"
-              disabled={enviando}
-              onPress={() => {
-                void mudarStatus(contrato.id, 'CONCLUIDA');
-              }}
-            />
+            <>
+              <FormField
+                label="Código de confirmação (peça ao responsável)"
+                value={codigos[contrato.id] ?? ''}
+                maxLength={6}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                onChangeText={(codigo) =>
+                  setCodigos((current) => ({
+                    ...current,
+                    [contrato.id]: codigo.toUpperCase(),
+                  }))
+                }
+              />
+              <Button
+                title="Concluir atendimento"
+                disabled={enviando}
+                onPress={() => {
+                  void concluir(contrato.id);
+                }}
+              />
+            </>
+          )}
+          {!!usuario?.responsavel && contrato.status === 'ACEITA' && (
+            <>
+              {!!codigosGerados[contrato.id] && (
+                <CodigoDestaque codigo={codigosGerados[contrato.id]} />
+              )}
+              <Button
+                title={
+                  codigosGerados[contrato.id]
+                    ? 'Gerar novo código'
+                    : 'Mostrar código de conclusão'
+                }
+                variant="outline"
+                disabled={enviando}
+                onPress={() => {
+                  void gerarCodigo(contrato.id);
+                }}
+              />
+            </>
           )}
           {['SOLICITADA', 'ACEITA'].includes(contrato.status) && (
             <Button
