@@ -29,6 +29,7 @@ export type RootStackParamList = {
   Disponibilidade: undefined;
   IdosoDetalhes: { idosoId: number };
   Mensagens: undefined;
+  Conversa: { usuarioId: number; nome: string; fotoVersao: string | null };
   Perfil: ResumoPerfil | undefined;
   Notificacoes: undefined;
 };

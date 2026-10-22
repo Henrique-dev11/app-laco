@@ -111,7 +111,7 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
               Arquivo selecionado neste dispositivo. Ainda não enviado.
             </Text>
           )}
-          {errors.curriculo && (
+          {!!errors.curriculo && (
             <Text style={styles.error}>{errors.curriculo}</Text>
           )}
         </View>
@@ -154,7 +154,7 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
               incluindo o tratamento de dados relacionados ao cuidado de idosos.
             </Text>
           </TouchableOpacity>
-          {errors.termos && <Text style={styles.error}>{errors.termos}</Text>}
+          {!!errors.termos && <Text style={styles.error}>{errors.termos}</Text>}
         </View>
       }
       <Button

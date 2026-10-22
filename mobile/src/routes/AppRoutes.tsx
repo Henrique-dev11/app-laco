@@ -29,7 +29,6 @@ import { IdosoStep1Screen, IdosoStep2Screen } from '../screens/IdosoScreens';
 import { CadastroPreviewScreen } from '../screens/CadastroPreviewScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ServicosScreen } from '../screens/ServicosScreen';
-import { FeaturePreviewScreen } from '../screens/FeaturePreviewScreen';
 import { PerfilScreen } from '../screens/PerfilScreen';
 import { useTheme } from '../theme/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
@@ -41,6 +40,9 @@ import { BuscarCuidadorScreen } from '../screens/BuscarCuidadorScreen';
 import { HistoricoScreen } from '../screens/HistoricoScreen';
 import { DisponibilidadeScreen } from '../screens/DisponibilidadeScreen';
 import { AgendaScreen } from '../screens/AgendaScreen';
+import { MensagensScreen } from '../screens/MensagensScreen';
+import { NotificacoesScreen } from '../screens/NotificacoesScreen';
+import { ConversaScreen } from '../screens/ConversaScreen';
 import { IdosoDetalhesScreen } from '../screens/IdosoDetalhesScreen';
 
 export type { RootStackParamList } from '../types/navigation';
@@ -158,8 +160,13 @@ export function AppRoutes() {
             />
             <Stack.Screen
               name="Mensagens"
-              component={FeaturePreviewScreen}
+              component={MensagensScreen}
               options={{ title: 'Mensagens' }}
+            />
+            <Stack.Screen
+              name="Conversa"
+              component={ConversaScreen}
+              options={{ title: 'Conversa' }}
             />
             <Stack.Screen
               name="Perfil"
@@ -172,7 +179,7 @@ export function AppRoutes() {
             />
             <Stack.Screen
               name="Notificacoes"
-              component={FeaturePreviewScreen}
+              component={NotificacoesScreen}
               options={{ title: 'Notificações' }}
             />
           </Stack.Group>
