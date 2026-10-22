@@ -22,7 +22,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Laço usa suas fotos para você escolher a foto do seu perfil."
+        }
+      ]
     ]
   }
 }

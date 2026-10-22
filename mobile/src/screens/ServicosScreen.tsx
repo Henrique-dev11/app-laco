@@ -3,11 +3,13 @@ import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useListaApi } from '../hooks/useListaApi';
-import { appStyles } from '../theme/appStyles';
-import { colors } from '../theme';
+import { useAppStyles } from '../theme/appStyles';
+import { useTheme } from '../theme/ThemeContext';
 import type { Servico } from '../types/servico';
 
 export function ServicosScreen() {
+  const appStyles = useAppStyles();
+  const colors = useTheme();
   const { dados, carregando, erro, atualizar } =
     useListaApi<Servico>('/servicos');
   return (

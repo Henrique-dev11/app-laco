@@ -45,6 +45,7 @@ export class AdminController {
             nomeSocial: true,
             email: true,
             status: true,
+            foto: { select: { updatedAt: true } },
           },
         },
         endereco: true,

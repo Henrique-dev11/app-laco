@@ -7,10 +7,16 @@ import { SessionGuard } from './session.guard.js';
 import { CatalogoController } from './catalogo.controller.js';
 import { PrismaExceptionFilter } from '../prisma/prisma-exception.filter.js';
 import { AdminController } from './admin.controller.js';
+import { FotoController } from './foto.controller.js';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [AuthController, CatalogoController, AdminController],
+  controllers: [
+    AuthController,
+    CatalogoController,
+    AdminController,
+    FotoController,
+  ],
   providers: [
     AuthService,
     { provide: APP_GUARD, useClass: SessionGuard },

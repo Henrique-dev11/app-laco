@@ -178,7 +178,7 @@ Não foi realizada validação visual/tátil em aparelho físico. Faça o roteir
 
 ## O que continua para as próximas etapas
 
-Mensagens, notificações, avaliações e pagamento simulado precisam de implementação própria. O painel administrativo de aprovação já está implementado em `web/admin/`; o site público completo pode ser adicionado em `web/site/`. O MVP continua prevendo pagamento simulado. O currículo é armazenado no PostgreSQL para desenvolvimento; uma implantação maior deve avaliar armazenamento privado de arquivos, análise do PDF e política de retenção.
+Mensagens, notificações e pagamento simulado precisam de implementação própria. As avaliações já estão na API (ver `api/README.md`); falta a tela no aplicativo e, se necessário, a moderação no painel administrativo. O painel administrativo de aprovação já está implementado em `web/admin/`; o site público completo pode ser adicionado em `web/site/`. O MVP continua prevendo pagamento simulado. O currículo é armazenado no PostgreSQL para desenvolvimento; uma implantação maior deve avaliar armazenamento privado de arquivos, análise do PDF e política de retenção.
 
 A auditoria npm do mobile registrou 22 alertas (7 moderados e 15 altos), ligados à árvore existente de Expo/React Native. O relatório sugere também downgrades incompatíveis com SDK 57; não foi aplicado `audit fix --force`. Revisar as dependências compatíveis antes de publicar. Não foram configurados deploy, backup, monitoramento ou serviço distribuído de limite de login.
 

@@ -4,7 +4,11 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
+import bcrypt from 'bcrypt';
+import { randomInt } from 'node:crypto';
 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StatusContratacao } from '../generated/prisma/client.js';
@@ -14,8 +18,17 @@ import { CreateContratacaoDto } from './dto/create-contratacao.dto.js';
 import { UpdateStatusContratacaoDto } from './dto/update-status-contratacao.dto.js';
 import type { Identidade } from '../auth/auth.service.js';
 
+const ALFABETO_CODIGO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const TAMANHO_CODIGO = 6;
+const MAX_TENTATIVAS_CODIGO = 5;
+// Nunca devolver o hash do código nem o contador de tentativas pela API.
+const contratacaoOmit = { codigoConclusaoHash: true, tentativasCodigo: true };
+
 const contratacaoInclude = {
   agendamento: true,
+  avaliacao: {
+    select: { id: true, nota: true, comentario: true, createdAt: true },
+  },
   responsavel: {
     select: {
       id: true,
@@ -236,6 +249,7 @@ export class ContratacaoService {
           : {}),
       },
       include: contratacaoInclude,
+      omit: contratacaoOmit,
     });
   }
 
@@ -251,6 +265,7 @@ export class ContratacaoService {
           },
       orderBy: { createdAt: 'desc' },
       include: contratacaoInclude,
+      omit: contratacaoOmit,
     });
   }
 
@@ -258,6 +273,7 @@ export class ContratacaoService {
     const contratacao = await this.prisma.contratacao.findUnique({
       where: { id },
       include: contratacaoInclude,
+      omit: contratacaoOmit,
     });
 
     if (!contratacao) {
@@ -315,10 +331,22 @@ export class ContratacaoService {
       );
     }
 
+    if (
+      dto.status === 'CONCLUIDA' &&
+      !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario)
+    )
+      await this.validarCodigoConclusao(id, dto.codigo);
+
     await this.prisma.$transaction(async (tx) => {
       const result = await tx.contratacao.updateMany({
         where: { id, status: contratacao.status },
-        data: { status: dto.status },
+        data: {
+          status: dto.status,
+          // Concluída ou cancelada: o código deixa de valer.
+          ...(['CONCLUIDA', 'CANCELADA'].includes(dto.status)
+            ? { codigoConclusaoHash: null, tentativasCodigo: 0 }
+            : {}),
+        },
       });
       if (!result.count)
         throw new ConflictException(
@@ -331,5 +359,85 @@ export class ContratacaoService {
         });
     });
     return this.findOne(id);
+  }
+  private novoCodigo() {
+    let codigo = '';
+    for (let i = 0; i < TAMANHO_CODIGO; i++)
+      codigo += ALFABETO_CODIGO[randomInt(ALFABETO_CODIGO.length)];
+    return codigo;
+  }
+
+  /** O responsável gera (ou renova) o código que o cuidador precisa digitar. */
+  async gerarCodigoConclusao(id: number, usuario: Identidade) {
+    const contratacao = await this.prisma.contratacao.findUnique({
+      where: { id },
+      select: { responsavelId: true, status: true },
+    });
+    if (!contratacao) throw new NotFoundException('Contratação não encontrada.');
+    if (contratacao.responsavelId !== usuario.responsavelId)
+      throw new ForbiddenException(
+        'Somente o responsável por esta contratação pode gerar o código.',
+      );
+    if (contratacao.status !== 'ACEITA')
+      throw new BadRequestException(
+        'O código só pode ser gerado para atendimentos aceitos.',
+      );
+    const codigo = this.novoCodigo();
+    const result = await this.prisma.contratacao.updateMany({
+      where: { id, status: 'ACEITA' },
+      data: {
+        codigoConclusaoHash: await bcrypt.hash(codigo, 10),
+        tentativasCodigo: 0,
+      },
+    });
+    if (!result.count)
+      throw new ConflictException(
+        'A contratação foi alterada. Atualize os dados e tente novamente.',
+      );
+    return { codigo };
+  }
+
+  /** Cada tentativa é contabilizada ANTES da comparação, para não permitir corrida. */
+  private async validarCodigoConclusao(id: number, codigo?: string) {
+    if (!codigo)
+      throw new BadRequestException(
+        'Informe o código de confirmação fornecido pelo responsável.',
+      );
+    const reservada = await this.prisma.contratacao.updateMany({
+      where: {
+        id,
+        codigoConclusaoHash: { not: null },
+        tentativasCodigo: { lt: MAX_TENTATIVAS_CODIGO },
+      },
+      data: { tentativasCodigo: { increment: 1 } },
+    });
+    const atual = await this.prisma.contratacao.findUnique({
+      where: { id },
+      select: { codigoConclusaoHash: true, tentativasCodigo: true },
+    });
+    if (!atual?.codigoConclusaoHash)
+      throw new BadRequestException(
+        'O responsável ainda não gerou o código de confirmação.',
+      );
+    if (!reservada.count)
+      throw new HttpException(
+        'Muitas tentativas incorretas. Peça ao responsável para gerar um novo código.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    const correto = await bcrypt.compare(
+      codigo.toUpperCase(),
+      atual.codigoConclusaoHash,
+    );
+    if (!correto) {
+      const restantes = Math.max(
+        MAX_TENTATIVAS_CODIGO - atual.tentativasCodigo,
+        0,
+      );
+      throw new BadRequestException(
+        restantes
+          ? `Código incorreto. Tentativas restantes: ${restantes}.`
+          : 'Código incorreto. Peça ao responsável para gerar um novo código.',
+      );
+    }
   }
 }

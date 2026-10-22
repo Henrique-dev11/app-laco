@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import type { ComponentProps } from 'react';
-import { colors } from '../theme';
+import type { Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 
 type Props = {
   title: string;
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export function QuickAccessCard({ title, icon, onPress }: Props) {
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -24,18 +27,19 @@ export function QuickAccessCard({ title, icon, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexGrow: 1,
-    flexBasis: 140,
-    minHeight: 110,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-    padding: 20,
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  title: { color: colors.text, fontSize: 14, fontWeight: '700' },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    card: {
+      flexGrow: 1,
+      flexBasis: 140,
+      minHeight: 110,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      padding: 20,
+      justifyContent: 'space-between',
+      gap: 16,
+    },
+    title: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  });

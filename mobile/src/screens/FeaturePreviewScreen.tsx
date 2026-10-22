@@ -3,7 +3,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
-import { colors } from '../theme';
+import type { Paleta } from '../theme';
+import { useStyles } from '../theme/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
 
 const descriptions = {
@@ -18,6 +19,7 @@ export function FeaturePreviewScreen({
   navigation,
   route,
 }: NativeStackScreenProps<RootStackParamList, FeatureRoute>) {
+  const styles = useStyles(criarStyles);
   return (
     <AppScreenLayout
       title={route.name === 'Mensagens' ? 'Mensagens' : 'Notificações'}
@@ -41,6 +43,7 @@ export function FeaturePreviewScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    title: { fontSize: 26, fontWeight: '700', color: colors.text },
+  });

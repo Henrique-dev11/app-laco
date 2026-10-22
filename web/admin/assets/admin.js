@@ -55,6 +55,9 @@ function aviso(id, message = '', kind = '') {
 }
 function limparSessao() {
   guardarToken(null);
+  for (const pendente of fotos.values())
+    void pendente.then((url) => url && URL.revokeObjectURL(url));
+  fotos.clear();
   cuidadores = [];
   selecionado = null;
   $('caregiver-rows').replaceChildren();
@@ -69,6 +72,37 @@ function node(tag, text, className) {
   if (text !== undefined) element.textContent = text;
   if (className) element.className = className;
   return element;
+}
+// Fotos já baixadas (ou em download), por usuário e versão da foto.
+const fotos = new Map();
+function carregarFoto(usuario) {
+  const chave = `${usuario.id}:${usuario.foto.updatedAt}`;
+  if (!fotos.has(chave))
+    fotos.set(
+      chave,
+      api
+        .foto(usuario.id)
+        .then((blob) => URL.createObjectURL(blob))
+        .catch(() => {
+          fotos.delete(chave); // tenta de novo na próxima renderização
+          return null;
+        }),
+    );
+  return fotos.get(chave);
+}
+// Mostra a inicial e, se o usuário tem foto, troca por ela quando chegar.
+function avatar(usuario, inicial, elemento = node('span', inicial, 'avatar')) {
+  elemento.replaceChildren(document.createTextNode(inicial));
+  if (!usuario?.foto) return elemento;
+  const sessao = token;
+  void carregarFoto(usuario).then((url) => {
+    if (!url || token !== sessao) return;
+    const img = node('img');
+    img.alt = '';
+    img.src = url;
+    elemento.replaceChildren(img);
+  });
+  return elemento;
 }
 function badge(value, labels) {
   const [label, className] = labels[value] ?? [value, 'inactive'];
@@ -145,7 +179,7 @@ function renderLista() {
       node('small', cuidador.usuario.email),
     );
     person.append(
-      node('span', nome(cuidador).charAt(0).toUpperCase(), 'avatar'),
+      avatar(cuidador.usuario, nome(cuidador).charAt(0).toUpperCase()),
       copy,
     );
     const colNome = node('td');
@@ -195,9 +229,11 @@ async function carregarLista() {
 }
 function abrirPainel(usuario) {
   $('admin-name').textContent = usuario.nomeSocial || usuario.nome;
-  $('admin-avatar').textContent = (usuario.nomeSocial || usuario.nome)
-    .charAt(0)
-    .toUpperCase();
+  avatar(
+    usuario,
+    (usuario.nomeSocial || usuario.nome).charAt(0).toUpperCase(),
+    $('admin-avatar'),
+  );
   $('login-view').hidden = true;
   $('dashboard-view').hidden = false;
   $('senha').value = '';
@@ -245,7 +281,7 @@ function renderPerfil() {
     badge(c.usuario.status, contas),
   );
   copy.append(node('strong', nome(c)), node('p', c.usuario.email), badges);
-  person.append(node('span', nome(c).charAt(0).toUpperCase(), 'avatar'), copy);
+  person.append(avatar(c.usuario, nome(c).charAt(0).toUpperCase()), copy);
   const grid = node('div', undefined, 'detail-grid');
   grid.append(
     campo('Nome completo', c.usuario.nome),

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
 import { Notice } from '../components/Notice';
@@ -7,10 +8,15 @@ import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useCadastro } from '../contexts/CadastroContext';
 import { api, mensagemErro } from '../services/api';
-import { colors } from '../theme';
-import { appStyles, statusLabels } from '../theme/appStyles';
+import { escolherEEnviarFoto, removerFoto } from '../services/foto';
+import type { Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
+import { statusLabels, useAppStyles } from '../theme/appStyles';
 
 export function PerfilScreen() {
+  const appStyles = useAppStyles();
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
   const { usuario, atualizar, sair } = useAuth();
   const { limparCadastro } = useCadastro();
   const [nome, setNome] = useState(usuario?.nome ?? '');
@@ -38,10 +44,37 @@ export function PerfilScreen() {
       tab="Perfil"
     >
       <View style={styles.identity}>
-        <View style={styles.avatar}>
-          <Text style={styles.initial}>
-            {(usuario.nomeSocial || usuario.nome).charAt(0).toUpperCase()}
-          </Text>
+        <Avatar
+          nome={usuario.nomeSocial || usuario.nome}
+          usuarioId={usuario.id}
+          versao={usuario.foto?.updatedAt}
+          tamanho={96}
+        />
+        <View style={styles.fotoAcoes}>
+          <Button
+            title={usuario.foto ? 'Trocar foto' : 'Adicionar foto'}
+            variant="outline"
+            disabled={enviando}
+            onPress={() => {
+              void executar(async () => {
+                if (await escolherEEnviarFoto()) await atualizar();
+              }, '');
+            }}
+          />
+          {!!usuario.foto && (
+            <Button
+              title="Remover foto"
+              variant="outline"
+              color={colors.error}
+              disabled={enviando}
+              onPress={() => {
+                void executar(async () => {
+                  await removerFoto();
+                  await atualizar();
+                }, '');
+              }}
+            />
+          )}
         </View>
         <Text style={styles.title}>{usuario.nomeSocial || usuario.nome}</Text>
         <Text style={appStyles.text}>
@@ -90,7 +123,6 @@ export function PerfilScreen() {
       {!!mensagem && <Notice>{mensagem}</Notice>}
       <Button
         title={enviando ? 'Aguarde...' : 'Salvar alterações'}
-        color={usuario.cuidador ? colors.caregiver : colors.responsible}
         disabled={enviando || !nome.trim()}
         onPress={() => {
           void executar(async () => {
@@ -112,7 +144,7 @@ export function PerfilScreen() {
       />
       <Button
         title="Sair da conta"
-        color={colors.elderly}
+        color={colors.header}
         disabled={enviando}
         onPress={() => {
           void executar(async () => {
@@ -124,23 +156,25 @@ export function PerfilScreen() {
     </AppScreenLayout>
   );
 }
-const styles = StyleSheet.create({
-  centerBadge: { alignSelf: 'center' },
-  identity: { alignItems: 'center', gap: 8, paddingVertical: 12 },
-  avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: '#EADDEC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  initial: { fontSize: 30, fontWeight: '700', color: colors.primaryDark },
-  title: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    centerBadge: { alignSelf: 'center' },
+    identity: { alignItems: 'center', gap: 8, paddingVertical: 12 },
+    fotoAcoes: { alignSelf: 'stretch', gap: 8, marginBottom: 8 },
+    avatar: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: colors.avatarBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    initial: { fontSize: 30, fontWeight: '700', color: colors.primaryDark },
+    title: {
+      color: colors.text,
+      fontSize: 26,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+  });

@@ -13,6 +13,7 @@ export type UsuarioAtual = {
   nomeSocial: string | null;
   email: string;
   telefone2: string | null;
+  foto?: { updatedAt: string } | null;
   tipoUsuario: 'RESPONSAVEL' | 'CUIDADOR' | 'ADMIN' | 'SUPER_ADMIN';
   responsavel: null | {
     id: number;

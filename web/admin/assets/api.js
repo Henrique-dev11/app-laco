@@ -15,7 +15,14 @@ export function createApi({
     path,
     { method = 'GET', body, token = getToken(), binary = false } = {},
   ) {
-    const headers = { Accept: binary ? 'application/pdf' : 'application/json' };
+    const headers = {
+      Accept:
+        binary === 'imagem'
+          ? 'image/*'
+          : binary
+            ? 'application/pdf'
+            : 'application/json',
+    };
     if (token) headers.Authorization = `Bearer ${token}`;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     let response;
@@ -70,6 +77,10 @@ export function createApi({
       }),
     curriculo: (id) =>
       request(`/admin/cuidadores/${id}/curriculo`, { binary: true }),
+    // Fotos de cuidadores pendentes são privadas: precisam do token, então
+    // não dá para usar <img src> direto; baixamos o binário e criamos um blob.
+    foto: (usuarioId) =>
+      request(`/fotos/${usuarioId}`, { binary: 'imagem' }),
     logout: (token) =>
       request('/auth/logout', { method: 'POST', token: token ?? getToken() }),
   };

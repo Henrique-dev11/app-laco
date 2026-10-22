@@ -9,6 +9,7 @@
     "axios": "^1.20.0",
     "expo": "~57.0.27",
     "expo-document-picker": "~57.0.3",
+    "expo-image-picker": "~57.0.20",
     "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",

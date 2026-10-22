@@ -7,5 +7,7 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    // Os arquivos compartilham um único banco de teste.
+    fileParallelism: false,
   },
 });

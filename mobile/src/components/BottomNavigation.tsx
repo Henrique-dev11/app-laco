@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors } from '../theme';
+import type { Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 
 type Props = {
   activeTab?: 'Início' | 'Buscar' | 'Agenda' | 'Mensagens' | 'Perfil';
@@ -19,6 +20,8 @@ export function BottomNavigation({
   onMessages,
   onProfile,
 }: Props) {
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
   const items = [
     { title: 'Início', icon: 'home-outline', onPress: onHome, active: true },
     {
@@ -60,7 +63,9 @@ export function BottomNavigation({
           <Ionicons
             name={item.icon}
             size={22}
-            color={item.title === activeTab ? colors.surface : '#CFBECD'}
+            color={
+              item.title === activeTab ? colors.surface : colors.tabInactive
+            }
           />
           <Text
             style={[styles.text, item.title === activeTab && styles.active]}
@@ -73,19 +78,20 @@ export function BottomNavigation({
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    backgroundColor: colors.text,
-    flexDirection: 'row',
-    paddingVertical: 12,
-  },
-  item: {
-    flex: 1,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  text: { color: '#CFBECD', fontSize: 10 },
-  active: { color: colors.surface, fontWeight: '700' },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    bar: {
+      backgroundColor: colors.header,
+      flexDirection: 'row',
+      paddingVertical: 12,
+    },
+    item: {
+      flex: 1,
+      minHeight: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    text: { color: colors.tabInactive, fontSize: 10 },
+    active: { color: colors.surface, fontWeight: '700' },
+  });
