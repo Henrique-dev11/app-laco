@@ -1,3 +1,4 @@
+import { cpfValido } from '../common/pessoas.js';
 import {
   BadRequestException,
   ConflictException,
@@ -33,18 +34,7 @@ export const usuarioSeguro = {
   termosAceitosEm: true,
 } as const;
 
-export function cpfValido(cpf: string) {
-  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
-  for (let tamanho = 9; tamanho <= 10; tamanho++) {
-    const soma = Array.from(cpf.slice(0, tamanho)).reduce(
-      (total, digito, i) => total + Number(digito) * (tamanho + 1 - i),
-      0,
-    );
-    const digito = (soma * 10) % 11;
-    if ((digito === 10 ? 0 : digito) !== Number(cpf[tamanho])) return false;
-  }
-  return true;
-}
+export { cpfValido } from '../common/pessoas.js';
 
 @Injectable()
 export class AuthService {
@@ -87,6 +77,19 @@ export class AuthService {
       throw new BadRequestException(
         'Dados de idoso incompatíveis com o perfil.',
       );
+    const personalizados = dto.servicosPersonalizados ?? [];
+    if (dto.servicoIds.length + personalizados.length > 50)
+      throw new BadRequestException('Selecione até 50 serviços.');
+    if (!dto.servicoIds.length && !personalizados.length)
+      throw new BadRequestException(
+        'Selecione ou adicione pelo menos um serviço.',
+      );
+    if (
+      new Set(
+        personalizados.map((s) => s.nome.trim().toLocaleLowerCase('pt-BR')),
+      ).size !== personalizados.length
+    )
+      throw new BadRequestException('Não repita serviços personalizados.');
     if (dto.perfil === 'cuidador') {
       if (
         !pdf ||
@@ -103,7 +106,7 @@ export class AuthService {
         throw new BadRequestException(
           'Informe preço e duração de todos os serviços.',
         );
-    } else if (pdf || dto.ofertas?.length)
+    } else if (pdf || dto.ofertas?.length || personalizados.length)
       throw new BadRequestException(
         'Ofertas e currículo são exclusivos de cuidadores.',
       );
@@ -111,11 +114,25 @@ export class AuthService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const servicos = await tx.servico.count({
-          where: { id: { in: dto.servicoIds }, ativo: true },
+          where: { id: { in: dto.servicoIds }, ativo: true, catalogo: true },
         });
         if (servicos !== dto.servicoIds.length)
           throw new BadRequestException(
             'Selecione serviços ativos do catálogo.',
+          );
+        const duplicado =
+          personalizados.length &&
+          (await tx.servico.findFirst({
+            where: {
+              catalogo: true,
+              OR: personalizados.map((s) => ({
+                nome: { equals: s.nome.trim(), mode: 'insensitive' as const },
+              })),
+            },
+          }));
+        if (duplicado)
+          throw new BadRequestException(
+            'Selecione o serviço existente no catálogo em vez de duplicá-lo.',
           );
         const usuario = await tx.usuario.create({
           data: {
@@ -147,7 +164,23 @@ export class AuthService {
             data: {
               ...perfil,
               cuidadorServicos: {
-                create: dto.ofertas!.map((oferta) => ({ ...oferta })),
+                create: [
+                  ...(dto.ofertas ?? []).map(({ servicoId, ...oferta }) => ({
+                    ...oferta,
+                    servico: { connect: { id: servicoId } },
+                  })),
+                  ...personalizados.map((item) => ({
+                    preco: item.preco,
+                    duracaoMinutos: item.duracaoMinutos,
+                    servico: {
+                      create: {
+                        nome: item.nome.trim(),
+                        descricao: item.descricao?.trim(),
+                        catalogo: false,
+                      },
+                    },
+                  })),
+                ],
               },
               curriculo: {
                 create: {

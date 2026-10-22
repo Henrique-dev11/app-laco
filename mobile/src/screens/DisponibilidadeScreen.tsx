@@ -52,6 +52,7 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
   const [horaFim, setFim] = useState('12:00');
   const [enviando, setEnviando] = useState(false);
   const [mensagem, setMensagem] = useState('');
+  const [editandoId, setEditandoId] = useState<number | null>(null);
   async function executar(acao: () => Promise<unknown>) {
     if (enviando) return;
     setEnviando(true);
@@ -59,7 +60,10 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
     try {
       await acao();
       atualizar();
-      setMensagem('Disponibilidade salva.');
+      setMensagem(
+        'Disponibilidade salva. Atendimentos já confirmados foram mantidos.',
+      );
+      setEditandoId(null);
     } catch (error) {
       setMensagem(mensagemErro(error));
     } finally {
@@ -71,7 +75,8 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
       <View style={appStyles.card}>
         <Text style={appStyles.section}>Quando você pode cuidar?</Text>
         <Text style={appStyles.text}>
-          Escolha um dia e informe seus horários de atendimento.
+          Disponibilidade semanal recorrente. Você pode adicionar vários
+          intervalos por dia; isso não confirma um atendimento.
         </Text>
         <View style={styles.days}>
           {dias.map((dia, index) => (
@@ -124,19 +129,49 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
           </View>
         </View>
         <Button
-          title={enviando ? 'Salvando...' : 'Adicionar horário'}
+          title={
+            enviando
+              ? 'Salvando...'
+              : editandoId
+                ? 'Salvar edição do horário'
+                : 'Adicionar horário'
+          }
           color={colors.caregiver}
           disabled={enviando}
           onPress={() => {
+            if (
+              !/^([01]\d|2[0-3]):[0-5]\d$/.test(horaInicio) ||
+              !/^([01]\d|2[0-3]):[0-5]\d$/.test(horaFim) ||
+              horaFim <= horaInicio
+            ) {
+              setMensagem(
+                'Informe horários válidos e término posterior ao início.',
+              );
+              return;
+            }
             void executar(() =>
-              api.post(`/cuidadores/${cuidadorId}/disponibilidades`, {
-                diaSemana,
-                horaInicio,
-                horaFim,
-              }),
+              editandoId
+                ? api.patch(`/disponibilidades/${editandoId}`, {
+                    diaSemana,
+                    horaInicio,
+                    horaFim,
+                  })
+                : api.post(`/cuidadores/${cuidadorId}/disponibilidades`, {
+                    diaSemana,
+                    horaInicio,
+                    horaFim,
+                  }),
             );
           }}
         />
+        {!!editandoId && (
+          <Button
+            title="Cancelar edição"
+            variant="outline"
+            disabled={enviando}
+            onPress={() => setEditandoId(null)}
+          />
+        )}
       </View>
       {!!mensagem && <Notice>{mensagem}</Notice>}
       <Text style={appStyles.section}>Meus horários</Text>
@@ -161,6 +196,18 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
           <Text style={appStyles.text}>
             {item.horaInicio} às {item.horaFim}
           </Text>
+          <Button
+            title="Editar intervalo"
+            variant="outline"
+            disabled={enviando}
+            onPress={() => {
+              setEditandoId(item.id);
+              setDia(item.diaSemana);
+              setInicio(item.horaInicio);
+              setFim(item.horaFim);
+              setMensagem('Edite o intervalo no formulário acima.');
+            }}
+          />
           <Button
             title={item.ativo ? 'Desativar horário' : 'Reativar horário'}
             variant="outline"

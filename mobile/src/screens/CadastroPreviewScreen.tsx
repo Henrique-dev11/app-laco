@@ -6,6 +6,7 @@ import { StepHeader } from '../components/StepHeader';
 import { perfis } from '../constants/cadastro';
 import { useCadastro } from '../contexts/CadastroContext';
 import { ScreenLayout } from '../layouts/ScreenLayout';
+import { valoresOferta } from '../utils/ofertas';
 import { salvarCadastro } from '../services/cadastro';
 import { mensagemErro } from '../services/api';
 import { useListaApi } from '../hooks/useListaApi';
@@ -87,11 +88,21 @@ export function CadastroPreviewScreen({
             )}
             <Text style={styles.text}>
               Serviços:{' '}
-              {cadastro.servicos
-                .map((id) => servicos.find((item) => item.id === id)?.nome)
-                .filter(Boolean)
-                .join(', ') || `${cadastro.servicos.length} selecionado(s)`}
+              {cadastro.perfil === 'cuidador'
+                ? cadastro.ofertas.map((o) => o.nome).join(', ')
+                : cadastro.servicos
+                    .map((id) => servicos.find((item) => item.id === id)?.nome)
+                    .filter(Boolean)
+                    .join(', ') || `${cadastro.servicos.length} selecionado(s)`}
             </Text>
+            {cadastro.perfil === 'cuidador' &&
+              cadastro.ofertas.map((o) => (
+                <Text key={o.servicoId ?? o.nome} style={styles.text}>
+                  {o.nome}: R${' '}
+                  {valoresOferta(o).preco.toFixed(2).replace('.', ',')} ·{' '}
+                  {valoresOferta(o).duracaoMinutos} minutos (referência)
+                </Text>
+              ))}
             {!!cadastro.curriculo && (
               <Text style={styles.text}>
                 Currículo: {cadastro.curriculo.name}

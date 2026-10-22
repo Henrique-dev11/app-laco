@@ -1,26 +1,24 @@
+import type { ScreenProps } from '../types/navigation';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
-import { FormField } from '../components/FormField';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useCadastro } from '../contexts/CadastroContext';
-import { api, mensagemErro } from '../services/api';
+import { mensagemErro } from '../services/api';
 import { escolherEEnviarFoto, removerFoto } from '../services/foto';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
 import { statusLabels, useAppStyles } from '../theme/appStyles';
 
-export function PerfilScreen() {
+export function PerfilScreen({ navigation }: ScreenProps<'Perfil'>) {
   const appStyles = useAppStyles();
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const { usuario, atualizar, sair } = useAuth();
   const { limparCadastro } = useCadastro();
-  const [nome, setNome] = useState(usuario?.nome ?? '');
-  const [nomeSocial, setNomeSocial] = useState(usuario?.nomeSocial ?? '');
   const [mensagem, setMensagem] = useState('');
   const [enviando, setEnviando] = useState(false);
   if (!usuario) return null;
@@ -97,12 +95,10 @@ export function PerfilScreen() {
       </View>
       <View style={appStyles.card}>
         <Text style={appStyles.section}>Dados pessoais</Text>
-        <FormField label="Nome completo" value={nome} onChangeText={setNome} />
-        <FormField
-          label="Nome social"
-          value={nomeSocial}
-          onChangeText={setNomeSocial}
-        />
+        <Text style={appStyles.text}>{usuario.nome}</Text>
+        {!!usuario.nomeSocial && (
+          <Text style={appStyles.text}>Nome social: {usuario.nomeSocial}</Text>
+        )}
         {!!perfil && (
           <>
             <View style={appStyles.separator} />
@@ -114,26 +110,53 @@ export function PerfilScreen() {
             </Text>
           </>
         )}
+        {!!usuario.cuidador?.biografia && (
+          <Text style={appStyles.text}>
+            Biografia: {usuario.cuidador.biografia}
+          </Text>
+        )}
+        {!!usuario.cuidador?.experienciaProfissional && (
+          <Text style={appStyles.text}>
+            Experiência: {usuario.cuidador.experienciaProfissional}
+          </Text>
+        )}
+        {!!usuario.cuidador?.registroProfissional && (
+          <Text style={appStyles.text}>
+            Registro profissional: {usuario.cuidador.registroProfissional}
+          </Text>
+        )}
         {!!usuario.cuidador?.curriculo && (
           <Text style={appStyles.text}>
             Currículo salvo: {usuario.cuidador.curriculo.nome}
           </Text>
         )}
       </View>
+      {!!usuario.cuidador && (
+        <Button
+          title="Configurar meus serviços"
+          variant="outline"
+          onPress={() => navigation.navigate('MeusServicos')}
+        />
+      )}
       {!!mensagem && <Notice>{mensagem}</Notice>}
-      <Button
-        title={enviando ? 'Aguarde...' : 'Salvar alterações'}
-        disabled={enviando || !nome.trim()}
-        onPress={() => {
-          void executar(async () => {
-            await api.patch(`/usuarios/${usuario.id}`, {
-              nome: nome.trim(),
-              nomeSocial: nomeSocial.trim(),
-            });
-            await atualizar();
-          }, 'Perfil atualizado.');
-        }}
-      />
+      {!!perfil && (
+        <Button
+          title="Editar meus dados"
+          disabled={enviando}
+          onPress={() =>
+            navigation.navigate(
+              usuario.cuidador ? 'EditarCuidador' : 'EditarResponsavel',
+            )
+          }
+        />
+      )}
+      {!!usuario.responsavel && (
+        <Button
+          title="Meus idosos"
+          variant="outline"
+          onPress={() => navigation.navigate('MeusIdosos')}
+        />
+      )}
       <Button
         title="Atualizar dados"
         variant="outline"

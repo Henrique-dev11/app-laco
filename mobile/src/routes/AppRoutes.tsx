@@ -1,4 +1,19 @@
+import { AgendarAtendimentoScreen } from '../screens/AgendarAtendimentoScreen';
+import {
+  EditarCuidadorScreen,
+  EditarResponsavelScreen,
+} from '../screens/EditarPerfilScreen';
+import { MeusIdososScreen } from '../screens/MeusIdososScreen';
+import {
+  AdicionarIdosoScreen,
+  EditarIdosoScreen,
+} from '../screens/IdosoFormularioScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {
+  CuidadorServicosScreen,
+  ConfigurarServicosScreen,
+} from '../screens/ConfigurarServicosScreen';
+import { MeusServicosScreen } from '../screens/MeusServicosScreen';
 import { LoginTypeScreen } from '../screens/LoginTypeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import {
@@ -78,6 +93,14 @@ export function AppRoutes() {
           />
           <Stack.Screen name="CuidadorStep1" component={CuidadorStep1Screen} />
           <Stack.Screen name="CuidadorStep2" component={CuidadorStep2Screen} />
+          <Stack.Screen
+            name="CuidadorServicos"
+            component={CuidadorServicosScreen}
+          />
+          <Stack.Screen
+            name="ConfigurarServicos"
+            component={ConfigurarServicosScreen}
+          />
           <Stack.Screen name="IdosoStep1" component={IdosoStep1Screen} />
           <Stack.Screen name="IdosoStep2" component={IdosoStep2Screen} />
           <Stack.Screen
@@ -88,6 +111,25 @@ export function AppRoutes() {
       ) : (
         <>
           <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen
+            name="AgendarAtendimento"
+            component={AgendarAtendimentoScreen}
+          />
+          <Stack.Screen
+            name="EditarCuidador"
+            component={EditarCuidadorScreen}
+          />
+          <Stack.Screen
+            name="EditarResponsavel"
+            component={EditarResponsavelScreen}
+          />
+          <Stack.Screen name="MeusIdosos" component={MeusIdososScreen} />
+          <Stack.Screen
+            name="AdicionarIdoso"
+            component={AdicionarIdosoScreen}
+          />
+          <Stack.Screen name="EditarIdoso" component={EditarIdosoScreen} />
+          <Stack.Screen name="MeusServicos" component={MeusServicosScreen} />
           <Stack.Group screenOptions={{ headerShown: false }}>
             <Stack.Screen
               name="Servicos"

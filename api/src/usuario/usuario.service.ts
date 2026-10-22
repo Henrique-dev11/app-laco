@@ -123,6 +123,7 @@ export class UsuarioService {
         id,
       },
       data: {
+        ...(dto.telefone2 !== undefined && { telefone2: dto.telefone2 }),
         ...(dto.nomeSocial !== undefined && {
           nomeSocial: dto.nomeSocial.trim() || null,
         }),

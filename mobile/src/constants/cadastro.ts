@@ -14,7 +14,7 @@ export const perfis = {
     color: colors.caregiver,
     logo: require('../../assets/laco/logo-register.png'),
     icon: require('../../assets/laco/profile-caregiver.png'),
-    etapas: 2,
+    etapas: 4,
   },
   idoso: {
     titulo: 'Idoso',
