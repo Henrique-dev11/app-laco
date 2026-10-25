@@ -93,6 +93,6 @@ Os relatórios apresentam valores contratados, quantidades, status, serviços e 
 
 **Valor contratado** corresponde à soma das contratações atualmente aceitas e concluídas. **Valor total registrado** inclui também solicitações, recusas e cancelamentos. Os valores não representam pagamentos recebidos: o projeto ainda não tem controle de pagamentos. A seleção temporal considera a data de criação da contratação e seu status atual, não a data de recebimento, conclusão ou agendamento.
 
-O autocuidado já existe na modelagem: um idoso com vínculo `PROPRIO` é contado como independente. Esse grupo está incluído no total de idosos. Não foi criado outro tipo de conta.
+O autocuidado já existe na modelagem: um idoso com vínculo `PROPRIO` é classificado como independente. Esse grupo está incluído no total de idosos, mas fica separado dos responsáveis nas listagens, contagens e relatórios de crescimento. O vínculo próprio aparece como conta do idoso independente, sem apresentar a pessoa como responsável por si mesma. Não foi criado outro tipo de conta no banco.
 
 Não houve alteração no Prisma ou migration para esta melhoria. Reinicie a API atualizada e recarregue o painel para acessar os novos endpoints. Consulte o [roteiro completo de testes e endpoints](../docs/teste/dashboard-admin.md).

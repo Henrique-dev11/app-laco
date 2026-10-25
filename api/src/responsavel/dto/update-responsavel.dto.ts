@@ -9,8 +9,14 @@ import {
 } from 'class-validator';
 
 import { UpdateEnderecoDto } from './update-endereco.dto.js';
+import { CuidadosIdosoDto } from '../../idoso/dto/cuidados-idoso.dto.js';
 
 export class UpdateResponsavelDto {
+  @ValidateIf((_object, value) => value !== undefined)
+  @ValidateNested()
+  @Type(() => CuidadosIdosoDto)
+  idoso?: CuidadosIdosoDto;
+
   @ValidateIf((_object, value) => value !== undefined)
   @ValidateNested()
   @Type(() => UpdateUsuarioDto)

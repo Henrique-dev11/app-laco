@@ -212,7 +212,11 @@ describe('Dashboard administrativa: dados reais, paginação e relatórios', () 
   it('retorna contagens reais e trata autocuidado como subconjunto dos idosos', async () => {
     const r = await get('/admin/resumo').expect(200);
     expect(r.body.cuidadores).toBe(await db.cuidador.count());
-    expect(r.body.responsaveis).toBe(await db.responsavel.count());
+    expect(r.body.responsaveis).toBe(
+      await db.responsavel.count({
+        where: { responsavelIdosos: { none: { parentesco: 'PROPRIO' } } },
+      }),
+    );
     expect(r.body.idosos).toBe(await db.idoso.count());
     expect(r.body.independentes).toBe(
       await db.idoso.count({
@@ -223,7 +227,7 @@ describe('Dashboard administrativa: dados reais, paginação e relatórios', () 
     expect(r.body.porStatus.ACEITA).toBe(
       await db.contratacao.count({ where: { status: 'ACEITA' } }),
     );
-    expect(r.body.classificacaoIndependentes).toContain('PROPRIO');
+    expect(r.body.classificacaoIndependentes).toContain('próprio cuidado');
   });
   it('pesquisa nomes, pagina de forma estável e combina verificação com situação', async () => {
     const a = await get(
@@ -253,7 +257,8 @@ describe('Dashboard administrativa: dados reais, paginação e relatórios', () 
     const r = await get(
       '/admin/usuarios/responsaveis?busca=Admin%20Gest%C3%A3o&vinculo=COM_VINCULO',
     ).expect(200);
-    expect(r.body.dados).toHaveLength(2);
+    expect(r.body.dados).toHaveLength(1);
+    expect(r.body.dados[0].id).toBe(responsavelId);
     expect(r.body.dados.every((r) => r._count.responsavelIdosos === 1)).toBe(
       true,
     );
@@ -280,6 +285,25 @@ describe('Dashboard administrativa: dados reais, paginação e relatórios', () 
     expect(idoso.body.responsavelIdosos[0].responsavel.id).toBe(responsavelId);
     expect(JSON.stringify(idoso.body)).not.toContain('necessidadesEspeciais');
     await get(`/admin/usuarios/independentes/${idosoId}`).expect(404);
+    await get(`/admin/usuarios/responsaveis/${autocuidadoId}`).expect(404);
+    const independente = await get(
+      `/admin/usuarios/independentes/${independenteId}`,
+    ).expect(200);
+    expect(independente.body.perfil).toBe('IDOSO_INDEPENDENTE');
+    expect(independente.body.nome).toBe('Admin Gestão 5');
+    const porNome = await get(
+      '/admin/usuarios/independentes?busca=Admin%20Gest%C3%A3o%205',
+    ).expect(200);
+    expect(porNome.body.dados.map((registro) => registro.id)).toEqual([
+      independenteId,
+    ]);
+    expect(
+      (
+        await get(
+          '/admin/usuarios/responsaveis?busca=Admin%20Gest%C3%A3o%205',
+        ).expect(200)
+      ).body.total,
+    ).toBe(0);
     await get('/admin/usuarios/cuidadores/999999').expect(404);
   });
   it('calcula centavos, status e limites inclusivos de datas no fuso de São Paulo', async () => {
@@ -309,10 +333,12 @@ describe('Dashboard administrativa: dados reais, paginação e relatórios', () 
       r.body.servicos.find((s) => s.servicoId === servicoId).solicitacoes,
     ).toBe(5);
     const crescimento = r.body.crescimento.reduce(
-      (n, d) => n + d.cuidadores + d.responsaveis,
+      (n, d) => n + d.cuidadores + d.responsaveis + d.independentes,
       0,
     );
     expect(crescimento).toBe(4);
+    expect(r.body.crescimento.reduce((n, d) => n + d.independentes, 0)).toBe(1);
+    expect(r.body.crescimento.reduce((n, d) => n + d.responsaveis, 0)).toBe(1);
   });
   it('agrupa por semana, mês e ano e preenche períodos sem movimentação', async () => {
     for (const agrupamento of ['semana', 'mes', 'ano']) {

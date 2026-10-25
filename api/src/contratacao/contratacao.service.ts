@@ -75,6 +75,8 @@ const contratacaoInclude = {
             select: {
               id: true,
               nome: true,
+              nomeSocial: true,
+              foto: { select: { updatedAt: true } },
             },
           },
         },

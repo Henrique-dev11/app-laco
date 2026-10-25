@@ -1,9 +1,6 @@
 import { CriarPropostaScreen } from '../screens/CriarPropostaScreen';
 import { AgendarAtendimentoScreen } from '../screens/AgendarAtendimentoScreen';
-import {
-  EditarCuidadorScreen,
-  EditarResponsavelScreen,
-} from '../screens/EditarPerfilScreen';
+import { EditarPerfilScreen } from '../screens/EditarPerfilScreen';
 import { MeusIdososScreen } from '../screens/MeusIdososScreen';
 import {
   AdicionarIdosoScreen,
@@ -119,14 +116,7 @@ export function AppRoutes() {
             name="AgendarAtendimento"
             component={AgendarAtendimentoScreen}
           />
-          <Stack.Screen
-            name="EditarCuidador"
-            component={EditarCuidadorScreen}
-          />
-          <Stack.Screen
-            name="EditarResponsavel"
-            component={EditarResponsavelScreen}
-          />
+          <Stack.Screen name="EditarPerfil" component={EditarPerfilScreen} />
           <Stack.Screen name="MeusIdosos" component={MeusIdososScreen} />
           <Stack.Screen
             name="AdicionarIdoso"

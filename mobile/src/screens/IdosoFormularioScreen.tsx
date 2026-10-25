@@ -1,9 +1,16 @@
-import { useCallback, useState } from 'react';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { ActivityIndicator, Text } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
+import { ActivityIndicator, Keyboard, Text, View } from 'react-native';
+import { isAxiosError } from 'axios';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { FormField } from '../components/FormField';
 import { Button } from '../components/Button';
+import { CuidadosIdosoForm } from '../components/CuidadosIdosoForm';
+import {
+  FotoPerfilForm,
+  type FotoRascunho,
+} from '../components/FotoPerfilForm';
+import { SecaoPerfil } from '../components/SecaoPerfil';
 import { Notice } from '../components/Notice';
 import {
   EnderecoForm,
@@ -13,258 +20,357 @@ import {
 } from '../components/EnderecoForm';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
-import type { Endereco } from '../types/auth';
+import { enviarImagem, removerFoto, validarFoto } from '../services/foto';
+import type { Endereco, Idoso } from '../types/auth';
 import type { ScreenProps } from '../types/navigation';
-import { dataValida, formatarData, somenteNumeros } from '../utils/validation';
-import { dataParaApi, dataParaFormulario, alteracoes } from '../utils/perfis';
+import {
+  dataValida,
+  formatarCpf,
+  formatarData,
+  formatarTelefone,
+} from '../utils/validation';
+import {
+  alteracoes,
+  alteracoesIdoso,
+  dadosIdosoFormulario,
+  dadosIdosoParaApi,
+  normalizarDadosIdoso,
+  type DadosIdosoFormulario,
+} from '../utils/perfis';
 import { statusLabels, useAppStyles } from '../theme/appStyles';
+import { useTheme } from '../theme/ThemeContext';
 
-type Idoso = {
-  id: number;
-  nome: string;
-  nomeSocial: string | null;
-  dataNascimento: string;
-  cpf: string | null;
-  telefone: string | null;
-  sexo: string | null;
-  necessidadesEspeciais: string | null;
-  observacoes: string | null;
-  endereco: Endereco;
-  updatedAt: string;
-};
-function FormularioIdoso({ idoso }: { idoso?: Idoso }) {
-  const { usuario, atualizar } = useAuth();
-  const navigation = useNavigation();
+type Navigation =
+  | ScreenProps<'EditarIdoso'>['navigation']
+  | ScreenProps<'AdicionarIdoso'>['navigation'];
+function FormularioIdoso({
+  idoso,
+  navigation,
+}: {
+  idoso?: Idoso;
+  navigation: Navigation;
+}) {
+  const { usuario, atualizar, fotoPendente, limparFotoPendente } = useAuth();
   const styles = useAppStyles();
-  const [original] = useState({
-    nome: idoso?.nome ?? '',
-    nomeSocial: idoso?.nomeSocial ?? '',
-    dataNascimento: idoso ? dataParaFormulario(idoso.dataNascimento) : '',
-    cpf: idoso?.cpf ?? '',
-    telefone: idoso?.telefone ?? '',
-    sexo: idoso?.sexo ?? '',
-    necessidadesEspeciais: idoso?.necessidadesEspeciais ?? '',
-    observacoes: idoso?.observacoes ?? '',
-  });
+  const colors = useTheme();
+  const [registroId, setRegistroId] = useState(idoso?.id);
+  const [original, setOriginal] = useState(() =>
+    normalizarDadosIdoso(dadosIdosoFormulario(idoso)),
+  );
   const [dados, setDados] = useState(original);
-  const [enderecoOriginal] = useState(
+  const [enderecoOriginal, setEnderecoOriginal] = useState(() =>
     dadosEndereco(idoso?.endereco ?? enderecoVazio),
   );
   const [endereco, setEndereco] = useState<Endereco>(enderecoOriginal);
+  const [foto, setFoto] = useState<FotoRascunho>(() =>
+    idoso && fotoPendente?.idosoId === idoso.id
+      ? fotoPendente.imagem
+      : undefined,
+  );
   const [parentesco, setParentesco] = useState('OUTRO');
-  const [mensagem, setMensagem] = useState(''),
-    [enviando, setEnviando] = useState(false),
-    [salvo, setSalvo] = useState(false);
+  const [mensagem, setMensagem] = useState('');
+  const [erros, setErros] = useState<
+    Partial<Record<keyof DadosIdosoFormulario, string>>
+  >({});
+  const [enviando, setEnviando] = useState(false);
+  const [concluido, setConcluido] = useState<number | null>(null);
+  const salvando = useRef(false);
+  const dadosPersistidos = useRef(false);
+  usePreventRemove(enviando && !concluido, () => {});
+  useEffect(() => {
+    if (idoso && fotoPendente?.idosoId === idoso.id) limparFotoPendente();
+  }, [idoso, fotoPendente, limparFotoPendente]);
+  useEffect(() => {
+    if (concluido)
+      navigation.popTo('IdosoDetalhes', {
+        idosoId: concluido,
+        mensagem: idoso
+          ? 'Perfil do idoso atualizado com sucesso.'
+          : 'Idoso cadastrado e vinculado à sua conta.',
+      });
+  }, [concluido, idoso, navigation]);
+
   async function salvar() {
-    if (enviando || salvo) return;
-    const cpf = somenteNumeros(dados.cpf),
-      telefone = somenteNumeros(dados.telefone);
-    const erro =
-      !dados.nome.trim() || !dataValida(dados.dataNascimento)
-        ? 'Informe nome e data de nascimento válidos.'
-        : dados.cpf.trim() && cpf.length !== 11
-          ? 'CPF deve ter 11 dígitos.'
-          : dados.telefone.trim() &&
-              (telefone.length < 10 || telefone.length > 13)
-            ? 'Informe telefone válido com DDD.'
-            : erroEndereco(endereco);
-    if (erro) {
-      setMensagem(erro);
+    if (salvando.current || concluido) return;
+    const atual = normalizarDadosIdoso(dados);
+    const mudancas = alteracoes(original, atual);
+    const enderecoAtual = dadosEndereco(endereco);
+    const enderecoPatch = alteracoes(enderecoOriginal, enderecoAtual);
+    const proximosErros: typeof erros = {};
+    if ((!registroId || 'nome' in mudancas) && !atual.nome)
+      proximosErros.nome = 'Informe o nome completo.';
+    if (
+      (!registroId || 'dataNascimento' in mudancas) &&
+      !dataValida(atual.dataNascimento)
+    )
+      proximosErros.dataNascimento = 'Informe uma data de nascimento válida.';
+    if (
+      (!registroId || 'cpf' in mudancas) &&
+      atual.cpf &&
+      atual.cpf.length !== 11
+    )
+      proximosErros.cpf = 'CPF deve ter 11 dígitos.';
+    if (
+      (!registroId || 'telefone' in mudancas) &&
+      atual.telefone &&
+      !/^\d{10,13}$/.test(atual.telefone)
+    )
+      proximosErros.telefone = 'Informe telefone válido com DDD.';
+    const enderecoErro =
+      !registroId || Object.keys(enderecoPatch).length
+        ? erroEndereco(endereco)
+        : '';
+    setErros(proximosErros);
+    if (Object.keys(proximosErros).length || enderecoErro) {
+      setMensagem(Object.values(proximosErros)[0] || enderecoErro);
       return;
     }
-    const depois = {
-      ...dados,
-      nome: dados.nome.trim(),
-      nomeSocial: dados.nomeSocial.trim(),
-      dataNascimento: dataParaApi(dados.dataNascimento),
-      cpf: cpf || null,
-      telefone: telefone || null,
-    };
+    if (foto) {
+      try {
+        validarFoto(foto);
+      } catch (error) {
+        setMensagem(
+          error instanceof Error
+            ? error.message
+            : 'Verifique a foto selecionada.',
+        );
+        return;
+      }
+    }
+    salvando.current = true;
     setEnviando(true);
     setMensagem('');
+    Keyboard.dismiss();
+    let etapa: 'dados' | 'foto' | 'atualizacao' = 'dados';
     try {
-      if (idoso) {
-        const antes = {
-          ...original,
-          dataNascimento: dataParaApi(original.dataNascimento),
-          cpf: original.cpf || null,
-          telefone: original.telefone || null,
+      let id = registroId;
+      if (id) {
+        const body = {
+          ...alteracoesIdoso(original, atual),
+          ...(Object.keys(enderecoPatch).length > 0 && {
+            endereco: enderecoPatch,
+          }),
         };
-        const patch = alteracoes(antes, depois);
-        const enderecoPatch = alteracoes(
-          enderecoOriginal,
-          dadosEndereco(endereco),
-        );
-        await api.patch(`/idosos/${idoso.id}`, {
-          ...patch,
-          ...(Object.keys(enderecoPatch).length && { endereco: enderecoPatch }),
-        });
+        if (Object.keys(body).length) {
+          await api.patch(`/idosos/${id}`, body);
+          dadosPersistidos.current = true;
+        }
       } else {
-        await api.post('/idosos', {
-          ...depois,
-          cpf: cpf || undefined,
-          telefone: telefone || undefined,
+        const body = dadosIdosoParaApi(atual);
+        const { data } = await api.post<Idoso>('/idosos', {
+          ...body,
+          cpf: body.cpf ?? undefined,
+          telefone: body.telefone ?? undefined,
           parentesco,
-          endereco: dadosEndereco(endereco),
+          endereco: enderecoAtual,
         });
+        id = data.id;
+        setRegistroId(id);
+        dadosPersistidos.current = true;
       }
-      setSalvo(true);
-      await atualizar().catch(() =>
-        setMensagem(
-          'Os dados foram salvos, mas não foi possível atualizar a lista da conta. Tente atualizar abaixo.',
-        ),
+      setOriginal(atual);
+      setEnderecoOriginal(enderecoAtual);
+      etapa = 'foto';
+      if (foto !== undefined) {
+        if (foto === null) await removerFoto(id);
+        else await enviarImagem(foto, id);
+        setFoto(undefined);
+      }
+      etapa = 'atualizacao';
+      await atualizar();
+      setConcluido(id);
+    } catch (error) {
+      const motivo = isAxiosError(error)
+        ? mensagemErro(error)
+        : error instanceof Error
+          ? error.message
+          : mensagemErro(error);
+      setMensagem(
+        etapa === 'atualizacao'
+          ? `As alterações foram enviadas, mas não foi possível recarregar a conta. Toque em Salvar alterações para tentar novamente. ${motivo}`
+          : etapa === 'foto' && dadosPersistidos.current
+            ? `Os dados do idoso foram salvos, mas a foto não pôde ser atualizada. Sua seleção foi preservada. Tente salvar novamente. ${motivo}`
+            : motivo,
       );
-    } catch (e) {
-      setMensagem(mensagemErro(e));
     } finally {
+      salvando.current = false;
       setEnviando(false);
     }
   }
-  if (salvo)
+  function campo(
+    campo: 'nome' | 'nomeSocial' | 'dataNascimento' | 'cpf' | 'telefone',
+    label: string,
+  ) {
+    const formatar =
+      campo === 'cpf'
+        ? formatarCpf
+        : campo === 'telefone'
+          ? formatarTelefone
+          : campo === 'dataNascimento'
+            ? formatarData
+            : (v: string) => v;
     return (
-      <>
-        <Notice>
-          {idoso
-            ? 'Dados do idoso atualizados.'
-            : 'Idoso cadastrado e vinculado à sua conta.'}
-        </Notice>
-        {!!mensagem && (
-          <>
-            <Notice>{mensagem}</Notice>
-            <Button
-              title="Atualizar dados da conta"
-              disabled={enviando}
-              onPress={() => {
-                setEnviando(true);
-                void atualizar()
-                  .then(() => setMensagem(''))
-                  .catch((e) => setMensagem(mensagemErro(e)))
-                  .finally(() => setEnviando(false));
-              }}
-            />
-          </>
+      <FormField
+        key={campo}
+        label={label}
+        value={formatar(dados[campo])}
+        error={erros[campo]}
+        editable={!enviando}
+        maxLength={
+          campo === 'cpf'
+            ? 14
+            : campo === 'telefone'
+              ? 21
+              : campo === 'dataNascimento'
+                ? 10
+                : 150
+        }
+        keyboardType={
+          campo === 'telefone'
+            ? 'phone-pad'
+            : campo === 'cpf' || campo === 'dataNascimento'
+              ? 'numeric'
+              : 'default'
+        }
+        onChangeText={(valor) => {
+          setDados((antes) => ({ ...antes, [campo]: formatar(valor) }));
+          setErros((antes) => ({ ...antes, [campo]: undefined }));
+        }}
+      />
+    );
+  }
+  return (
+    <AppScreenLayout
+      title={idoso ? 'Editar perfil do idoso' : 'Adicionar idoso'}
+      subtitle="Dados pessoais, foto e informações de cuidado"
+      tab="Perfil"
+      formulario
+      bloqueado={enviando}
+    >
+      {!!registroId && (
+        <SecaoPerfil titulo="Foto de perfil" icone="camera-outline">
+          <FotoPerfilForm
+            usuario={{
+              nome: dados.nome,
+              nomeSocial: dados.nomeSocial,
+              foto: idoso?.foto,
+            }}
+            idosoId={registroId}
+            contaId={usuario!.id}
+            value={foto}
+            onChange={(nova) => {
+              setFoto(nova);
+              setMensagem('');
+            }}
+            disabled={enviando}
+          />
+        </SecaoPerfil>
+      )}
+      <SecaoPerfil titulo="Dados pessoais" icone="person-outline">
+        {campo('nome', 'Nome completo*')}
+        {campo('nomeSocial', 'Nome social')}
+        {campo('dataNascimento', 'Data de nascimento (DD/MM/AAAA)*')}
+        {campo('cpf', 'CPF (opcional)')}
+      </SecaoPerfil>
+      <SecaoPerfil titulo="Informações de contato" icone="call-outline">
+        {campo('telefone', 'Telefone (opcional)')}
+      </SecaoPerfil>
+      <SecaoPerfil titulo="Endereço" icone="location-outline">
+        {!!usuario?.responsavel && (
+          <Button
+            title="Usar endereço do responsável"
+            variant="outline"
+            disabled={enviando}
+            onPress={() =>
+              setEndereco(dadosEndereco(usuario.responsavel!.endereco))
+            }
+          />
+        )}
+        <EnderecoForm
+          value={endereco}
+          onChange={setEndereco}
+          disabled={enviando}
+        />
+      </SecaoPerfil>
+      <SecaoPerfil titulo="Informações de cuidado" icone="heart-outline">
+        <CuidadosIdosoForm
+          value={dados}
+          onChange={(cuidados) =>
+            setDados((antes) => ({
+              ...antes,
+              sexo: cuidados.sexo,
+              necessidadesEspeciais: cuidados.necessidadesEspeciais,
+              observacoes: cuidados.observacoes,
+            }))
+          }
+          disabled={enviando}
+        />
+      </SecaoPerfil>
+      {!idoso && !registroId && (
+        <SecaoPerfil titulo="Vínculo com o idoso" icone="people-outline">
+          <Text style={styles.helper}>Seu parentesco com o idoso</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {['FILHO', 'FILHA', 'CONJUGE', 'NETO', 'NETA', 'OUTRO'].map((p) => (
+              <Button
+                key={p}
+                title={statusLabels[p]}
+                variant={p === parentesco ? 'filled' : 'outline'}
+                disabled={enviando}
+                onPress={() => setParentesco(p)}
+              />
+            ))}
+          </View>
+        </SecaoPerfil>
+      )}
+      <View style={{ gap: 12 }}>
+        {!!mensagem && <Notice>{mensagem}</Notice>}
+        {enviando && (
+          <ActivityIndicator
+            accessibilityLabel="Salvando alterações"
+            color={colors.primary}
+          />
         )}
         <Button
-          title="Voltar"
+          title={
+            enviando
+              ? 'Salvando...'
+              : registroId
+                ? 'Salvar alterações'
+                : 'Salvar idoso'
+          }
+          disabled={enviando}
+          onPress={() => {
+            void salvar();
+          }}
+        />
+        <Button
+          title="Cancelar"
+          variant="outline"
           disabled={enviando}
           onPress={() => navigation.goBack()}
         />
-      </>
-    );
-  return (
-    <>
-      {(
-        [
-          'nome',
-          'nomeSocial',
-          'dataNascimento',
-          'cpf',
-          'telefone',
-          'sexo',
-          'necessidadesEspeciais',
-          'observacoes',
-        ] as const
-      ).map((campo) => (
-        <FormField
-          key={campo}
-          label={
-            {
-              nome: 'Nome completo*',
-              nomeSocial: 'Nome social',
-              dataNascimento: 'Nascimento (DD/MM/AAAA)*',
-              cpf: 'CPF (opcional)',
-              telefone: 'Telefone (opcional)',
-              sexo: 'Sexo (opcional)',
-              necessidadesEspeciais: 'Necessidades especiais',
-              observacoes: 'Observações',
-            }[campo]
-          }
-          value={dados[campo]}
-          editable={!enviando}
-          maxLength={
-            campo === 'dataNascimento'
-              ? 10
-              : campo === 'nome' || campo === 'nomeSocial'
-                ? 150
-                : campo === 'sexo'
-                  ? 30
-                  : campo === 'cpf' || campo === 'telefone'
-                    ? 20
-                    : 5000
-          }
-          keyboardType={
-            ['cpf', 'telefone', 'dataNascimento'].includes(campo)
-              ? 'numeric'
-              : 'default'
-          }
-          multiline={
-            campo === 'necessidadesEspeciais' || campo === 'observacoes'
-          }
-          onChangeText={(valor) =>
-            setDados((d) => ({
-              ...d,
-              [campo]: campo === 'dataNascimento' ? formatarData(valor) : valor,
-            }))
-          }
-        />
-      ))}
-      {!idoso && (
-        <>
-          <Text style={styles.section}>Seu parentesco com o idoso</Text>
-          {['FILHO', 'FILHA', 'CONJUGE', 'NETO', 'NETA', 'OUTRO'].map((p) => (
-            <Button
-              key={p}
-              title={statusLabels[p]}
-              variant={p === parentesco ? 'filled' : 'outline'}
-              disabled={enviando}
-              onPress={() => setParentesco(p)}
-            />
-          ))}
-        </>
-      )}
-      <Text style={styles.section}>Endereço do idoso</Text>
-      {!!usuario?.responsavel && (
-        <Button
-          title="Usar endereço do responsável"
-          variant="outline"
-          disabled={enviando}
-          onPress={() =>
-            setEndereco(dadosEndereco(usuario.responsavel!.endereco))
-          }
-        />
-      )}
-      <EnderecoForm
-        value={endereco}
-        onChange={setEndereco}
-        disabled={enviando}
-      />
-      {!!mensagem && <Notice>{mensagem}</Notice>}
-      <Button
-        title={enviando ? 'Salvando...' : 'Salvar idoso'}
-        disabled={enviando}
-        onPress={() => {
-          void salvar();
-        }}
-      />
-    </>
-  );
-}
-export function AdicionarIdosoScreen() {
-  const { usuario } = useAuth();
-  return (
-    <AppScreenLayout title="Adicionar idoso" tab="Perfil">
-      {usuario?.responsavel ? (
-        <FormularioIdoso />
-      ) : (
-        <Notice>Disponível para responsáveis.</Notice>
-      )}
+      </View>
     </AppScreenLayout>
   );
 }
-export function EditarIdosoScreen({ route }: ScreenProps<'EditarIdoso'>) {
-  const [idoso, setIdoso] = useState<Idoso | null>(null),
-    [erro, setErro] = useState(''),
-    [tentativa, setTentativa] = useState(0);
+export function AdicionarIdosoScreen({
+  navigation,
+}: ScreenProps<'AdicionarIdoso'>) {
+  const { usuario } = useAuth();
+  if (usuario?.responsavel) return <FormularioIdoso navigation={navigation} />;
+  return (
+    <AppScreenLayout title="Adicionar idoso" tab="Perfil">
+      <Notice>Disponível para responsáveis.</Notice>
+    </AppScreenLayout>
+  );
+}
+export function EditarIdosoScreen({
+  route,
+  navigation,
+}: ScreenProps<'EditarIdoso'>) {
+  const [idoso, setIdoso] = useState<Idoso | null>(null);
+  const [erro, setErro] = useState('');
+  const [tentativa, setTentativa] = useState(0);
   useFocusEffect(
     useCallback(() => {
       const controller = new AbortController();
@@ -277,17 +383,22 @@ export function EditarIdosoScreen({ route }: ScreenProps<'EditarIdoso'>) {
         .then(({ data }) => {
           if (!controller.signal.aborted) setIdoso(data);
         })
-        .catch((e) => {
-          if (!controller.signal.aborted) setErro(mensagemErro(e));
+        .catch((error) => {
+          if (!controller.signal.aborted) setErro(mensagemErro(error));
         });
       return () => controller.abort();
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- tentativa permite repetir a consulta após erro ou alteração.
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- tentativa permite repetir a consulta após erro.
     }, [route.params.idosoId, tentativa]),
   );
+  if (idoso)
+    return (
+      <FormularioIdoso key={idoso.id} idoso={idoso} navigation={navigation} />
+    );
   return (
-    <AppScreenLayout title="Editar idoso" tab="Perfil">
-      {!idoso && !erro && <ActivityIndicator />}
-      {!!erro && (
+    <AppScreenLayout title="Editar perfil do idoso" tab="Perfil" formulario>
+      {!erro ? (
+        <ActivityIndicator />
+      ) : (
         <>
           <Notice>{erro}</Notice>
           <Button
@@ -295,9 +406,6 @@ export function EditarIdosoScreen({ route }: ScreenProps<'EditarIdoso'>) {
             onPress={() => setTentativa((n) => n + 1)}
           />
         </>
-      )}
-      {!!idoso && (
-        <FormularioIdoso key={`${idoso.id}-${idoso.updatedAt}`} idoso={idoso} />
       )}
     </AppScreenLayout>
   );

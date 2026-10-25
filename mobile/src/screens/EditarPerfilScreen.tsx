@@ -1,249 +1,364 @@
-import { useState } from 'react';
-import { Text } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Keyboard, Text, View } from 'react-native';
+import { usePreventRemove } from '@react-navigation/native';
+import { isAxiosError } from 'axios';
 import { Button } from '../components/Button';
+import { CuidadosIdosoForm } from '../components/CuidadosIdosoForm';
 import { FormField } from '../components/FormField';
 import {
   EnderecoForm,
   dadosEndereco,
   erroEndereco,
 } from '../components/EnderecoForm';
+import {
+  FotoPerfilForm,
+  type FotoRascunho,
+} from '../components/FotoPerfilForm';
 import { Notice } from '../components/Notice';
+import { SecaoPerfil } from '../components/SecaoPerfil';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
+import { enviarImagem, removerFoto, validarFoto } from '../services/foto';
 import {
   dataValida,
   emailValido,
+  formatarCpf,
   formatarData,
-  somenteNumeros,
+  formatarTelefone,
 } from '../utils/validation';
-import { alteracoes, dataParaApi, dataParaFormulario } from '../utils/perfis';
+import {
+  alteracoes,
+  alteracoesPerfil,
+  dadosPerfil,
+  normalizarPerfil,
+  type DadosPerfil,
+} from '../utils/perfis';
 import { useAppStyles } from '../theme/appStyles';
+import { useTheme } from '../theme/ThemeContext';
 import type { Endereco, UsuarioAtual } from '../types/auth';
+import type { ScreenProps } from '../types/navigation';
+
+type Navigation = ScreenProps<'EditarPerfil'>['navigation'];
 
 function FormularioPerfil({
   usuario,
-  cuidador,
+  navigation,
 }: {
   usuario: UsuarioAtual;
-  cuidador: boolean;
+  navigation: Navigation;
 }) {
-  const perfil = (cuidador ? usuario.cuidador : usuario.responsavel)!;
-  const navigation = useNavigation();
-  const { atualizar } = useAuth();
+  const cuidador = !!usuario.cuidador;
+  const perfil = (usuario.cuidador ?? usuario.responsavel)!;
+  const proprio = usuario.responsavel?.responsavelIdosos.find(
+    (vinculo) => vinculo.parentesco === 'PROPRIO',
+  )?.idoso;
+  const { atualizar, fotoPendente, limparFotoPendente } = useAuth();
   const styles = useAppStyles();
-  const [original] = useState(() => ({
-    nome: usuario.nome,
-    nomeSocial: usuario.nomeSocial ?? '',
-    email: usuario.email,
-    telefone2: usuario.telefone2 ?? '',
-    telefone: perfil.telefone,
-    cpf: perfil.cpf,
-    dataNascimento: dataParaFormulario(perfil.dataNascimento),
-    biografia: usuario.cuidador?.biografia ?? '',
-    experienciaProfissional: usuario.cuidador?.experienciaProfissional ?? '',
-    registroProfissional: usuario.cuidador?.registroProfissional ?? '',
-  }));
+  const colors = useTheme();
+  const [original, setOriginal] = useState(() =>
+    normalizarPerfil(dadosPerfil(usuario)),
+  );
   const [dados, setDados] = useState(original);
-  const [enderecoOriginal] = useState(dadosEndereco(perfil.endereco));
+  const [enderecoOriginal, setEnderecoOriginal] = useState(() =>
+    dadosEndereco(perfil.endereco),
+  );
   const [endereco, setEndereco] = useState<Endereco>(enderecoOriginal);
-  const [enviando, setEnviando] = useState(false),
-    [mensagem, setMensagem] = useState('');
+  const [foto, setFoto] = useState<FotoRascunho>(() =>
+    fotoPendente &&
+    (!fotoPendente.idosoId || fotoPendente.idosoId === proprio?.id)
+      ? fotoPendente.imagem
+      : undefined,
+  );
+  const [cuidadosOriginais, setCuidadosOriginais] = useState({
+    sexo: proprio?.sexo ?? '',
+    necessidadesEspeciais: proprio?.necessidadesEspeciais ?? '',
+    observacoes: proprio?.observacoes ?? '',
+  });
+  const [cuidados, setCuidados] = useState(cuidadosOriginais);
+  const [enviando, setEnviando] = useState(false);
+  const [concluido, setConcluido] = useState(false);
+  const [mensagem, setMensagem] = useState('');
+  const [erros, setErros] = useState<
+    Partial<Record<keyof DadosPerfil, string>>
+  >({});
+  const salvando = useRef(false);
+  const houvePersistencia = useRef(false);
+  usePreventRemove(enviando && !concluido, () => {});
+  useEffect(() => {
+    if (
+      fotoPendente &&
+      (!fotoPendente.idosoId || fotoPendente.idosoId === proprio?.id)
+    )
+      limparFotoPendente();
+  }, [fotoPendente, proprio?.id, limparFotoPendente]);
+  useEffect(() => {
+    if (concluido)
+      navigation.popTo('Perfil', {
+        mensagem: 'Perfil atualizado com sucesso.',
+      });
+  }, [concluido, navigation]);
+
   async function salvar() {
-    if (enviando) return;
-    const tel = somenteNumeros(dados.telefone),
-      tel2 = somenteNumeros(dados.telefone2);
-    const erro =
-      !dados.nome.trim() || !emailValido(dados.email)
-        ? 'Informe nome e e-mail válidos.'
-        : tel.length < 10 ||
-            tel.length > 13 ||
-            (dados.telefone2.trim() && (tel2.length < 10 || tel2.length > 13))
-          ? 'Informe telefones válidos com DDD.'
-          : somenteNumeros(dados.cpf).length !== 11 ||
-              !dataValida(dados.dataNascimento)
-            ? 'Informe CPF e nascimento válidos.'
-            : erroEndereco(endereco);
-    if (erro) {
-      setMensagem(erro);
+    if (salvando.current) return;
+    const atual = normalizarPerfil(dados);
+    const mudancas = alteracoes(original, atual);
+    const enderecoAtual = dadosEndereco(endereco);
+    const enderecoMudancas = alteracoes(enderecoOriginal, enderecoAtual);
+    const proximosErros: typeof erros = {};
+    // Campos não alterados são preservados, inclusive cadastros antigos.
+    if ('nome' in mudancas && !atual.nome)
+      proximosErros.nome = 'Informe o nome completo.';
+    if ('email' in mudancas && !emailValido(atual.email))
+      proximosErros.email = 'Informe um e-mail válido.';
+    if ('telefone' in mudancas && !/^\d{10,13}$/.test(atual.telefone))
+      proximosErros.telefone = 'Informe um telefone válido com DDD.';
+    if (
+      'telefone2' in mudancas &&
+      atual.telefone2 &&
+      !/^\d{10,13}$/.test(atual.telefone2)
+    )
+      proximosErros.telefone2 = 'Informe um telefone válido com DDD.';
+    if ('cpf' in mudancas && !/^\d{11}$/.test(atual.cpf))
+      proximosErros.cpf = 'O CPF deve ter 11 dígitos.';
+    if ('dataNascimento' in mudancas && !dataValida(atual.dataNascimento))
+      proximosErros.dataNascimento = 'Informe uma data de nascimento válida.';
+    const enderecoErro = Object.keys(enderecoMudancas).length
+      ? erroEndereco(endereco)
+      : '';
+    setErros(proximosErros);
+    if (Object.keys(proximosErros).length || enderecoErro) {
+      setMensagem(Object.values(proximosErros)[0] || enderecoErro);
       return;
     }
+    if (foto) {
+      try {
+        validarFoto(foto);
+      } catch (error) {
+        setMensagem(
+          error instanceof Error
+            ? error.message
+            : 'Verifique a foto selecionada.',
+        );
+        return;
+      }
+    }
+    salvando.current = true;
     setEnviando(true);
     setMensagem('');
+    Keyboard.dismiss();
+    let etapa: 'dados' | 'foto' | 'atualizacao' = 'dados';
     try {
-      const mudancas = alteracoes(original, dados);
-      const usuarioDados = {
-        ...(mudancas.nome !== undefined && { nome: dados.nome.trim() }),
-        ...(mudancas.nomeSocial !== undefined && {
-          nomeSocial: dados.nomeSocial.trim(),
-        }),
-        ...(mudancas.email !== undefined && {
-          email: dados.email.trim().toLowerCase(),
-        }),
-        ...(mudancas.telefone2 !== undefined && { telefone2: tel2 || null }),
-      };
       const body = {
-        ...(Object.keys(usuarioDados).length && { usuario: usuarioDados }),
-        ...(mudancas.telefone !== undefined && { telefone: tel }),
-        ...(mudancas.cpf !== undefined && { cpf: somenteNumeros(dados.cpf) }),
-        ...(mudancas.dataNascimento !== undefined && {
-          dataNascimento: dataParaApi(dados.dataNascimento),
-        }),
-        ...(cuidador && {
-          ...('biografia' in mudancas && { biografia: dados.biografia.trim() }),
-          ...('experienciaProfissional' in mudancas && {
-            experienciaProfissional: dados.experienciaProfissional.trim(),
+        ...alteracoesPerfil(original, atual, cuidador),
+        ...(proprio &&
+          Object.keys(alteracoes(cuidadosOriginais, cuidados)).length > 0 && {
+            idoso: alteracoes(cuidadosOriginais, cuidados),
           }),
-          ...('registroProfissional' in mudancas && {
-            registroProfissional: dados.registroProfissional.trim(),
-          }),
-        }),
-        ...(Object.keys(alteracoes(enderecoOriginal, dadosEndereco(endereco)))
-          .length && {
-          endereco: alteracoes(enderecoOriginal, dadosEndereco(endereco)),
+        ...(Object.keys(enderecoMudancas).length > 0 && {
+          endereco: enderecoMudancas,
         }),
       };
-      await api.patch(
-        `/${cuidador ? 'cuidadores' : 'responsaveis'}/${perfil.id}`,
-        body,
-      );
+      if (Object.keys(body).length) {
+        await api.patch(
+          `/${cuidador ? 'cuidadores' : 'responsaveis'}/${perfil.id}`,
+          body,
+        );
+        // Se o upload falhar, a próxima tentativa envia só o que ainda falta.
+        houvePersistencia.current = true;
+        setOriginal(atual);
+        setEnderecoOriginal(enderecoAtual);
+        setCuidadosOriginais(cuidados);
+      }
+      etapa = 'foto';
+      if (foto !== undefined) {
+        if (foto === null) await removerFoto();
+        else await enviarImagem(foto);
+        houvePersistencia.current = true;
+        setFoto(undefined);
+      }
+      etapa = 'atualizacao';
       await atualizar();
-      setMensagem('Perfil atualizado com sucesso.');
-    } catch (e) {
-      setMensagem(mensagemErro(e));
+      setConcluido(true);
+    } catch (error) {
+      const motivo = isAxiosError(error)
+        ? mensagemErro(error)
+        : error instanceof Error
+          ? error.message
+          : mensagemErro(error);
+      setMensagem(
+        etapa === 'atualizacao'
+          ? `As alterações foram enviadas, mas não foi possível recarregar o perfil. Seus dados foram preservados. Toque em Salvar alterações para tentar novamente. ${motivo}`
+          : etapa === 'foto' && houvePersistencia.current
+            ? `Os dados pessoais foram salvos, mas a foto não pôde ser atualizada. Sua seleção foi preservada. Tente salvar novamente. ${motivo}`
+            : motivo,
+      );
     } finally {
+      salvando.current = false;
       setEnviando(false);
     }
   }
-  return (
-    <>
-      {(
-        [
-          'nome',
-          'nomeSocial',
-          'email',
-          'telefone',
-          'telefone2',
-          'cpf',
-          'dataNascimento',
-        ] as const
-      ).map((campo) => (
-        <FormField
-          key={campo}
-          label={
-            {
-              nome: 'Nome completo*',
-              nomeSocial: 'Nome social',
-              email: 'E-mail*',
-              telefone: 'Telefone*',
-              telefone2: 'Telefone secundário',
-              cpf: 'CPF*',
-              dataNascimento: 'Nascimento (DD/MM/AAAA)*',
-            }[campo]
-          }
-          value={dados[campo]}
-          editable={!enviando}
-          maxLength={
-            campo === 'dataNascimento'
+
+  function campo(campo: keyof DadosPerfil, label: string) {
+    const telefone = campo === 'telefone' || campo === 'telefone2';
+    const numerico = telefone || campo === 'cpf' || campo === 'dataNascimento';
+    const profissional = ['biografia', 'experienciaProfissional'].includes(
+      campo,
+    );
+    const formatar = telefone
+      ? formatarTelefone
+      : campo === 'cpf'
+        ? formatarCpf
+        : campo === 'dataNascimento'
+          ? formatarData
+          : (valor: string) => valor;
+    return (
+      <FormField
+        key={campo}
+        label={label}
+        value={formatar(dados[campo])}
+        error={erros[campo]}
+        editable={!enviando}
+        maxLength={
+          campo === 'cpf'
+            ? 14
+            : campo === 'dataNascimento'
               ? 10
-              : campo === 'email'
-                ? 255
-                : campo === 'nome' || campo === 'nomeSocial'
-                  ? 150
-                  : 20
-          }
-          keyboardType={
-            campo === 'email'
-              ? 'email-address'
-              : ['telefone', 'telefone2', 'cpf', 'dataNascimento'].includes(
-                    campo,
-                  )
+              : telefone
+                ? 21
+                : campo === 'email'
+                  ? 255
+                  : profissional
+                    ? 5000
+                    : campo === 'registroProfissional'
+                      ? 100
+                      : 150
+        }
+        keyboardType={
+          campo === 'email'
+            ? 'email-address'
+            : telefone
+              ? 'phone-pad'
+              : numerico
                 ? 'numeric'
                 : 'default'
-          }
-          autoCapitalize={campo === 'email' ? 'none' : 'sentences'}
-          onChangeText={(value) =>
-            setDados((d) => ({
-              ...d,
-              [campo]: campo === 'dataNascimento' ? formatarData(value) : value,
-            }))
-          }
-        />
-      ))}
-      <Text style={styles.section}>Endereço</Text>
-      <EnderecoForm
-        value={endereco}
-        onChange={setEndereco}
-        disabled={enviando}
-      />
-      {cuidador && (
-        <>
-          <Text style={styles.section}>Dados profissionais</Text>
-          {(
-            [
-              'biografia',
-              'experienciaProfissional',
-              'registroProfissional',
-            ] as const
-          ).map((campo) => (
-            <FormField
-              key={campo}
-              label={
-                {
-                  biografia: 'Biografia',
-                  experienciaProfissional: 'Experiência profissional',
-                  registroProfissional: 'Registro profissional',
-                }[campo]
-              }
-              value={dados[campo]}
-              editable={!enviando}
-              multiline={campo !== 'registroProfissional'}
-              maxLength={campo === 'registroProfissional' ? 100 : 5000}
-              onChangeText={(value) =>
-                setDados((d) => ({ ...d, [campo]: value }))
-              }
-            />
-          ))}
-        </>
-      )}
-      {!!mensagem && <Notice>{mensagem}</Notice>}
-      <Button
-        title={enviando ? 'Salvando...' : 'Salvar perfil'}
-        disabled={enviando}
-        onPress={() => {
-          void salvar();
+        }
+        autoCapitalize={campo === 'email' ? 'none' : 'sentences'}
+        autoCorrect={campo === 'email' || numerico ? false : undefined}
+        multiline={profissional}
+        onChangeText={(valor) => {
+          setDados((antes) => ({ ...antes, [campo]: formatar(valor) }));
+          setErros((antes) => ({ ...antes, [campo]: undefined }));
         }}
       />
-      <Button
-        title="Voltar ao perfil"
-        variant="outline"
-        disabled={enviando}
-        onPress={() => navigation.goBack()}
-      />
-    </>
-  );
-}
-function EditarPerfil({ cuidador }: { cuidador: boolean }) {
-  const { usuario } = useAuth();
+    );
+  }
   return (
     <AppScreenLayout
-      title={
-        cuidador ? 'Editar perfil do cuidador' : 'Editar perfil do responsável'
-      }
+      title="Editar perfil"
+      subtitle="Atualize apenas as informações que desejar"
       tab="Perfil"
+      formulario
+      bloqueado={enviando}
     >
-      {usuario && (cuidador ? usuario.cuidador : usuario.responsavel) ? (
-        <FormularioPerfil usuario={usuario} cuidador={cuidador} />
-      ) : (
-        <Notice>Seu perfil não permite acessar esta edição.</Notice>
+      <SecaoPerfil titulo="Foto de perfil" icone="camera-outline">
+        <FotoPerfilForm
+          usuario={usuario}
+          value={foto}
+          onChange={(novaFoto) => {
+            setFoto(novaFoto);
+            setMensagem('');
+          }}
+          disabled={enviando}
+        />
+      </SecaoPerfil>
+      <SecaoPerfil
+        titulo="Dados pessoais"
+        icone="person-outline"
+        descricao="Os campos com * são obrigatórios no cadastro."
+      >
+        {campo('nome', 'Nome completo*')}
+        {campo('nomeSocial', 'Nome social')}
+        {campo('dataNascimento', 'Data de nascimento (DD/MM/AAAA)*')}
+        {campo('cpf', 'CPF*')}
+      </SecaoPerfil>
+      <SecaoPerfil titulo="Informações de contato" icone="call-outline">
+        {campo('email', 'E-mail*')}
+        <Text style={styles.helper}>
+          Ao alterar o e-mail, use o novo endereço no próximo acesso ao Laço.
+        </Text>
+        {campo('telefone', 'Telefone principal*')}
+        {campo('telefone2', 'Telefone secundário')}
+      </SecaoPerfil>
+      <SecaoPerfil titulo="Endereço" icone="location-outline">
+        <EnderecoForm
+          value={endereco}
+          onChange={setEndereco}
+          disabled={enviando}
+        />
+      </SecaoPerfil>
+      {!!proprio && (
+        <SecaoPerfil titulo="Informações de cuidado" icone="heart-outline">
+          <CuidadosIdosoForm
+            value={cuidados}
+            onChange={setCuidados}
+            disabled={enviando}
+          />
+        </SecaoPerfil>
       )}
+      {cuidador && (
+        <SecaoPerfil titulo="Dados profissionais" icone="briefcase-outline">
+          {campo('biografia', 'Biografia')}
+          {campo('experienciaProfissional', 'Experiência profissional')}
+          {campo('registroProfissional', 'Registro profissional')}
+          {!!usuario.cuidador?.curriculo && (
+            <Text style={styles.helper}>
+              Currículo salvo: {usuario.cuidador.curriculo.nome}
+            </Text>
+          )}
+        </SecaoPerfil>
+      )}
+      <View style={{ gap: 12 }}>
+        {!!mensagem && <Notice>{mensagem}</Notice>}
+        {enviando && (
+          <ActivityIndicator
+            accessibilityLabel="Salvando alterações"
+            color={colors.primary}
+          />
+        )}
+        <Button
+          title={enviando ? 'Salvando...' : 'Salvar alterações'}
+          disabled={enviando}
+          onPress={() => {
+            void salvar();
+          }}
+        />
+        <Button
+          title="Cancelar"
+          variant="outline"
+          disabled={enviando}
+          onPress={() => navigation.goBack()}
+        />
+      </View>
     </AppScreenLayout>
   );
 }
-export function EditarCuidadorScreen() {
-  return <EditarPerfil cuidador />;
-}
-export function EditarResponsavelScreen() {
-  return <EditarPerfil cuidador={false} />;
+
+export function EditarPerfilScreen({
+  navigation,
+}: ScreenProps<'EditarPerfil'>) {
+  const { usuario } = useAuth();
+  if (usuario && (usuario.cuidador || usuario.responsavel))
+    return (
+      <FormularioPerfil
+        key={usuario.id}
+        usuario={usuario}
+        navigation={navigation}
+      />
+    );
+  return (
+    <AppScreenLayout title="Editar perfil" tab="Perfil" formulario>
+      <Notice>Seu perfil não permite acessar esta edição.</Notice>
+    </AppScreenLayout>
+  );
 }

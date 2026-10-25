@@ -15,6 +15,8 @@ export type UsuarioAtual = {
   telefone2: string | null;
   foto?: { updatedAt: string } | null;
   tipoUsuario: 'RESPONSAVEL' | 'CUIDADOR' | 'ADMIN' | 'SUPER_ADMIN';
+  perfil?:
+    'IDOSO_INDEPENDENTE' | 'RESPONSAVEL' | 'CUIDADOR' | 'ADMIN' | 'SUPER_ADMIN';
   responsavel: null | {
     id: number;
     telefone: string;
@@ -23,12 +25,7 @@ export type UsuarioAtual = {
     endereco: Endereco;
     responsavelIdosos: {
       parentesco: string;
-      idoso: {
-        id: number;
-        nome: string;
-        nomeSocial: string | null;
-        endereco: Endereco;
-      };
+      idoso: Idoso;
     }[];
   };
   cuidador: null | {
@@ -50,5 +47,19 @@ export type UsuarioAtual = {
       servico: { id: number; nome: string };
     }[];
   };
+};
+export type Idoso = {
+  id: number;
+  nome: string;
+  nomeSocial: string | null;
+  dataNascimento: string;
+  cpf: string | null;
+  telefone: string | null;
+  sexo: string | null;
+  necessidadesEspeciais: string | null;
+  observacoes: string | null;
+  endereco: Endereco;
+  foto?: { updatedAt: string } | null;
+  updatedAt: string;
 };
 export type Sessao = { token: string; expiraEm: string; usuario: UsuarioAtual };
