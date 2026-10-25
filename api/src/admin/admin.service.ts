@@ -36,9 +36,40 @@ const responsaveis = {
   select: {
     parentesco: true,
     responsavelPrincipal: true,
-    responsavel: { select: { id: true, usuario } },
+    responsavel: { select: { id: true, dataNascimento: true, usuario } },
   },
 } as const;
+const semAcessoProprio = {
+  responsavelIdosos: { none: { parentesco: 'PROPRIO' } },
+} satisfies Prisma.ResponsavelWhereInput;
+
+function classificarIdoso<
+  T extends {
+    nome: string;
+    nomeSocial: string | null;
+    dataNascimento: Date;
+    responsavelIdosos: {
+      parentesco: string;
+      responsavel: {
+        dataNascimento: Date;
+        usuario: { nome: string; nomeSocial: string | null };
+      };
+    }[];
+  },
+>(registro: T) {
+  const proprio = registro.responsavelIdosos.find(
+    (vinculo) => vinculo.parentesco === 'PROPRIO',
+  );
+  return {
+    ...registro,
+    perfil: proprio ? 'IDOSO_INDEPENDENTE' : 'IDOSO',
+    ...(proprio && {
+      nome: proprio.responsavel.usuario.nome,
+      nomeSocial: proprio.responsavel.usuario.nomeSocial,
+      dataNascimento: proprio.responsavel.dataNascimento,
+    }),
+  };
+}
 const cuidadorSelect = {
   id: true,
   telefone: true,
@@ -127,7 +158,7 @@ export class AdminService {
           pendentesVerificacao,
         ] = await Promise.all([
           tx.cuidador.count(),
-          tx.responsavel.count(),
+          tx.responsavel.count({ where: semAcessoProprio }),
           tx.idoso.count(),
           tx.idoso.count({
             where: { responsavelIdosos: { some: { parentesco: 'PROPRIO' } } },
@@ -150,7 +181,7 @@ export class AdminService {
           porStatus,
           atualizadoEm: new Date(),
           classificacaoIndependentes:
-            'Idosos com vínculo de autocuidado (PROPRIO); incluídos no total de idosos.',
+            'Idosos que gerenciam o próprio cuidado; incluídos no total de idosos e separados dos responsáveis.',
         };
       },
       { isolationLevel: 'RepeatableRead' },
@@ -183,6 +214,7 @@ export class AdminService {
         }
         if (categoria === CategoriaAdmin.RESPONSAVEIS) {
           const where: Prisma.ResponsavelWhereInput = {
+            AND: [semAcessoProprio],
             usuario: {
               ...buscaPessoa(q.busca),
               ...(q.situacao ? { status: q.situacao } : {}),
@@ -213,7 +245,19 @@ export class AdminService {
           return pagina(dados, total, q);
         }
         const where: Prisma.IdosoWhereInput = {
-          ...buscaPessoa(q.busca),
+          ...(q.busca && {
+            OR: [
+              buscaPessoa(q.busca),
+              {
+                responsavelIdosos: {
+                  some: {
+                    parentesco: 'PROPRIO',
+                    responsavel: { usuario: buscaPessoa(q.busca) },
+                  },
+                },
+              },
+            ],
+          }),
           ...(categoria === CategoriaAdmin.INDEPENDENTES
             ? {
                 responsavelIdosos: {
@@ -242,7 +286,7 @@ export class AdminService {
           }),
           tx.idoso.count({ where }),
         ]);
-        return pagina(dados, total, q);
+        return pagina(dados.map(classificarIdoso), total, q);
       },
       { isolationLevel: 'RepeatableRead' },
     );
@@ -264,8 +308,8 @@ export class AdminService {
         },
       });
     else if (categoria === CategoriaAdmin.RESPONSAVEIS)
-      registro = await this.prisma.responsavel.findUnique({
-        where: { id },
+      registro = await this.prisma.responsavel.findFirst({
+        where: { id, ...semAcessoProprio },
         select: {
           id: true,
           telefone: true,
@@ -278,8 +322,8 @@ export class AdminService {
           },
         },
       });
-    else
-      registro = await this.prisma.idoso.findFirst({
+    else {
+      const cadastro = await this.prisma.idoso.findFirst({
         where: {
           id,
           ...(categoria === CategoriaAdmin.INDEPENDENTES
@@ -295,6 +339,8 @@ export class AdminService {
           responsavelIdosos: responsaveis,
         },
       });
+      registro = cadastro ? classificarIdoso(cadastro) : null;
+    }
     if (!registro) throw new NotFoundException('Cadastro não encontrado.');
     return registro;
   }
@@ -391,12 +437,17 @@ export class AdminService {
           SELECT cs."servicoId", max(c."nomeServico") AS nome,count(*) FILTER(WHERE c.status IN ('ACEITA','CONCLUIDA'))::int AS quantidade,count(*)::int AS solicitacoes,COALESCE(sum(c."valorAcordado") FILTER(WHERE c.status IN ('ACEITA','CONCLUIDA')),0)::text AS valor
           FROM "Contratacao" c JOIN "CuidadorServico" cs ON cs.id=c."cuidadorServicoId" WHERE c."createdAt">=${p.de} AND c."createdAt"<${p.ate} GROUP BY cs."servicoId" ORDER BY quantidade DESC, solicitacoes DESC, cs."servicoId" LIMIT 10`),
             tx.$queryRaw<
-              { periodo: string; cuidadores: number; responsaveis: number }[]
+              {
+                periodo: string;
+                cuidadores: number;
+                responsaveis: number;
+                independentes: number;
+              }[]
             >(Prisma.sql`
           WITH periodos AS (SELECT generate_series(date_trunc(${unidade},${p.inicio}::date::timestamp),date_trunc(${unidade},${p.fim}::date::timestamp),('1 ' || ${unidade})::interval) AS periodo),
           pessoas AS (SELECT date_trunc(${unidade},"createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo') AS periodo,'CUIDADOR' AS tipo FROM "Cuidador" WHERE "createdAt">=${p.de} AND "createdAt"<${p.ate}
-            UNION ALL SELECT date_trunc(${unidade},"createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo'),'RESPONSAVEL' FROM "Responsavel" WHERE "createdAt">=${p.de} AND "createdAt"<${p.ate})
-          SELECT to_char(p.periodo,'YYYY-MM-DD') AS periodo,count(*) FILTER(WHERE u.tipo='CUIDADOR')::int AS cuidadores,count(*) FILTER(WHERE u.tipo='RESPONSAVEL')::int AS responsaveis FROM periodos p LEFT JOIN pessoas u USING(periodo) GROUP BY p.periodo ORDER BY p.periodo`),
+            UNION ALL SELECT date_trunc(${unidade},r."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo'),CASE WHEN EXISTS(SELECT 1 FROM "ResponsavelIdoso" v WHERE v."responsavelId"=r.id AND v.parentesco='PROPRIO') THEN 'INDEPENDENTE' ELSE 'RESPONSAVEL' END FROM "Responsavel" r WHERE r."createdAt">=${p.de} AND r."createdAt"<${p.ate})
+          SELECT to_char(p.periodo,'YYYY-MM-DD') AS periodo,count(*) FILTER(WHERE u.tipo='CUIDADOR')::int AS cuidadores,count(*) FILTER(WHERE u.tipo='RESPONSAVEL')::int AS responsaveis,count(*) FILTER(WHERE u.tipo='INDEPENDENTE')::int AS independentes FROM periodos p LEFT JOIN pessoas u USING(periodo) GROUP BY p.periodo ORDER BY p.periodo`),
           ]);
         const soma = (estados: string[]) =>
           status

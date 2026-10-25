@@ -1,4 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react';
+import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,7 +12,10 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { BottomNavigation } from '../components/BottomNavigation';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
@@ -22,6 +26,8 @@ type Props = PropsWithChildren<{
   subtitle?: string;
   tab?: 'Início' | 'Buscar' | 'Agenda' | 'Mensagens' | 'Perfil';
   headerRight?: ReactNode;
+  formulario?: boolean;
+  bloqueado?: boolean;
 }>;
 export function AppScreenLayout({
   children,
@@ -29,19 +35,30 @@ export function AppScreenLayout({
   subtitle,
   tab = 'Início',
   headerRight,
+  formulario = false,
+  bloqueado = false,
 }: Props) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
+  const [alturaCabecalho, setAlturaCabecalho] = useState(0);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View
+          style={styles.header}
+          onLayout={(event) =>
+            setAlturaCabecalho(event.nativeEvent.layout.height)
+          }
+        >
           <TouchableOpacity
             style={styles.back}
             accessibilityRole="button"
             accessibilityLabel="Voltar"
+            disabled={bloqueado}
+            accessibilityState={{ disabled: bloqueado }}
             onPress={() =>
               navigation.canGoBack()
                 ? navigation.goBack()
@@ -59,24 +76,36 @@ export function AppScreenLayout({
         </View>
         <KeyboardAvoidingView
           style={styles.grow}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={
+            Platform.OS === 'ios'
+              ? 'padding'
+              : formulario && Platform.OS === 'android'
+                ? 'height'
+                : undefined
+          }
+          keyboardVerticalOffset={
+            Platform.OS === 'ios' ? insets.top + alturaCabecalho : 0
+          }
         >
           <ScrollView
             contentContainerStyle={styles.scroll}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.content}>{children}</View>
           </ScrollView>
         </KeyboardAvoidingView>
-        <BottomNavigation
-          activeTab={tab}
-          onHome={() => navigation.navigate('Home')}
-          onSearch={() => navigation.navigate('BuscarCuidador')}
-          onAgenda={() => navigation.navigate('Agenda')}
-          onMessages={() => navigation.navigate('Mensagens')}
-          onProfile={() => navigation.navigate('Perfil')}
-        />
+        {!formulario && (
+          <BottomNavigation
+            activeTab={tab}
+            onHome={() => navigation.navigate('Home')}
+            onSearch={() => navigation.navigate('BuscarCuidador')}
+            onAgenda={() => navigation.navigate('Agenda')}
+            onMessages={() => navigation.navigate('Mensagens')}
+            onProfile={() => navigation.navigate('Perfil')}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

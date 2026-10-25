@@ -1,217 +1,200 @@
-import type { ScreenProps } from '../types/navigation';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import type { ScreenProps } from '../types/navigation';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
+import { DadoPerfil, SecaoPerfil } from '../components/SecaoPerfil';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useCadastro } from '../contexts/CadastroContext';
 import { mensagemErro } from '../services/api';
-import {
-  escolherEEnviarFoto,
-  removerFoto,
-  tirarEEnviarFoto,
-} from '../services/foto';
-import type { Paleta } from '../theme';
-import { useStyles, useTheme } from '../theme/ThemeContext';
+import { useTheme } from '../theme/ThemeContext';
 import { statusLabels, useAppStyles } from '../theme/appStyles';
+import { dataParaFormulario, resumoEndereco } from '../utils/perfis';
+import { formatarCpf, formatarTelefone } from '../utils/validation';
 
-export function PerfilScreen({ navigation }: ScreenProps<'Perfil'>) {
+export function PerfilScreen({ navigation, route }: ScreenProps<'Perfil'>) {
   const appStyles = useAppStyles();
-  const styles = useStyles(criarStyles);
   const colors = useTheme();
-  const { usuario, atualizar, sair } = useAuth();
+  const { usuario, fotoPendente, sair } = useAuth();
   const { limparCadastro } = useCadastro();
-  const [mensagem, setMensagem] = useState('');
-  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
+  const [saindo, setSaindo] = useState(false);
   if (!usuario) return null;
   const perfil = usuario.cuidador ?? usuario.responsavel;
-  async function executar(acao: () => Promise<void>, sucesso: string) {
-    setEnviando(true);
-    setMensagem('');
+  const proprio = usuario.responsavel?.responsavelIdosos.find(
+    (item) => item.parentesco === 'PROPRIO',
+  )?.idoso;
+  const tipo = usuario.cuidador
+    ? 'Cuidador'
+    : usuario.responsavel?.responsavelIdosos.some(
+          (item) => item.parentesco === 'PROPRIO',
+        )
+      ? 'Idoso independente'
+      : 'Responsável';
+  async function encerrarSessao() {
+    setSaindo(true);
+    setErro('');
     try {
-      await acao();
-      setMensagem(sucesso);
+      await sair();
+      limparCadastro();
     } catch (error) {
-      setMensagem(mensagemErro(error));
-    } finally {
-      setEnviando(false);
+      setErro(mensagemErro(error));
+      setSaindo(false);
     }
   }
   return (
     <AppScreenLayout
       title="Meu perfil"
-      subtitle="Seus dados e seu acesso ao Laço"
+      subtitle="Suas informações em um só lugar"
       tab="Perfil"
     >
-      <View style={styles.identity}>
+      {!!route.params?.mensagem && <Notice>{route.params.mensagem}</Notice>}
+      <View style={[appStyles.card, styles.identity]}>
         <Avatar
           nome={usuario.nomeSocial || usuario.nome}
           usuarioId={usuario.id}
           versao={usuario.foto?.updatedAt}
-          tamanho={96}
+          tamanho={104}
         />
-        <View style={styles.fotoAcoes}>
-          <Button
-            title="Tirar foto"
-            variant="outline"
-            disabled={enviando}
-            onPress={() => {
-              void executar(async () => {
-                if (await tirarEEnviarFoto()) await atualizar();
-              }, '');
-            }}
-          />
-          <Button
-            title="Escolher da galeria"
-            variant="outline"
-            disabled={enviando}
-            onPress={() => {
-              void executar(async () => {
-                if (await escolherEEnviarFoto()) await atualizar();
-              }, '');
-            }}
-          />
-          {!!usuario.foto && (
-            <Button
-              title="Remover foto"
-              variant="outline"
-              color={colors.error}
-              disabled={enviando}
-              onPress={() => {
-                void executar(async () => {
-                  await removerFoto();
-                  await atualizar();
-                }, '');
-              }}
-            />
-          )}
-        </View>
-        <Text style={styles.title}>{usuario.nomeSocial || usuario.nome}</Text>
-        <Text style={appStyles.text}>
-          {usuario.cuidador
-            ? 'Cuidador'
-            : usuario.responsavel?.responsavelIdosos.some(
-                  (item) => item.parentesco === 'PROPRIO',
-                )
-              ? 'Idoso'
-              : 'Responsável'}
+        <Text style={[styles.title, { color: colors.text }]}>
+          {usuario.nomeSocial || usuario.nome}
         </Text>
-        <Text style={appStyles.text}>{usuario.email}</Text>
+        <View style={[appStyles.badge, styles.centerBadge]}>
+          <Text style={appStyles.badgeText}>{tipo}</Text>
+        </View>
+        <Text selectable style={[appStyles.text, styles.center]}>
+          {usuario.email}
+        </Text>
         {!!usuario.cuidador && (
-          <View style={[appStyles.badge, styles.centerBadge]}>
-            <Text style={appStyles.badgeText}>
-              {statusLabels[usuario.cuidador.statusVerificacao]}
-            </Text>
-          </View>
+          <Text style={appStyles.helper}>
+            Verificação: {statusLabels[usuario.cuidador.statusVerificacao]}
+          </Text>
         )}
       </View>
-      <View style={appStyles.card}>
-        <Text style={appStyles.section}>Dados pessoais</Text>
-        <Text style={appStyles.text}>{usuario.nome}</Text>
+      <SecaoPerfil titulo="Dados pessoais" icone="person-outline">
+        <DadoPerfil label="Nome completo" value={usuario.nome} />
         {!!usuario.nomeSocial && (
-          <Text style={appStyles.text}>Nome social: {usuario.nomeSocial}</Text>
+          <DadoPerfil label="Nome social" value={usuario.nomeSocial} />
         )}
         {!!perfil && (
           <>
+            <DadoPerfil
+              label="Data de nascimento"
+              value={dataParaFormulario(perfil.dataNascimento)}
+            />
+            <DadoPerfil label="CPF" value={formatarCpf(perfil.cpf)} />
             <View style={appStyles.separator} />
-            <Text style={appStyles.text}>Telefone: {perfil.telefone}</Text>
-            <Text style={appStyles.text}>CPF: {perfil.cpf}</Text>
-            <Text style={appStyles.text}>
-              {perfil.endereco.rua}, {perfil.endereco.numero} ·{' '}
-              {perfil.endereco.cidade}/{perfil.endereco.estado}
-            </Text>
+            <DadoPerfil
+              label="Telefone principal"
+              value={formatarTelefone(perfil.telefone)}
+            />
+            {!!usuario.telefone2 && (
+              <DadoPerfil
+                label="Telefone secundário"
+                value={formatarTelefone(usuario.telefone2)}
+              />
+            )}
+            <DadoPerfil
+              label="Endereço"
+              value={resumoEndereco(perfil.endereco)}
+            />
           </>
         )}
-        {!!usuario.cuidador?.biografia && (
-          <Text style={appStyles.text}>
-            Biografia: {usuario.cuidador.biografia}
-          </Text>
+      </SecaoPerfil>
+      {!!proprio &&
+        (proprio.sexo ||
+          proprio.necessidadesEspeciais ||
+          proprio.observacoes) && (
+          <SecaoPerfil titulo="Informações de cuidado" icone="heart-outline">
+            {!!proprio.sexo && <DadoPerfil label="Sexo" value={proprio.sexo} />}
+            {!!proprio.necessidadesEspeciais && (
+              <DadoPerfil
+                label="Necessidades especiais"
+                value={proprio.necessidadesEspeciais}
+              />
+            )}
+            {!!proprio.observacoes && (
+              <DadoPerfil label="Observações" value={proprio.observacoes} />
+            )}
+          </SecaoPerfil>
         )}
-        {!!usuario.cuidador?.experienciaProfissional && (
-          <Text style={appStyles.text}>
-            Experiência: {usuario.cuidador.experienciaProfissional}
-          </Text>
-        )}
-        {!!usuario.cuidador?.registroProfissional && (
-          <Text style={appStyles.text}>
-            Registro profissional: {usuario.cuidador.registroProfissional}
-          </Text>
-        )}
-        {!!usuario.cuidador?.curriculo && (
-          <Text style={appStyles.text}>
-            Currículo salvo: {usuario.cuidador.curriculo.nome}
-          </Text>
-        )}
-      </View>
       {!!usuario.cuidador && (
+        <SecaoPerfil titulo="Dados profissionais" icone="briefcase-outline">
+          {!!usuario.cuidador.biografia && (
+            <DadoPerfil label="Biografia" value={usuario.cuidador.biografia} />
+          )}
+          {!!usuario.cuidador.experienciaProfissional && (
+            <DadoPerfil
+              label="Experiência profissional"
+              value={usuario.cuidador.experienciaProfissional}
+            />
+          )}
+          {!!usuario.cuidador.registroProfissional && (
+            <DadoPerfil
+              label="Registro profissional"
+              value={usuario.cuidador.registroProfissional}
+            />
+          )}
+          {!!usuario.cuidador.curriculo && (
+            <DadoPerfil
+              label="Currículo salvo"
+              value={usuario.cuidador.curriculo.nome}
+            />
+          )}
+          <Button
+            title="Configurar meus serviços"
+            variant="outline"
+            onPress={() => navigation.navigate('MeusServicos')}
+          />
+        </SecaoPerfil>
+      )}
+      {!!fotoPendente && (
+        <Notice>
+          {fotoPendente.idosoId && fotoPendente.idosoId !== proprio?.id
+            ? 'Há uma foto recuperada para um idoso. Abra o perfil dele em “Meus idosos” para revisar e salvar.'
+            : 'Há uma foto recuperada da câmera ou galeria. Acesse “Editar perfil” para revisar e salvar.'}
+        </Notice>
+      )}
+      {!!erro && <Notice>{erro}</Notice>}
+      <View style={styles.actions}>
+        {!!perfil && (
+          <Button
+            title="Editar perfil"
+            disabled={saindo}
+            onPress={() => {
+              navigation.setParams({ mensagem: undefined });
+              navigation.navigate('EditarPerfil');
+            }}
+          />
+        )}
+        {!!usuario.responsavel && !proprio && (
+          <Button
+            title="Meus idosos"
+            variant="outline"
+            disabled={saindo}
+            onPress={() => navigation.navigate('MeusIdosos')}
+          />
+        )}
         <Button
-          title="Configurar meus serviços"
+          title={saindo ? 'Saindo...' : 'Sair da conta'}
           variant="outline"
-          onPress={() => navigation.navigate('MeusServicos')}
+          color={colors.header}
+          disabled={saindo}
+          onPress={() => {
+            void encerrarSessao();
+          }}
         />
-      )}
-      {!!mensagem && <Notice>{mensagem}</Notice>}
-      {!!perfil && (
-        <Button
-          title="Editar meus dados"
-          disabled={enviando}
-          onPress={() =>
-            navigation.navigate(
-              usuario.cuidador ? 'EditarCuidador' : 'EditarResponsavel',
-            )
-          }
-        />
-      )}
-      {!!usuario.responsavel && (
-        <Button
-          title="Meus idosos"
-          variant="outline"
-          onPress={() => navigation.navigate('MeusIdosos')}
-        />
-      )}
-      <Button
-        title="Atualizar dados"
-        variant="outline"
-        disabled={enviando}
-        onPress={() => {
-          void executar(atualizar, 'Dados atualizados.');
-        }}
-      />
-      <Button
-        title="Sair da conta"
-        color={colors.header}
-        disabled={enviando}
-        onPress={() => {
-          void executar(async () => {
-            await sair();
-            limparCadastro();
-          }, '');
-        }}
-      />
+      </View>
     </AppScreenLayout>
   );
 }
-const criarStyles = (colors: Paleta) =>
-  StyleSheet.create({
-    centerBadge: { alignSelf: 'center' },
-    identity: { alignItems: 'center', gap: 8, paddingVertical: 12 },
-    fotoAcoes: { alignSelf: 'stretch', gap: 8, marginBottom: 8 },
-    avatar: {
-      width: 76,
-      height: 76,
-      borderRadius: 38,
-      backgroundColor: colors.avatarBg,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 8,
-    },
-    initial: { fontSize: 30, fontWeight: '700', color: colors.primaryDark },
-    title: {
-      color: colors.text,
-      fontSize: 26,
-      fontWeight: '700',
-      textAlign: 'center',
-    },
-  });
+
+const styles = StyleSheet.create({
+  identity: { alignItems: 'center', gap: 10, paddingVertical: 24 },
+  title: { fontSize: 25, fontWeight: '700', textAlign: 'center', marginTop: 4 },
+  center: { textAlign: 'center' },
+  centerBadge: { alignSelf: 'center' },
+  actions: { gap: 12 },
+});

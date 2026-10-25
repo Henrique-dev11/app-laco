@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { FormField } from './FormField';
 import type { Endereco } from '../types/auth';
+import { formatarCep } from '../utils/validation';
 export const enderecoVazio: Endereco = {
   rua: '',
   numero: '',
@@ -48,24 +49,36 @@ export function EnderecoForm({
     <View style={{ gap: 12 }}>
       {(
         [
+          ['cep', 'CEP*', 9],
           ['rua', 'Rua*', 150],
           ['numero', 'Número*', 20],
           ['complemento', 'Complemento', 150],
           ['bairro', 'Bairro*', 100],
           ['cidade', 'Cidade*', 100],
-          ['estado', 'UF*', 2],
-          ['cep', 'CEP*', 9],
+          ['estado', 'Estado (UF)*', 2],
         ] as const
       ).map(([campo, label, maxLength]) => (
         <FormField
           key={campo}
           label={label}
-          value={value[campo] ?? ''}
+          value={
+            campo === 'cep' ? formatarCep(value.cep) : (value[campo] ?? '')
+          }
           maxLength={maxLength}
           editable={!disabled}
           autoCapitalize={campo === 'estado' ? 'characters' : 'sentences'}
           keyboardType={campo === 'cep' ? 'numeric' : 'default'}
-          onChangeText={(texto) => onChange({ ...value, [campo]: texto })}
+          onChangeText={(texto) =>
+            onChange({
+              ...value,
+              [campo]:
+                campo === 'cep'
+                  ? formatarCep(texto)
+                  : campo === 'estado'
+                    ? texto.toUpperCase()
+                    : texto,
+            })
+          }
         />
       ))}
     </View>

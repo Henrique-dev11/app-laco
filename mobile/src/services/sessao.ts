@@ -2,6 +2,27 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const chave = 'laco.sessao';
+const chaveDestinoFoto = 'laco.foto.destino';
+export type DestinoFoto = { usuarioId: number; idosoId?: number };
+
+export async function gravarDestinoFoto(destino: DestinoFoto) {
+  await SecureStore.setItemAsync(chaveDestinoFoto, JSON.stringify(destino));
+}
+
+export async function consumirDestinoFoto(): Promise<DestinoFoto | null> {
+  const valor = await SecureStore.getItemAsync(chaveDestinoFoto);
+  await SecureStore.deleteItemAsync(chaveDestinoFoto);
+  try {
+    const destino: DestinoFoto = JSON.parse(valor ?? 'null');
+    return destino &&
+      Number.isInteger(destino.usuarioId) &&
+      (destino.idosoId === undefined || Number.isInteger(destino.idosoId))
+      ? destino
+      : null;
+  } catch {
+    return null;
+  }
+}
 // No navegador a sessão dura somente nesta aba; não gravamos o token em localStorage.
 export async function lerToken() {
   return Platform.OS === 'web'

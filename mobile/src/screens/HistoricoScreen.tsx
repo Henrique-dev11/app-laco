@@ -114,7 +114,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
             Cuidador: {contrato.cuidadorServico.cuidador.usuario.nome}
           </Text>
           <Text style={appStyles.text}>
-            Responsável: {contrato.responsavel.usuario.nome}
+            Contratante: {contrato.responsavel.usuario.nome}
           </Text>
           <Text style={appStyles.text}>
             {contrato.status === 'SOLICITADA'
@@ -177,7 +177,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
           {usuario?.cuidador && contrato.status === 'ACEITA' && (
             <>
               <FormField
-                label="Código de confirmação (peça ao responsável)"
+                label="Código de confirmação (peça ao contratante)"
                 value={codigos[contrato.id] ?? ''}
                 maxLength={6}
                 autoCapitalize="characters"

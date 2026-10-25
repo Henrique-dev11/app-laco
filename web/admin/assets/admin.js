@@ -64,7 +64,7 @@ const titulos = {
   ],
   'relatorios/crescimento': [
     'Crescimento de usuários',
-    'Acompanhe os novos cadastros de cuidadores e responsáveis.',
+    'Acompanhe os novos cadastros de cuidadores, responsáveis e idosos independentes.',
   ],
   administracao: [
     'Minha conta e acesso',
@@ -622,7 +622,7 @@ async function lista(categoria, contratos, atual, sessao) {
     root.prepend(
       node(
         'p',
-        'Autocuidado identificado pelo vínculo PROPRIO. Não há uma conta duplicada de idoso; o acesso usa o perfil de responsável.',
+        'Idosos que acessam a própria conta e gerenciam seu cuidado. São apresentados como idosos independentes.',
         'notice',
       ),
     );
@@ -630,7 +630,7 @@ async function lista(categoria, contratos, atual, sessao) {
     root.prepend(
       node(
         'p',
-        'Idosos não possuem status de conta próprio. A situação abaixo indica a existência de responsáveis vinculados.',
+        'Consulte o acesso próprio dos idosos independentes e os responsáveis pelas demais pessoas cadastradas.',
         'muted',
       ),
     );
@@ -657,7 +657,7 @@ async function lista(categoria, contratos, atual, sessao) {
           'Contratação',
           'Serviço / idoso',
           'Cuidador',
-          'Responsável',
+          'Contratante',
           'Valor acordado',
           'Status',
           'Cadastro',
@@ -740,7 +740,9 @@ async function lista(categoria, contratos, atual, sessao) {
         [
           'Nome',
           'Idade',
-          'Responsáveis / vínculo',
+          categoria === 'independentes'
+            ? 'Acesso próprio'
+            : 'Responsáveis / acesso',
           'Cadastro',
           categoria === 'independentes'
             ? 'Conta de autocuidado'
@@ -750,11 +752,22 @@ async function lista(categoria, contratos, atual, sessao) {
         result.dados.map((i) => [
           nome(i),
           idade(i.dataNascimento),
-          i.responsavelIdosos
-            .map(
-              (v) => `${nome(v.responsavel.usuario)} · ${labels[v.parentesco]}`,
-            )
-            .join('; ') || 'Sem responsável',
+          categoria === 'independentes'
+            ? pessoa(
+                i.responsavelIdosos.find((v) => v.parentesco === 'PROPRIO')
+                  .responsavel.usuario,
+              )
+            : [
+                ...(i.perfil === 'IDOSO_INDEPENDENTE'
+                  ? ['Acesso próprio (idoso independente)']
+                  : []),
+                ...i.responsavelIdosos
+                  .filter((v) => v.parentesco !== 'PROPRIO')
+                  .map(
+                    (v) =>
+                      `${nome(v.responsavel.usuario)} · ${labels[v.parentesco]}`,
+                  ),
+              ].join('; ') || 'Sem responsável',
           data(i.createdAt),
           categoria === 'independentes'
             ? i.responsavelIdosos
@@ -889,12 +902,13 @@ async function relatorios(aba, atual, sessao) {
         [
           { chave: 'cuidadores', nome: 'Cuidadores', cor: 'purple' },
           { chave: 'responsaveis', nome: 'Responsáveis', cor: 'green' },
+          { chave: 'independentes', nome: 'Idosos independentes', cor: 'rose' },
         ],
         { grupo: r.agrupamento },
       ),
       node(
         'p',
-        'Responsáveis incluem os cadastros de autocuidado. A classificação reflete os vínculos atuais.',
+        'Idosos independentes são contabilizados separadamente dos responsáveis. A classificação reflete os vínculos atuais.',
         'muted',
       ),
     );
@@ -1089,7 +1103,7 @@ function renderDetalhe() {
         campo('Serviço', c.nomeServico),
         campo('Status', labels[c.status]),
         campo('Idoso', nome(c.idoso)),
-        campo('Responsável', nome(c.responsavel.usuario)),
+        campo('Contratante', nome(c.responsavel.usuario)),
         campo('Cuidador', nome(c.cuidadorServico.cuidador.usuario)),
         campo('Valor acordado', dinheiro(c.valorAcordado)),
         campo('Preço-base registrado', dinheiro(c.precoReferencia)),
@@ -1115,6 +1129,10 @@ function renderDetalhe() {
     else
       conteudo.push(node('p', 'Atendimento ainda sem agendamento.', 'muted'));
   } else {
+    const proprio = c.responsavelIdosos.find((v) => v.parentesco === 'PROPRIO');
+    const vinculados = c.responsavelIdosos.filter(
+      (v) => v.parentesco !== 'PROPRIO',
+    );
     conteudo.push(
       grid(
         campo('Nome', c.nome),
@@ -1123,23 +1141,46 @@ function renderDetalhe() {
         campo('Cadastro', data(c.createdAt)),
         campo('Localização', `${c.endereco.cidade}/${c.endereco.estado}`),
       ),
-      secao(
-        'Responsáveis vinculados',
-        tabela(
-          ['Responsável', 'Vínculo', 'Conta', 'Detalhes'],
-          c.responsavelIdosos.map((v) => [
-            nome(v.responsavel.usuario),
-            labels[v.parentesco],
-            badge(v.responsavel.usuario.status),
-            button(
-              'Consultar responsável',
-              () => void abrirDetalhe('responsaveis', v.responsavel.id),
-              'review-button',
-            ),
-          ]),
-        ),
-      ),
     );
+    if (proprio)
+      conteudo.push(
+        secao(
+          'Conta do idoso independente',
+          grid(
+            campo('Perfil', 'Idoso independente'),
+            campo('Nome completo', proprio.responsavel.usuario.nome),
+            campo('E-mail', proprio.responsavel.usuario.email),
+            campo(
+              'Situação da conta',
+              labels[proprio.responsavel.usuario.status],
+            ),
+          ),
+          node(
+            'p',
+            'Este idoso acessa a própria conta e gerencia seu cuidado.',
+            'muted',
+          ),
+        ),
+      );
+    if (vinculados.length || !proprio)
+      conteudo.push(
+        secao(
+          'Responsáveis vinculados',
+          tabela(
+            ['Responsável', 'Vínculo', 'Conta', 'Detalhes'],
+            vinculados.map((v) => [
+              nome(v.responsavel.usuario),
+              labels[v.parentesco],
+              badge(v.responsavel.usuario.status),
+              button(
+                'Consultar responsável',
+                () => void abrirDetalhe('responsaveis', v.responsavel.id),
+                'review-button',
+              ),
+            ]),
+          ),
+        ),
+      );
   }
   $('detail-content').replaceChildren(...conteudo);
   $('caregiver-actions').hidden = categoria !== 'cuidadores';

@@ -13,6 +13,7 @@ import { Avatar } from '../components/Avatar';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { Notice } from '../components/Notice';
 import { QuickAccessCard } from '../components/QuickAccessCard';
+import { MeuCuidadoCard } from '../components/MeuCuidadoCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotificacoes } from '../hooks/useNotificacoes';
 import { api, mensagemErro } from '../services/api';
@@ -104,7 +105,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const nome = (usuario.nomeSocial || usuario.nome).split(/\s+/)[0];
   const cuidador = !!usuario.cuidador;
   const idosos = usuario.responsavel?.responsavelIdosos ?? [];
-  const proprio = idosos.some((item) => item.parentesco === 'PROPRIO');
+  const proprio = idosos.find((item) => item.parentesco === 'PROPRIO')?.idoso;
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -221,6 +222,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
                   color={colors.muted}
                 />
               </TouchableOpacity>
+            ) : proprio ? (
+              <MeuCuidadoCard idosoId={proprio.id} navigation={navigation} />
             ) : (
               idosos.map(({ idoso }) => (
                 <TouchableOpacity
@@ -231,11 +234,12 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
                     navigation.navigate('IdosoDetalhes', { idosoId: idoso.id })
                   }
                 >
-                  <View style={styles.elderAvatar}>
-                    <Text style={styles.avatarText}>
-                      {(idoso.nomeSocial || idoso.nome).charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
+                  <Avatar
+                    nome={idoso.nomeSocial || idoso.nome}
+                    idosoId={idoso.id}
+                    versao={idoso.foto?.updatedAt}
+                    tamanho={44}
+                  />
                   <View style={styles.grow}>
                     <Text style={styles.elderName}>
                       {idoso.nomeSocial || idoso.nome}
@@ -252,16 +256,18 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
                 </TouchableOpacity>
               ))
             )}
-            {!cuidador && !idosos.length && (
+            {!cuidador && !proprio && !idosos.length && (
               <Notice>Nenhum idoso vinculado à sua conta.</Notice>
             )}
             <Text style={styles.section}>Acesso rápido</Text>
             <View style={styles.quick}>
               {!cuidador && (
                 <QuickAccessCard
-                  title="Meus idosos"
-                  icon="people-outline"
-                  onPress={() => navigation.navigate('MeusIdosos')}
+                  title={proprio ? 'Meu perfil' : 'Meus idosos'}
+                  icon={proprio ? 'person-outline' : 'people-outline'}
+                  onPress={() =>
+                    navigation.navigate(proprio ? 'Perfil' : 'MeusIdosos')
+                  }
                 />
               )}
               <QuickAccessCard
