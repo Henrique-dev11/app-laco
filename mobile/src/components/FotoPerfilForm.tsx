@@ -1,9 +1,12 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
 import { Notice } from './Notice';
+import { AnimatedCollapse } from '../motion/AnimatedCollapse';
+import { MotionView } from '../motion/MotionView';
 import {
   escolherFoto,
   tirarFoto,
@@ -54,14 +57,24 @@ export function FotoPerfilForm({
   return (
     <View style={styles.container}>
       <View style={styles.avatar}>
-        <Avatar
-          nome={usuario.nomeSocial || usuario.nome}
-          usuarioId={idosoId ? undefined : usuario.id}
-          idosoId={idosoId}
-          versao={value === undefined ? usuario.foto?.updatedAt : null}
-          uri={value?.uri}
-          tamanho={112}
-        />
+        <MotionView
+          preset="fade"
+          trigger={
+            value?.uri ??
+            (value === null
+              ? 'removida'
+              : (usuario.foto?.updatedAt ?? 'padrao'))
+          }
+        >
+          <Avatar
+            nome={usuario.nomeSocial || usuario.nome}
+            usuarioId={idosoId ? undefined : usuario.id}
+            idosoId={idosoId}
+            versao={value === undefined ? usuario.foto?.updatedAt : null}
+            uri={value?.uri}
+            tamanho={112}
+          />
+        </MotionView>
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Alterar foto de perfil"
@@ -85,42 +98,40 @@ export function FotoPerfilForm({
       </Text>
       <Text style={appStyles.helper}>JPEG, PNG ou WebP · até 3 MB</Text>
       {!!erro && <Notice>{erro}</Notice>}
-      {opcoes && (
-        <View style={styles.opcoes}>
+      <AnimatedCollapse visible={opcoes} style={styles.opcoes}>
+        <Button
+          title="Tirar foto"
+          variant="outline"
+          disabled={disabled}
+          onPress={() => {
+            void selecionar(() =>
+              tirarFoto({ usuarioId: contaId ?? usuario.id!, idosoId }),
+            );
+          }}
+        />
+        <Button
+          title="Escolher da galeria"
+          variant="outline"
+          disabled={disabled}
+          onPress={() => {
+            void selecionar(() =>
+              escolherFoto({ usuarioId: contaId ?? usuario.id!, idosoId }),
+            );
+          }}
+        />
+        {(value || (value === undefined && usuario.foto)) && (
           <Button
-            title="Tirar foto"
+            title="Remover foto"
             variant="outline"
+            color={colors.error}
             disabled={disabled}
             onPress={() => {
-              void selecionar(() =>
-                tirarFoto({ usuarioId: contaId ?? usuario.id!, idosoId }),
-              );
+              onChange(usuario.foto ? null : undefined);
+              setOpcoes(false);
             }}
           />
-          <Button
-            title="Escolher da galeria"
-            variant="outline"
-            disabled={disabled}
-            onPress={() => {
-              void selecionar(() =>
-                escolherFoto({ usuarioId: contaId ?? usuario.id!, idosoId }),
-              );
-            }}
-          />
-          {(value || (value === undefined && usuario.foto)) && (
-            <Button
-              title="Remover foto"
-              variant="outline"
-              color={colors.error}
-              disabled={disabled}
-              onPress={() => {
-                onChange(usuario.foto ? null : undefined);
-                setOpcoes(false);
-              }}
-            />
-          )}
-        </View>
-      )}
+        )}
+      </AnimatedCollapse>
       {value !== undefined && (
         <TouchableOpacity
           accessibilityRole="button"
@@ -152,6 +163,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   texto: { textAlign: 'center' },
-  opcoes: { alignSelf: 'stretch', gap: 8, marginTop: 8 },
+  opcoes: { width: '100%', gap: 8, paddingTop: 8 },
   desfazer: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
 });

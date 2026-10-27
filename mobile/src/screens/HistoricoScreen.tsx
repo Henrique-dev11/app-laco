@@ -1,6 +1,9 @@
+import { MotionView } from '../motion/MotionView';
+import { staggerDelay } from '../motion/policy';
+import { SkeletonList } from '../motion/SkeletonList';
 import type { ScreenProps } from '../types/navigation';
 import { useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { CodigoDestaque } from '../components/CodigoDestaque';
@@ -9,7 +12,6 @@ import { statusLabels, useAppStyles } from '../theme/appStyles';
 import { useListaApi } from '../hooks/useListaApi';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
-import { useTheme } from '../theme/ThemeContext';
 import { FormField } from '../components/FormField';
 
 type Contratacao = {
@@ -38,11 +40,11 @@ type Contratacao = {
 };
 export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
   const appStyles = useAppStyles();
-  const colors = useTheme();
   const { usuario } = useAuth();
   const { dados, carregando, erro, atualizar } =
     useListaApi<Contratacao>('/contratacoes');
   const [enviando, setEnviando] = useState(false);
+  const [acaoPendente, setAcaoPendente] = useState('');
   const [mensagem, setMensagem] = useState('');
   // Código digitado pelo cuidador e código mostrado ao responsável, por contratação.
   const [codigos, setCodigos] = useState<Record<number, string>>({});
@@ -50,7 +52,9 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
     {},
   );
   async function gerarCodigo(id: number) {
+    if (enviando) return;
     setEnviando(true);
+    setAcaoPendente(`${id}:codigo`);
     setMensagem('');
     try {
       const { data } = await api.post<{ codigo: string }>(
@@ -61,6 +65,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
       setMensagem(mensagemErro(error));
     } finally {
       setEnviando(false);
+      setAcaoPendente('');
     }
   }
   async function concluir(id: number) {
@@ -72,7 +77,9 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
     await mudarStatus(id, 'CONCLUIDA', codigo);
   }
   async function mudarStatus(id: number, status: string, codigo?: string) {
+    if (enviando) return;
     setEnviando(true);
+    setAcaoPendente(`${id}:${status}`);
     setMensagem('');
     try {
       await api.patch(`/contratacoes/${id}/status`, {
@@ -84,6 +91,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
       setMensagem(mensagemErro(error));
     } finally {
       setEnviando(false);
+      setAcaoPendente('');
     }
   }
   return (
@@ -92,17 +100,23 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
       subtitle="Acompanhe suas contratações"
       tab="Início"
     >
-      {carregando && <ActivityIndicator color={colors.primary} />}
+      {carregando && !dados.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
       {!!mensagem && <Notice>{mensagem}</Notice>}
       {!carregando && !erro && !dados.length && (
         <Notice>Você ainda não tem contratações.</Notice>
       )}
-      {dados.map((contrato) => (
-        <View key={contrato.id} style={appStyles.card}>
-          <Text style={appStyles.text}>
-            {contrato.nomeServico} · {statusLabels[contrato.status]}
-          </Text>
+      {dados.map((contrato, index) => (
+        <MotionView
+          delay={staggerDelay(index)}
+          key={contrato.id}
+          style={appStyles.card}
+        >
+          <MotionView trigger={contrato.status} preset="fade">
+            <Text accessibilityLiveRegion="polite" style={appStyles.text}>
+              {contrato.nomeServico} · {statusLabels[contrato.status]}
+            </Text>
+          </MotionView>
           {!!contrato.itemProposta && (
             <Text style={appStyles.text}>
               Proposta #{contrato.itemProposta.propostaId} · versão{' '}
@@ -159,6 +173,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
             <>
               <Button
                 title="Aceitar"
+                loading={acaoPendente === `${contrato.id}:ACEITA`}
                 disabled={enviando}
                 onPress={() => {
                   void mudarStatus(contrato.id, 'ACEITA');
@@ -166,6 +181,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
               />
               <Button
                 title="Recusar"
+                loading={acaoPendente === `${contrato.id}:RECUSADA`}
                 variant="outline"
                 disabled={enviando}
                 onPress={() => {
@@ -191,6 +207,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
               />
               <Button
                 title="Concluir atendimento"
+                loading={acaoPendente === `${contrato.id}:CONCLUIDA`}
                 disabled={enviando}
                 onPress={() => {
                   void concluir(contrato.id);
@@ -204,6 +221,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
                 <CodigoDestaque codigo={codigosGerados[contrato.id]} />
               )}
               <Button
+                loading={acaoPendente === `${contrato.id}:codigo`}
                 title={
                   codigosGerados[contrato.id]
                     ? 'Gerar novo código'
@@ -220,6 +238,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
           {['SOLICITADA', 'ACEITA'].includes(contrato.status) && (
             <Button
               title="Cancelar contratação"
+              loading={acaoPendente === `${contrato.id}:CANCELADA`}
               variant="outline"
               disabled={enviando}
               onPress={() => {
@@ -227,10 +246,11 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
               }}
             />
           )}
-        </View>
+        </MotionView>
       ))}
       <Button
         title="Atualizar contratações"
+        loading={carregando}
         variant="outline"
         disabled={carregando || enviando}
         onPress={atualizar}

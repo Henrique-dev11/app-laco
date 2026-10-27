@@ -1,19 +1,15 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useCallback, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../components/Avatar';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { Notice } from '../components/Notice';
 import { QuickAccessCard } from '../components/QuickAccessCard';
 import { MeuCuidadoCard } from '../components/MeuCuidadoCard';
+import { MotionView } from '../motion/MotionView';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotificacoes } from '../hooks/useNotificacoes';
 import { api, mensagemErro } from '../services/api';
@@ -147,7 +143,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
         >
-          <View style={styles.content}>
+          <MotionView preset="fade" style={styles.content}>
             {usuario.cuidador &&
               usuario.cuidador.statusVerificacao !== 'APROVADO' && (
                 <Notice>
@@ -362,7 +358,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
                 })}
               </>
             )}
-          </View>
+          </MotionView>
         </ScrollView>
         <BottomNavigation
           onHome={() => navigation.popToTop()}

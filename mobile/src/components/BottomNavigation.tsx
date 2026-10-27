@@ -1,5 +1,7 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
+import { useMotionValue } from '../motion/useMotionValue';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
 
@@ -21,7 +23,6 @@ export function BottomNavigation({
   onProfile,
 }: Props) {
   const styles = useStyles(criarStyles);
-  const colors = useTheme();
   const items = [
     { title: 'Início', icon: 'home-outline', onPress: onHome, active: true },
     {
@@ -52,29 +53,64 @@ export function BottomNavigation({
   return (
     <View style={styles.bar}>
       {items.map((item) => (
-        <TouchableOpacity
+        <TabButton
           key={item.title}
-          accessibilityRole="button"
-          accessibilityLabel={item.title}
-          accessibilityState={{ selected: item.title === activeTab }}
+          title={item.title}
+          icon={item.icon}
+          selected={item.title === activeTab}
           onPress={item.onPress}
-          style={styles.item}
-        >
-          <Ionicons
-            name={item.icon}
-            size={22}
-            color={
-              item.title === activeTab ? colors.surface : colors.tabInactive
-            }
-          />
-          <Text
-            style={[styles.text, item.title === activeTab && styles.active]}
-          >
-            {item.title}
-          </Text>
-        </TouchableOpacity>
+        />
       ))}
     </View>
+  );
+}
+
+function TabButton({
+  title,
+  icon,
+  selected,
+  onPress,
+}: {
+  title: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
+  const progress = useMotionValue(selected ? 1 : 0);
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={styles.item}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.highlight, { opacity: progress }]}
+      />
+      <Animated.View
+        style={{
+          transform: [
+            {
+              translateY: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -2],
+              }),
+            },
+          ],
+        }}
+      >
+        <Ionicons
+          name={icon}
+          size={22}
+          color={selected ? colors.surface : colors.tabInactive}
+        />
+      </Animated.View>
+      <Text style={[styles.text, selected && styles.active]}>{title}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -93,5 +129,14 @@ const criarStyles = (colors: Paleta) =>
       gap: 4,
     },
     text: { color: colors.tabInactive, fontSize: 10 },
+    highlight: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      left: 5,
+      right: 5,
+      borderRadius: 16,
+      backgroundColor: colors.headerSoft,
+    },
     active: { color: colors.surface, fontWeight: '700' },
   });

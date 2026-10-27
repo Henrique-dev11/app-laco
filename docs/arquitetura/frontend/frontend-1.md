@@ -1,1 +1,0 @@
-Anotações da arquitetura do Frontend

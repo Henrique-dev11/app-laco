@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import { Animated } from 'react-native';
+import { MotionProvider } from './src/motion/MotionProvider';
+import { useNavigationMotion } from './src/motion/useNavigationMotion';
 import {
   DefaultTheme,
   NavigationContainer,
@@ -31,8 +34,11 @@ function Shell() {
   );
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [activeRoute, setActiveRoute] = useState('LoginType');
+  const motion = useNavigationMotion();
   function updateRoute() {
     setActiveRoute(navigationRef.getCurrentRoute()?.name ?? 'LoginType');
+    const state = navigationRef.getRootState();
+    if (state) motion.navigate(state);
   }
   return (
     <NavigationContainer
@@ -62,7 +68,9 @@ function Shell() {
             : 'dark'
         }
       />
-      <AppRoutes />
+      <Animated.View style={motion.style}>
+        <AppRoutes />
+      </Animated.View>
       <AvisosMensagens navigationRef={navigationRef} />
     </NavigationContainer>
   );
@@ -71,13 +79,15 @@ function Shell() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <ThemeProvider>
-          <CadastroProvider>
-            <Shell />
-          </CadastroProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <MotionProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <CadastroProvider>
+              <Shell />
+            </CadastroProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </MotionProvider>
     </SafeAreaProvider>
   );
 }

@@ -1,6 +1,9 @@
+import { MotionView } from '../motion/MotionView';
+import { staggerDelay } from '../motion/policy';
+import { SkeletonList } from '../motion/SkeletonList';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
@@ -79,13 +82,14 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
             Estes intervalos indicam quando você normalmente pode trabalhar. Os
             atendimentos confirmados aparecem abaixo.
           </Text>
-          {semanal.carregando && <ActivityIndicator />}
+          {semanal.carregando && !semanal.dados.length && <SkeletonList />}
           {!!semanal.erro && <Notice>{semanal.erro}</Notice>}
           {!semanal.carregando && !semanal.erro && !semanal.dados.length && (
             <Notice>Você ainda não cadastrou disponibilidade.</Notice>
           )}
-          {semanal.dados.map((d) => (
-            <View
+          {semanal.dados.map((d, index) => (
+            <MotionView
+              delay={staggerDelay(index)}
               key={d.id}
               style={[
                 styles.card,
@@ -97,7 +101,7 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
                 {d.horaInicio} às {d.horaFim} ·{' '}
                 {d.ativo ? 'Disponível toda semana' : 'Intervalo desativado'}
               </Text>
-            </View>
+            </MotionView>
           ))}
           <Button
             title="Editar minha disponibilidade"
@@ -110,6 +114,7 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
         <>
           <Text style={styles.section}>Filtrar por idoso</Text>
           <Button
+            selected={idosoId === null}
             title="Todos os idosos"
             variant={idosoId === null ? 'filled' : 'outline'}
             onPress={() => setIdosoId(null)}
@@ -117,6 +122,7 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
           {idosos.map(({ idoso }) => (
             <Button
               key={idoso.id}
+              selected={idosoId === idoso.id}
               title={idoso.nomeSocial || idoso.nome}
               variant={idosoId === idoso.id ? 'filled' : 'outline'}
               onPress={() => setIdosoId(idoso.id)}
@@ -125,7 +131,7 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
         </>
       )}
       <Text style={styles.section}>Atendimentos agendados</Text>
-      {agenda.carregando && <ActivityIndicator color={colors.primary} />}
+      {agenda.carregando && !agenda.dados.length && <SkeletonList />}
       {!!agenda.erro && <Notice>{agenda.erro}</Notice>}
       {!agenda.carregando && !agenda.erro && !agenda.dados.length && (
         <Notice>
@@ -133,9 +139,13 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
           podem ser agendadas em Minhas contratações.
         </Notice>
       )}
-      {agenda.dados.map((a) => (
-        <View key={a.id} style={styles.card}>
-          <View style={styles.badge}>
+      {agenda.dados.map((a, index) => (
+        <MotionView delay={staggerDelay(index)} key={a.id} style={styles.card}>
+          <MotionView
+            trigger={`${a.ativo}:${a.contratacao.status}`}
+            preset="fade"
+            style={styles.badge}
+          >
             <Text style={styles.badgeText}>
               {a.ativo
                 ? a.contratacao.status === 'ACEITA'
@@ -143,7 +153,7 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
                   : statusLabels[a.contratacao.status]
                 : 'Cancelado'}
             </Text>
-          </View>
+          </MotionView>
           <Text style={styles.name}>{a.contratacao.nomeServico}</Text>
           <Text style={styles.text}>
             Idoso: {a.contratacao.idoso.nomeSocial || a.contratacao.idoso.nome}
@@ -168,9 +178,10 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
               Observações: {a.contratacao.observacoes}
             </Text>
           )}
-        </View>
+        </MotionView>
       ))}
       <Button
+        loading={agenda.carregando || semanal.carregando}
         title="Atualizar agenda"
         variant="outline"
         disabled={agenda.carregando || semanal.carregando}

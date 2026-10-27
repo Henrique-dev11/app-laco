@@ -1,4 +1,7 @@
-import { ActivityIndicator, Text, View } from 'react-native';
+import { MotionView } from '../motion/MotionView';
+import { staggerDelay } from '../motion/policy';
+import { SkeletonList } from '../motion/SkeletonList';
+import { Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Avatar } from '../components/Avatar';
 import { Notice } from '../components/Notice';
@@ -28,13 +31,17 @@ export function MeusIdososScreen({ navigation }: ScreenProps<'MeusIdosos'>) {
             title="Adicionar idoso"
             onPress={() => navigation.navigate('AdicionarIdoso')}
           />
-          {lista.carregando && <ActivityIndicator />}
+          {lista.carregando && !lista.dados.length && <SkeletonList />}
           {!!lista.erro && <Notice>{lista.erro}</Notice>}
           {!lista.carregando && !lista.erro && !lista.dados.length && (
             <Notice>Nenhum idoso vinculado. Adicione o primeiro.</Notice>
           )}
-          {lista.dados.map((i) => (
-            <View key={i.id} style={styles.card}>
+          {lista.dados.map((i, index) => (
+            <MotionView
+              key={i.id}
+              delay={staggerDelay(index)}
+              style={styles.card}
+            >
               <View style={styles.row}>
                 <Avatar
                   nome={i.nomeSocial || i.nome}
@@ -73,9 +80,10 @@ export function MeusIdososScreen({ navigation }: ScreenProps<'MeusIdosos'>) {
                   navigation.push('BuscarCuidador', { idosoId: i.id })
                 }
               />
-            </View>
+            </MotionView>
           ))}
           <Button
+            loading={lista.carregando}
             title="Atualizar lista"
             variant="outline"
             disabled={lista.carregando}

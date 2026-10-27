@@ -1,3 +1,4 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useState } from 'react';
 import {
@@ -6,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -20,6 +20,7 @@ import { BottomNavigation } from '../components/BottomNavigation';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
+import { MotionView } from '../motion/MotionView';
 
 type Props = PropsWithChildren<{
   title: string;
@@ -93,7 +94,9 @@ export function AppScreenLayout({
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.content}>{children}</View>
+            <MotionView preset="fade" style={styles.content}>
+              {children}
+            </MotionView>
           </ScrollView>
         </KeyboardAvoidingView>
         {!formulario && (

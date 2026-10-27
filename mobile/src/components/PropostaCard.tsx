@@ -3,6 +3,8 @@ import { Text, View } from 'react-native';
 import { Button } from './Button';
 import { FormField } from './FormField';
 import { Notice } from './Notice';
+import { MotionView } from '../motion/MotionView';
+import { motionDurations } from '../motion/policy';
 import { useAppStyles, statusLabels } from '../theme/appStyles';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
@@ -33,10 +35,12 @@ export function PropostaCard({
   const { usuario } = useAuth();
   const [resposta, setResposta] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [acao, setAcao] = useState('');
   const [erro, setErro] = useState('');
   async function responder(status: string) {
     if (salvando) return;
     setSalvando(true);
+    setAcao(status);
     setErro('');
     try {
       await api.post(`${urlPropostas(contatoId)}/${p.id}/resposta`, {
@@ -47,8 +51,12 @@ export function PropostaCard({
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
-      await atualizar();
-      setSalvando(false);
+      try {
+        await atualizar();
+      } finally {
+        setSalvando(false);
+        setAcao('');
+      }
     }
   }
   return (
@@ -80,10 +88,17 @@ export function PropostaCard({
             </Text>
           )}
           {i.contratacoes.map((c) => (
-            <Text key={c.id} style={styles.text}>
-              Contratação #{c.id}:{' '}
-              {c.agendamento?.ativo ? statusLabels[c.status] : 'Cancelada'}
-            </Text>
+            <MotionView
+              key={c.id}
+              trigger={`${c.status}:${c.agendamento?.ativo}`}
+              preset="fade"
+              duration={motionDurations.feedback}
+            >
+              <Text style={styles.text}>
+                Contratação #{c.id}:{' '}
+                {c.agendamento?.ativo ? statusLabels[c.status] : 'Cancelada'}
+              </Text>
+            </MotionView>
           ))}
         </View>
       ))}
@@ -91,7 +106,15 @@ export function PropostaCard({
         <Text style={styles.text}>Observações: {p.observacoes}</Text>
       )}
       <Text style={styles.section}>Total: {valorProposta(p.total)}</Text>
-      <Text style={styles.section}>{statusProposta[p.status]}</Text>
+      <MotionView
+        trigger={p.status}
+        preset="fade"
+        duration={motionDurations.feedback}
+      >
+        <Text accessibilityLiveRegion="polite" style={styles.section}>
+          {statusProposta[p.status]}
+        </Text>
+      </MotionView>
       {!!p.resposta && <Text style={styles.text}>Resposta: {p.resposta}</Text>}
       {!!erro && <Notice>{erro}</Notice>}
       {!!usuario?.responsavel && p.status === 'PENDENTE' && (
@@ -109,7 +132,12 @@ export function PropostaCard({
             editable={!salvando}
           />
           <Button
-            title={salvando ? 'Processando...' : 'Aceitar proposta'}
+            loading={salvando && acao === 'ACEITA'}
+            title={
+              salvando && acao === 'ACEITA'
+                ? 'Processando...'
+                : 'Aceitar proposta'
+            }
             disabled={salvando}
             onPress={() => {
               void responder('ACEITA');
@@ -117,6 +145,7 @@ export function PropostaCard({
           />
           <Button
             title="Solicitar alterações"
+            loading={salvando && acao === 'ALTERACOES_SOLICITADAS'}
             variant="outline"
             disabled={salvando || !resposta.trim()}
             onPress={() => {
@@ -125,6 +154,7 @@ export function PropostaCard({
           />
           <Button
             title="Recusar proposta"
+            loading={salvando && acao === 'RECUSADA'}
             variant="outline"
             disabled={salvando}
             onPress={() => {
