@@ -1,5 +1,6 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
 import { Notice } from '../components/Notice';
@@ -75,6 +76,7 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
         <Text style={styles.link}>Esqueci minha senha</Text>
       </TouchableOpacity>
       <Button
+        loading={enviando}
         title={enviando ? 'Entrando...' : 'Entrar'}
         color={colors.elderly}
         disabled={enviando}

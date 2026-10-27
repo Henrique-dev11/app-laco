@@ -1,14 +1,16 @@
+import { useMotion } from '../motion/MotionProvider';
+import { staggerDelay } from '../motion/policy';
+import { SkeletonList } from '../motion/SkeletonList';
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { isAxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -94,6 +96,7 @@ export function BuscarCuidadorScreen({
 }: ScreenProps<'BuscarCuidador'>) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
+  const { reducedMotion } = useMotion();
   const { usuario } = useAuth();
   const { dados, carregando, erro, atualizar } = useListaApi<Cuidador>(
     '/catalogo/cuidadores',
@@ -239,7 +242,7 @@ export function BuscarCuidadorScreen({
         </Notice>
       )}
 
-      {carregando && <ActivityIndicator color={colors.primary} />}
+      {carregando && !dados.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
       {!carregando && !erro && (
         <Text style={styles.contagem}>
@@ -256,12 +259,14 @@ export function BuscarCuidadorScreen({
         <Notice>Nenhum cuidador encontrado para essa busca.</Notice>
       )}
 
-      {filtrados.map((cuidador) => {
+      {filtrados.map((cuidador, index) => {
         const { nota } = avaliacaoProvisoria(cuidador.id);
         const servicos = cuidador.cuidadorServicos;
         return (
           <TouchableOpacity
             key={cuidador.id}
+            enter
+            delay={staggerDelay(index)}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel={`Ver detalhes de ${nomeDe(cuidador)}`}
@@ -326,7 +331,7 @@ export function BuscarCuidadorScreen({
       <Modal
         visible={!!aberto}
         transparent
-        animationType="slide"
+        animationType={reducedMotion ? 'none' : 'slide'}
         onRequestClose={fechar}
       >
         <Pressable style={styles.fundoModal} onPress={fechar}>
@@ -406,6 +411,7 @@ export function BuscarCuidadorScreen({
                       editable={!enviando}
                     />
                     <Button
+                      loading={enviando}
                       title={enviando ? 'Enviando...' : 'Confirmar solicitação'}
                       disabled={enviando || !idosoId}
                       onPress={() => {
@@ -420,48 +426,48 @@ export function BuscarCuidadorScreen({
                     />
                   </View>
                 ) : (
-                <View style={styles.bloco}>
-                  <Text style={styles.secao}>Serviços</Text>
-                  {!aberto.cuidadorServicos.length && (
-                    <Text style={styles.texto}>
-                      Este cuidador ainda não cadastrou serviços.
-                    </Text>
-                  )}
-                  {aberto.cuidadorServicos.map((oferta) => (
-                    <View key={oferta.id} style={styles.servico}>
-                      <View style={styles.cardInfo}>
-                        <Text style={styles.servicoNome}>
-                          {oferta.servico.nome}
+                  <View style={styles.bloco}>
+                    <Text style={styles.secao}>Serviços</Text>
+                    {!aberto.cuidadorServicos.length && (
+                      <Text style={styles.texto}>
+                        Este cuidador ainda não cadastrou serviços.
+                      </Text>
+                    )}
+                    {aberto.cuidadorServicos.map((oferta) => (
+                      <View key={oferta.id} style={styles.servico}>
+                        <View style={styles.cardInfo}>
+                          <Text style={styles.servicoNome}>
+                            {oferta.servico.nome}
+                          </Text>
+                          <Text style={styles.local}>
+                            {oferta.duracaoMinutos} minutos
+                          </Text>
+                        </View>
+                        <Text style={styles.preco}>
+                          R$ {preco(oferta.preco)}
                         </Text>
-                        <Text style={styles.local}>
-                          {oferta.duracaoMinutos} minutos
-                        </Text>
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          disabled={enviando || !idosoId}
+                          onPress={() =>
+                            setSelecionada({
+                              id: oferta.id,
+                              nome: oferta.servico.nome,
+                              cuidador: nomeDe(aberto),
+                              preco: oferta.preco,
+                              duracaoMinutos: oferta.duracaoMinutos,
+                            })
+                          }
+                          style={[
+                            styles.solicitar,
+                            (enviando || !idosoId) && styles.desativado,
+                          ]}
+                        >
+                          <Text style={styles.solicitarTexto}>Selecionar</Text>
+                        </TouchableOpacity>
                       </View>
-                      <Text style={styles.preco}>R$ {preco(oferta.preco)}</Text>
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        disabled={enviando || !idosoId}
-                        onPress={() =>
-                          setSelecionada({
-                            id: oferta.id,
-                            nome: oferta.servico.nome,
-                            cuidador: nomeDe(aberto),
-                            preco: oferta.preco,
-                            duracaoMinutos: oferta.duracaoMinutos,
-                          })
-                        }
-                        style={[
-                          styles.solicitar,
-                          (enviando || !idosoId) && styles.desativado,
-                        ]}
-                      >
-                        <Text style={styles.solicitarTexto}>
-                          Selecionar
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
+                    ))}
+                  </View>
                 )}
 
                 {!idosoId && (

@@ -1,8 +1,9 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import {
   Image,
+  ActivityIndicator,
   StyleSheet,
   Text,
-  TouchableOpacity,
   type ImageSourcePropType,
 } from 'react-native';
 import type { Paleta } from '../theme';
@@ -15,6 +16,8 @@ type Props = {
   imageSource?: ImageSourcePropType;
   variant?: 'filled' | 'outline';
   disabled?: boolean;
+  loading?: boolean;
+  selected?: boolean;
 };
 
 export function Button({
@@ -24,6 +27,8 @@ export function Button({
   imageSource,
   variant = 'filled',
   disabled,
+  loading = false,
+  selected,
 }: Props) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
@@ -31,9 +36,13 @@ export function Button({
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{
+        disabled: !!disabled || loading,
+        busy: loading,
+        selected,
+      }}
       activeOpacity={0.8}
-      disabled={disabled}
+      disabled={disabled || loading}
       onPress={onPress}
       style={[
         styles.button,
@@ -41,10 +50,17 @@ export function Button({
           backgroundColor: variant === 'outline' ? colors.surface : cor,
           borderColor: cor,
         },
-        disabled && styles.disabled,
+        (disabled || loading) && styles.disabled,
       ]}
     >
-      {imageSource && <Image source={imageSource} style={styles.icon} />}
+      {loading ? (
+        <ActivityIndicator
+          color={variant === 'outline' ? cor : colors.surface}
+          size="small"
+        />
+      ) : (
+        imageSource && <Image source={imageSource} style={styles.icon} />
+      )}
       <Text
         style={[
           styles.text,

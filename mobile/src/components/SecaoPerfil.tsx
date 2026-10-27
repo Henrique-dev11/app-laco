@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAppStyles } from '../theme/appStyles';
 import { useTheme } from '../theme/ThemeContext';
+import { MotionView } from '../motion/MotionView';
 
 export function SecaoPerfil({
   titulo,
@@ -17,7 +18,7 @@ export function SecaoPerfil({
   const appStyles = useAppStyles();
   const colors = useTheme();
   return (
-    <View style={appStyles.card}>
+    <MotionView style={appStyles.card} preset="fade">
       <View style={styles.cabecalho}>
         <Ionicons name={icone} size={21} color={colors.primary} />
         <Text
@@ -29,7 +30,7 @@ export function SecaoPerfil({
       </View>
       {!!descricao && <Text style={appStyles.helper}>{descricao}</Text>}
       {children}
-    </View>
+    </MotionView>
   );
 }
 

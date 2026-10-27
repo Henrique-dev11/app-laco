@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, Text, View } from 'react-native';
+import { Keyboard, Text, View } from 'react-native';
 import { usePreventRemove } from '@react-navigation/native';
 import { isAxiosError } from 'axios';
 import { Button } from '../components/Button';
@@ -35,7 +35,6 @@ import {
   type DadosPerfil,
 } from '../utils/perfis';
 import { useAppStyles } from '../theme/appStyles';
-import { useTheme } from '../theme/ThemeContext';
 import type { Endereco, UsuarioAtual } from '../types/auth';
 import type { ScreenProps } from '../types/navigation';
 
@@ -55,7 +54,6 @@ function FormularioPerfil({
   )?.idoso;
   const { atualizar, fotoPendente, limparFotoPendente } = useAuth();
   const styles = useAppStyles();
-  const colors = useTheme();
   const [original, setOriginal] = useState(() =>
     normalizarPerfil(dadosPerfil(usuario)),
   );
@@ -320,13 +318,8 @@ function FormularioPerfil({
       )}
       <View style={{ gap: 12 }}>
         {!!mensagem && <Notice>{mensagem}</Notice>}
-        {enviando && (
-          <ActivityIndicator
-            accessibilityLabel="Salvando alterações"
-            color={colors.primary}
-          />
-        )}
         <Button
+          loading={enviando}
           title={enviando ? 'Salvando...' : 'Salvar alterações'}
           disabled={enviando}
           onPress={() => {

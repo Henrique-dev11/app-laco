@@ -1,15 +1,19 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
 import {
   Image,
+  Animated,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
   type TextInputProps,
 } from 'react-native';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
+import { useMotionValue } from '../motion/useMotionValue';
+import { MotionView } from '../motion/MotionView';
+import { motionDurations } from '../motion/policy';
 
 type Props = TextInputProps & {
   label: string;
@@ -27,12 +31,33 @@ export function FormField({
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const [hidden, setHidden] = useState(true);
+  const [focused, setFocused] = useState(false);
+  const focus = useMotionValue(focused ? 1 : 0, motionDurations.focus);
   return (
     <View style={styles.group}>
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.field, !!error && styles.invalid]}>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            styles.focus,
+            {
+              opacity: focus,
+              borderColor: error ? colors.error : colors.primary,
+            },
+          ]}
+        />
         <TextInput
           {...props}
+          onFocus={(event) => {
+            setFocused(true);
+            props.onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            props.onBlur?.(event);
+          }}
           accessibilityLabel={label}
           placeholderTextColor={colors.muted}
           secureTextEntry={password ? hidden : props.secureTextEntry}
@@ -59,9 +84,11 @@ export function FormField({
         )}
       </View>
       {!!error && (
-        <Text accessibilityLiveRegion="polite" style={styles.error}>
-          {error}
-        </Text>
+        <MotionView key={error} preset="fade">
+          <Text accessibilityLiveRegion="polite" style={styles.error}>
+            {error}
+          </Text>
+        </MotionView>
       )}
     </View>
   );
@@ -89,6 +116,7 @@ const criarStyles = (colors: Paleta) =>
       color: colors.text,
     },
     invalid: { borderColor: colors.error },
+    focus: { borderWidth: 2, borderRadius: 12 },
     error: { fontSize: 12, color: colors.error },
     eye: {
       minHeight: 44,

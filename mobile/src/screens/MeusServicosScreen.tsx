@@ -1,5 +1,7 @@
+import { MotionView } from '../motion/MotionView';
+import { SkeletonList } from '../motion/SkeletonList';
 import { useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
 import { Notice } from '../components/Notice';
@@ -40,7 +42,7 @@ function EditarOferta({
     duracaoSugeridaMinutos: oferta.servico.duracaoSugeridaMinutos,
   });
   return (
-    <View style={{ gap: 8 }}>
+    <MotionView preset="fade" style={{ gap: 8 }}>
       <ServiceConfigFields
         value={value}
         onChange={setValue}
@@ -67,7 +69,7 @@ function EditarOferta({
           )
         }
       />
-    </View>
+    </MotionView>
   );
 }
 
@@ -145,7 +147,7 @@ export function MeusServicosScreen() {
         mudam contratos já solicitados.
       </Notice>
       {!!mensagem && <Notice>{mensagem}</Notice>}
-      {ofertas.carregando && <ActivityIndicator />}
+      {ofertas.carregando && !ofertas.dados.length && <SkeletonList />}
       {!!ofertas.erro && <Notice>{ofertas.erro}</Notice>}
       {!ofertas.carregando && !ofertas.erro && !ofertas.dados.length && (
         <Notice>Você ainda não oferece serviços.</Notice>
@@ -161,7 +163,7 @@ export function MeusServicosScreen() {
         />
       ))}
       <Text style={styles.section}>Adicionar serviço do catálogo</Text>
-      {catalogo.carregando && <ActivityIndicator />}
+      {catalogo.carregando && !catalogo.dados.length && <SkeletonList />}
       {!!catalogo.erro && <Notice>{catalogo.erro}</Notice>}
       {catalogo.dados
         .filter((s) => !ofertas.dados.some((o) => o.servico.id === s.id))
@@ -223,6 +225,7 @@ export function MeusServicosScreen() {
             disabled={enviando}
           />
           <Button
+            loading={enviando}
             title={enviando ? 'Salvando...' : 'Salvar novo serviço'}
             disabled={enviando}
             onPress={() => {
@@ -238,6 +241,7 @@ export function MeusServicosScreen() {
         </>
       )}
       <Button
+        loading={ofertas.carregando || catalogo.carregando}
         title="Atualizar serviços"
         variant="outline"
         disabled={enviando || ofertas.carregando || catalogo.carregando}

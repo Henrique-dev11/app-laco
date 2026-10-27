@@ -1,5 +1,6 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { ComponentProps } from 'react';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';

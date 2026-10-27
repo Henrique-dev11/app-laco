@@ -1,13 +1,21 @@
 import { StyleSheet, Text } from 'react-native';
 import type { Paleta } from '../theme';
 import { useStyles } from '../theme/ThemeContext';
+import { MotionView } from '../motion/MotionView';
+import { motionDurations } from '../motion/policy';
 
 export function Notice({ children }: { children: string }) {
   const styles = useStyles(criarStyles);
   return (
-    <Text accessibilityLiveRegion="polite" style={styles.notice}>
-      {children}
-    </Text>
+    <MotionView
+      trigger={children}
+      preset="fade"
+      duration={motionDurations.feedback}
+    >
+      <Text accessibilityLiveRegion="polite" style={styles.notice}>
+        {children}
+      </Text>
+    </MotionView>
   );
 }
 

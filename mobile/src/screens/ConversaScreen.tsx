@@ -1,5 +1,10 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useFocusEffect } from '@react-navigation/native';
 import { Button } from '../components/Button';
+import { AnimatedCollapse } from '../motion/AnimatedCollapse';
+import { MotionView } from '../motion/MotionView';
+import { SkeletonList } from '../motion/SkeletonList';
+import { juntarMensagens as juntar, idsNovasMensagens } from '../utils/chat';
 import { PropostaCard } from '../components/PropostaCard';
 import { listarPropostas, type Proposta } from '../services/propostas';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,7 +17,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -38,14 +42,6 @@ import type { ScreenProps } from '../types/navigation';
 const INTERVALO_MS = 4000;
 const LIMITE = 1000;
 
-/** Junta mensagens novas às atuais sem duplicar (por id), em ordem. */
-function juntar(atuais: Mensagem[], novas: Mensagem[]) {
-  if (!novas.length) return atuais;
-  const porId = new Map(atuais.map((m) => [m.id, m]));
-  for (const nova of novas) porId.set(nova.id, nova);
-  return [...porId.values()].sort((a, b) => a.id - b.id);
-}
-
 export function ConversaScreen(props: ScreenProps<'Conversa'>) {
   return <ConversaConteudo key={props.route.params.usuarioId} {...props} />;
 }
@@ -62,8 +58,24 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const ultimoId = useRef<number | undefined>(undefined);
+  const lista = useRef<FlatList<Mensagem>>(null);
+  const conhecidos = useRef(new Set<number>());
+  const inicializada = useRef(false);
+  const pertoDoFim = useRef(true);
+  const tamanhoAnterior = useRef(0);
+  const offsetAnterior = useRef(0);
+  const [animadas, setAnimadas] = useState<number[]>([]);
+  const [novasNaoVistas, setNovasNaoVistas] = useState(0);
   const insets = useSafeAreaInsets();
-  const [tecladoAltura, setTecladoAltura] = useState(0);
+  const [tecladoVisivel, setTecladoVisivel] = useState(() =>
+    Keyboard.isVisible(),
+  );
+
+  useEffect(() => {
+    if (!animadas.length) return;
+    const timer = setTimeout(() => setAnimadas([]), 500);
+    return () => clearTimeout(timer);
+  }, [animadas]);
 
   // Não avisa por notificação da conversa que já está aberta.
   useEffect(() => {
@@ -71,15 +83,17 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
     return () => definirConversaAberta(null);
   }, [usuarioId]);
 
-  // No Android (tela de borda a borda) o sistema não encolhe a tela com o
-  // teclado: levantamos a barra de envio na mão.
+  // O KeyboardAvoidingView controla o espaço do teclado. Estes eventos apenas
+  // retiram a área do indicador inferior enquanto a barra está acima dele.
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const mostrar = Keyboard.addListener('keyboardDidShow', (e) =>
-      setTecladoAltura(e.endCoordinates.height),
+    if (Platform.OS === 'web') return;
+    const mostrar = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event) => setTecladoVisivel(event.endCoordinates.height > 0),
     );
-    const esconder = Keyboard.addListener('keyboardDidHide', () =>
-      setTecladoAltura(0),
+    const esconder = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setTecladoVisivel(false),
     );
     return () => {
       mostrar.remove();
@@ -96,6 +110,18 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
         ]);
         if (!ativo()) return;
         setPropostas(propostasAtuais);
+        const novosIds = idsNovasMensagens(
+          conhecidos.current,
+          novas,
+          inicializada.current,
+        );
+        inicializada.current = true;
+        for (const m of novas) conhecidos.current.add(m.id);
+        if (novosIds.length) {
+          setAnimadas((ids) => [...ids, ...novosIds].slice(-30));
+          if (!pertoDoFim.current)
+            setNovasNaoVistas((n) => n + novosIds.length);
+        }
         if (novas.length) {
           ultimoId.current = novas[novas.length - 1].id;
           setMensagens((atuais) => juntar(atuais, novas));
@@ -135,6 +161,12 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
     setEnviando(true);
     try {
       const enviada = await enviarMensagem(usuarioId, conteudo);
+      if (!conhecidos.current.has(enviada.id)) {
+        conhecidos.current.add(enviada.id);
+        setAnimadas((ids) => [...ids, enviada.id].slice(-30));
+      }
+      pertoDoFim.current = true;
+      setNovasNaoVistas(0);
       setMensagens((atuais) => juntar(atuais, [enviada]));
       setTexto('');
       setErro('');
@@ -148,8 +180,14 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
   const podeEnviar = !!texto.trim() && !enviando;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+    // Abrange também o cabeçalho e o topo seguro: o frame começa na origem da
+    // tela, como as coordenadas do teclado, sem offset fixo ou altura estimada.
+    <KeyboardAvoidingView
+      style={styles.safe}
+      enabled={Platform.OS !== 'web'}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.voltar}
@@ -174,106 +212,184 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
           </Text>
         </View>
 
-        <KeyboardAvoidingView
-          style={[
-            styles.corpo,
-            Platform.OS === 'android' && {
-              paddingBottom: Math.max(0, tecladoAltura - insets.bottom),
-            },
-          ]}
-          enabled={Platform.OS === 'ios'}
-          behavior="padding"
-        >
-          {carregando ? (
-            <ActivityIndicator style={styles.centro} color={colors.primary} />
-          ) : (
-            <FlatList
-              // Lista invertida: a mensagem mais nova fica embaixo e a tela
-              // já abre no fim da conversa.
-              inverted
-              data={[...mensagens].reverse()}
-              keyExtractor={(item) => String(item.id)}
-              contentContainerStyle={styles.lista}
-              keyboardShouldPersistTaps="handled"
-              ListEmptyComponent={
-                <Text style={[styles.vazio, styles.invertido]}>
-                  Nenhuma mensagem ainda. Diga olá!
-                </Text>
-              }
-              renderItem={({ item }) => {
-                const minha = item.remetenteId === usuario?.id;
-                const proposta = propostas.find(
-                  (p) => p.id === item.propostaId,
-                );
-                if (proposta) {
-                  const ultima = !propostas.some(
-                    (p) =>
-                      p.negociacaoId === proposta.negociacaoId &&
-                      p.versao > proposta.versao,
+        <View style={styles.corpo}>
+          <View style={styles.listaArea}>
+            {carregando ? (
+              <View style={[styles.centro, styles.aviso]}>
+                <SkeletonList count={3} />
+              </View>
+            ) : (
+              <FlatList
+                ref={lista}
+                style={styles.listaArea}
+                // Lista invertida: a mensagem mais nova fica embaixo e a tela
+                // já abre no fim da conversa.
+                inverted
+                data={[...mensagens].reverse()}
+                keyExtractor={(item) => String(item.id)}
+                contentContainerStyle={styles.lista}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode={
+                  Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+                }
+                automaticallyAdjustKeyboardInsets={false}
+                contentInsetAdjustmentBehavior="never"
+                maintainVisibleContentPosition={
+                  Platform.OS === 'web'
+                    ? undefined
+                    : { minIndexForVisible: 0, autoscrollToTopThreshold: 80 }
+                }
+                scrollEventThrottle={32}
+                onLayout={() => {
+                  // A abertura do teclado muda o viewport, não o conteúdo.
+                  // Mantém o fim visível sem interromper a leitura do histórico.
+                  if (pertoDoFim.current)
+                    lista.current?.scrollToOffset({
+                      offset: 0,
+                      animated: false,
+                    });
+                }}
+                onScroll={(event) => {
+                  const offset = Math.max(0, event.nativeEvent.contentOffset.y);
+                  offsetAnterior.current = offset;
+                  pertoDoFim.current = offset < 80;
+                  if (pertoDoFim.current) setNovasNaoVistas(0);
+                }}
+                onContentSizeChange={(_, height) => {
+                  const anterior = tamanhoAnterior.current;
+                  tamanhoAnterior.current = height;
+                  if (pertoDoFim.current)
+                    lista.current?.scrollToOffset({
+                      offset: 0,
+                      animated: false,
+                    });
+                  else if (
+                    Platform.OS === 'web' &&
+                    anterior > 0 &&
+                    height !== anterior
+                  ) {
+                    // Compensa também a correção negativa das alturas estimadas
+                    // da FlatList, para não acumular deslocamentos na web.
+                    const offset = Math.max(
+                      0,
+                      offsetAnterior.current + height - anterior,
+                    );
+                    offsetAnterior.current = offset;
+                    lista.current?.scrollToOffset({ offset, animated: false });
+                  }
+                }}
+                ListEmptyComponent={
+                  <Text style={[styles.vazio, styles.invertido]}>
+                    Nenhuma mensagem ainda. Diga olá!
+                  </Text>
+                }
+                renderItem={({ item }) => {
+                  const minha = item.remetenteId === usuario?.id;
+                  const proposta = propostas.find(
+                    (p) => p.id === item.propostaId,
                   );
+                  if (proposta) {
+                    const ultima = !propostas.some(
+                      (p) =>
+                        p.negociacaoId === proposta.negociacaoId &&
+                        p.versao > proposta.versao,
+                    );
+                    return (
+                      <MotionView
+                        animate={animadas.includes(item.id)}
+                        preset="fade"
+                        style={{ gap: 4 }}
+                      >
+                        <PropostaCard
+                          proposta={proposta}
+                          contatoId={usuarioId}
+                          podeRevisar={
+                            ultima &&
+                            [
+                              'PENDENTE',
+                              'RECUSADA',
+                              'ALTERACOES_SOLICITADAS',
+                            ].includes(proposta.status)
+                          }
+                          atualizar={() => atualizar()}
+                          novaVersao={() =>
+                            navigation.navigate('CriarProposta', {
+                              usuarioId,
+                              anterior: proposta,
+                            })
+                          }
+                          verAgenda={() => navigation.navigate('Agenda')}
+                        />
+                        <Text style={styles.horaDele}>
+                          {rotuloHora(item.createdAt)}
+                        </Text>
+                      </MotionView>
+                    );
+                  }
                   return (
-                    <View style={{ gap: 4 }}>
-                      <PropostaCard
-                        proposta={proposta}
-                        contatoId={usuarioId}
-                        podeRevisar={
-                          ultima &&
-                          [
-                            'PENDENTE',
-                            'RECUSADA',
-                            'ALTERACOES_SOLICITADAS',
-                          ].includes(proposta.status)
-                        }
-                        atualizar={() => atualizar()}
-                        novaVersao={() =>
-                          navigation.navigate('CriarProposta', {
-                            usuarioId,
-                            anterior: proposta,
-                          })
-                        }
-                        verAgenda={() => navigation.navigate('Agenda')}
-                      />
-                      <Text style={styles.horaDele}>
+                    <MotionView
+                      animate={animadas.includes(item.id)}
+                      preset="fade"
+                      style={[
+                        styles.balao,
+                        minha ? styles.balaoMeu : styles.balaoDele,
+                      ]}
+                    >
+                      <Text style={minha ? styles.textoMeu : styles.textoDele}>
+                        {item.conteudo}
+                      </Text>
+                      <Text style={minha ? styles.horaMeu : styles.horaDele}>
                         {rotuloHora(item.createdAt)}
                       </Text>
-                    </View>
+                    </MotionView>
                   );
-                }
-                return (
-                  <View
-                    style={[
-                      styles.balao,
-                      minha ? styles.balaoMeu : styles.balaoDele,
-                    ]}
-                  >
-                    <Text style={minha ? styles.textoMeu : styles.textoDele}>
-                      {item.conteudo}
-                    </Text>
-                    <Text style={minha ? styles.horaMeu : styles.horaDele}>
-                      {rotuloHora(item.createdAt)}
-                    </Text>
-                  </View>
-                );
-              }}
-            />
-          )}
+                }}
+              />
+            )}
+            {novasNaoVistas > 0 && (
+              <MotionView
+                preset="fade"
+                style={styles.novas}
+                accessibilityLiveRegion="polite"
+              >
+                <Button
+                  title={`${novasNaoVistas} ${novasNaoVistas === 1 ? 'nova mensagem' : 'novas mensagens'}`}
+                  variant="outline"
+                  onPress={() => {
+                    pertoDoFim.current = true;
+                    setNovasNaoVistas(0);
+                    lista.current?.scrollToOffset({
+                      offset: 0,
+                      animated: false,
+                    });
+                  }}
+                />
+              </MotionView>
+            )}
+          </View>
           {!!erro && (
             <View style={styles.aviso}>
               <Notice>{erro}</Notice>
             </View>
           )}
-          {!!usuario?.cuidador && menuProposta && (
-            <View style={styles.aviso}>
-              <Button
-                title="Criar proposta de atendimento"
-                onPress={() => {
-                  setMenuProposta(false);
-                  navigation.navigate('CriarProposta', { usuarioId });
-                }}
-              />
-            </View>
-          )}
-          <View style={styles.barra}>
+          <AnimatedCollapse
+            visible={!!usuario?.cuidador && menuProposta}
+            style={styles.aviso}
+          >
+            <Button
+              title="Criar proposta de atendimento"
+              onPress={() => {
+                setMenuProposta(false);
+                navigation.navigate('CriarProposta', { usuarioId });
+              }}
+            />
+          </AnimatedCollapse>
+          <View
+            style={[
+              styles.barra,
+              { paddingBottom: 12 + (tecladoVisivel ? 0 : insets.bottom) },
+            ]}
+          >
             {!!usuario?.cuidador && (
               <TouchableOpacity
                 accessibilityRole="button"
@@ -296,33 +412,39 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
               placeholder="Escreva uma mensagem"
               placeholderTextColor={colors.muted}
               multiline
+              textAlignVertical="top"
               maxLength={LIMITE}
               accessibilityLabel="Mensagem"
             />
             <TouchableOpacity
               accessibilityRole="button"
               accessibilityLabel="Enviar mensagem"
+              accessibilityState={{ busy: enviando, disabled: !podeEnviar }}
               disabled={!podeEnviar}
               onPress={() => void enviar()}
               style={[styles.enviar, !podeEnviar && styles.enviarOff]}
             >
-              {enviando ? (
-                <ActivityIndicator color={colors.surface} />
-              ) : (
-                <Ionicons name="send" size={20} color={colors.surface} />
-              )}
+              <MotionView
+                preset="pop"
+                trigger={enviando ? 'enviando' : 'pronto'}
+              >
+                {enviando ? (
+                  <ActivityIndicator color={colors.surface} />
+                ) : (
+                  <Ionicons name="send" size={20} color={colors.surface} />
+                )}
+              </MotionView>
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 const criarStyles = (colors: Paleta) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.header },
-    container: { flex: 1, backgroundColor: colors.background },
     header: {
       backgroundColor: colors.header,
       borderBottomLeftRadius: 20,
@@ -342,8 +464,14 @@ const criarStyles = (colors: Paleta) =>
       backgroundColor: colors.headerSoft,
     },
     titulo: { flex: 1, fontSize: 18, fontWeight: '700', color: colors.surface },
-    corpo: { flex: 1 },
+    corpo: { flex: 1, minHeight: 0, backgroundColor: colors.background },
     centro: { flex: 1 },
+    listaArea: {
+      flex: 1,
+      minHeight: 0,
+      ...(Platform.OS === 'web' ? { overflowAnchor: 'none' } : {}),
+    },
+    novas: { position: 'absolute', bottom: 12, left: 16, right: 16 },
     lista: { padding: 16, gap: 8 },
     vazio: { textAlign: 'center', color: colors.muted, padding: 24 },
     invertido: { transform: [{ scaleY: -1 }] },
@@ -387,6 +515,7 @@ const criarStyles = (colors: Paleta) =>
     },
     campo: {
       flex: 1,
+      minWidth: 0,
       maxHeight: 120,
       minHeight: 44,
       paddingHorizontal: 16,

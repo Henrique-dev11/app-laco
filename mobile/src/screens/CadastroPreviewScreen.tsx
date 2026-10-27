@@ -111,6 +111,7 @@ export function CadastroPreviewScreen({
           </View>
           {!!erro && <Notice>{erro}</Notice>}
           <Button
+            loading={enviando}
             title={enviando ? 'Salvando...' : 'Confirmar cadastro'}
             color={config.color}
             disabled={enviando}

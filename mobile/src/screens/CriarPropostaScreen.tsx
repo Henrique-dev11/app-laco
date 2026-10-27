@@ -475,6 +475,7 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
       {revisao ? (
         <>
           <Button
+            loading={salvando}
             title={salvando ? 'Enviando...' : 'Enviar proposta'}
             disabled={salvando}
             onPress={() => {

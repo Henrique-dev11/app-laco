@@ -38,7 +38,6 @@ import {
   type DadosIdosoFormulario,
 } from '../utils/perfis';
 import { statusLabels, useAppStyles } from '../theme/appStyles';
-import { useTheme } from '../theme/ThemeContext';
 
 type Navigation =
   | ScreenProps<'EditarIdoso'>['navigation']
@@ -52,7 +51,6 @@ function FormularioIdoso({
 }) {
   const { usuario, atualizar, fotoPendente, limparFotoPendente } = useAuth();
   const styles = useAppStyles();
-  const colors = useTheme();
   const [registroId, setRegistroId] = useState(idoso?.id);
   const [original, setOriginal] = useState(() =>
     normalizarDadosIdoso(dadosIdosoFormulario(idoso)),
@@ -324,13 +322,8 @@ function FormularioIdoso({
       )}
       <View style={{ gap: 12 }}>
         {!!mensagem && <Notice>{mensagem}</Notice>}
-        {enviando && (
-          <ActivityIndicator
-            accessibilityLabel="Salvando alterações"
-            color={colors.primary}
-          />
-        )}
         <Button
+          loading={enviando}
           title={
             enviando
               ? 'Salvando...'

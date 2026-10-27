@@ -1,11 +1,6 @@
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { listarServicos } from '../services/servicos';
 import type { Servico } from '../types/servico';
 import type { Paleta } from '../theme';
