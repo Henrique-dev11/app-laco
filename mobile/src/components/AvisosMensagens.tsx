@@ -1,5 +1,8 @@
+import { fs } from '../theme/tipografia';
+import { MotionView } from '../motion/MotionView';
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { NavigationContainerRefWithCurrent } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
@@ -108,7 +111,8 @@ export function AvisosMensagens({
 
   if (!usuarioId || !aviso) return null;
   return (
-    <View
+    <MotionView
+      trigger={`${aviso.dados.usuarioId}:${aviso.texto}`}
       pointerEvents="box-none"
       style={[styles.area, { top: insets.top + 8 }]}
     >
@@ -130,7 +134,7 @@ export function AvisosMensagens({
           {resumir(aviso.texto)}
         </Text>
       </TouchableOpacity>
-    </View>
+    </MotionView>
   );
 }
 
@@ -150,6 +154,6 @@ const criarStyles = (colors: Paleta) =>
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 3 },
     },
-    nome: { fontSize: 15, fontWeight: '700', color: colors.text },
-    texto: { fontSize: 14, color: colors.muted },
+    nome: { fontSize: fs(15), fontWeight: '700', color: colors.text },
+    texto: { fontSize: fs(14), color: colors.muted },
   });

@@ -21,16 +21,19 @@ export type RootStackParamList = {
   Historico: undefined;
   Agenda: undefined;
   AgendarAtendimento: { contratacaoId: number };
-  EditarCuidador: undefined;
-  EditarResponsavel: undefined;
+  EditarPerfil: undefined;
   MeusIdosos: undefined;
   AdicionarIdoso: undefined;
   EditarIdoso: { idosoId: number };
   Disponibilidade: undefined;
-  IdosoDetalhes: { idosoId: number };
+  IdosoDetalhes: { idosoId: number; mensagem?: string };
   Mensagens: undefined;
   Conversa: { usuarioId: number; nome: string; fotoVersao: string | null };
-  Perfil: ResumoPerfil | undefined;
+  CriarProposta: {
+    usuarioId: number;
+    anterior?: import('../services/propostas').Proposta;
+  };
+  Perfil: (Partial<ResumoPerfil> & { mensagem?: string }) | undefined;
   Notificacoes: undefined;
 };
 

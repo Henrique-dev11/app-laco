@@ -212,91 +212,123 @@ export class ResponsavelService {
       }
     }
 
-    return this.prisma.responsavel.update({
-      where: {
-        id,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const proprios = await tx.responsavelIdoso.findMany({
+        where: { responsavelId: id, parentesco: 'PROPRIO' },
+      });
+      if (dto.idoso && !proprios.length)
+        throw new BadRequestException(
+          'Os dados de cuidado são exclusivos do acesso próprio do idoso.',
+        );
+      const atualizado = await tx.responsavel.update({
+        where: {
+          id,
+        },
 
-      data: {
-        ...(dto.usuario !== undefined && { usuario: { update: dto.usuario } }),
-        ...(dto.telefone !== undefined && {
-          telefone: dto.telefone,
-        }),
+        data: {
+          ...(dto.usuario !== undefined && {
+            usuario: { update: dto.usuario },
+          }),
+          ...(dto.telefone !== undefined && {
+            telefone: dto.telefone,
+          }),
 
-        ...(dto.cpf !== undefined && {
-          cpf: dto.cpf,
-        }),
+          ...(dto.cpf !== undefined && {
+            cpf: dto.cpf,
+          }),
 
-        ...(dto.dataNascimento !== undefined && {
-          dataNascimento: new Date(dto.dataNascimento),
-        }),
+          ...(dto.dataNascimento !== undefined && {
+            dataNascimento: new Date(dto.dataNascimento),
+          }),
 
-        ...(dto.endereco !== undefined && {
-          endereco: {
-            update: {
-              ...(dto.endereco.rua !== undefined && {
-                rua: dto.endereco.rua.trim(),
-              }),
+          ...(dto.endereco !== undefined && {
+            endereco: {
+              update: {
+                ...(dto.endereco.rua !== undefined && {
+                  rua: dto.endereco.rua.trim(),
+                }),
 
-              ...(dto.endereco.numero !== undefined && {
-                numero: dto.endereco.numero.trim(),
-              }),
+                ...(dto.endereco.numero !== undefined && {
+                  numero: dto.endereco.numero.trim(),
+                }),
 
-              ...(dto.endereco.complemento !== undefined && {
-                complemento: dto.endereco.complemento.trim(),
-              }),
+                ...(dto.endereco.complemento !== undefined && {
+                  complemento: dto.endereco.complemento.trim(),
+                }),
 
-              ...(dto.endereco.bairro !== undefined && {
-                bairro: dto.endereco.bairro.trim(),
-              }),
+                ...(dto.endereco.bairro !== undefined && {
+                  bairro: dto.endereco.bairro.trim(),
+                }),
 
-              ...(dto.endereco.cidade !== undefined && {
-                cidade: dto.endereco.cidade.trim(),
-              }),
+                ...(dto.endereco.cidade !== undefined && {
+                  cidade: dto.endereco.cidade.trim(),
+                }),
 
-              ...(dto.endereco.estado !== undefined && {
-                estado: dto.endereco.estado.trim().toUpperCase(),
-              }),
+                ...(dto.endereco.estado !== undefined && {
+                  estado: dto.endereco.estado.trim().toUpperCase(),
+                }),
 
-              ...(dto.endereco.cep !== undefined && {
-                cep: dto.endereco.cep,
-              }),
+                ...(dto.endereco.cep !== undefined && {
+                  cep: dto.endereco.cep,
+                }),
+              },
+            },
+          }),
+        },
+
+        select: {
+          id: true,
+          telefone: true,
+          cpf: true,
+          dataNascimento: true,
+          createdAt: true,
+          updatedAt: true,
+
+          usuario: {
+            select: {
+              id: true,
+              nome: true,
+              email: true,
+              tipoUsuario: true,
+              status: true,
             },
           },
-        }),
-      },
 
-      select: {
-        id: true,
-        telefone: true,
-        cpf: true,
-        dataNascimento: true,
-        createdAt: true,
-        updatedAt: true,
-
-        usuario: {
-          select: {
-            id: true,
-            nome: true,
-            email: true,
-            tipoUsuario: true,
-            status: true,
+          endereco: {
+            select: {
+              id: true,
+              rua: true,
+              numero: true,
+              complemento: true,
+              bairro: true,
+              cidade: true,
+              estado: true,
+              cep: true,
+            },
           },
         },
-
-        endereco: {
-          select: {
-            id: true,
-            rua: true,
-            numero: true,
-            complemento: true,
-            bairro: true,
-            cidade: true,
-            estado: true,
-            cep: true,
+      });
+      if (proprios.length) {
+        await tx.idoso.updateMany({
+          where: { id: { in: proprios.map((vinculo) => vinculo.idosoId) } },
+          data: {
+            ...dto.idoso,
+            ...(dto.usuario?.nome !== undefined && { nome: dto.usuario.nome }),
+            ...(dto.usuario?.nomeSocial !== undefined && {
+              nomeSocial: dto.usuario.nomeSocial,
+            }),
+            ...(dto.telefone !== undefined && { telefone: dto.telefone }),
+            ...(dto.cpf !== undefined && { cpf: dto.cpf }),
+            ...(dto.dataNascimento !== undefined && {
+              dataNascimento: new Date(dto.dataNascimento),
+            }),
+            ...(dto.endereco !== undefined && {
+              enderecoId: responsavel.enderecoId,
+            }),
           },
-        },
-      },
+        });
+      }
+      return atualizado;
     });
   }
 }

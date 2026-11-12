@@ -1,3 +1,5 @@
+import { dadosImagemPerfil } from '../common/imagens.js';
+import { incluirFotoIdoso, apresentarIdoso } from '../idoso/idoso-foto.js';
 import { cpfValido } from '../common/pessoas.js';
 import {
   BadRequestException,
@@ -209,6 +211,7 @@ export class AuthService {
               nome: pessoa.nome.trim(),
               nomeSocial: pessoa.nomeSocial?.trim() || null,
               cpf: pessoa.cpf,
+              ...(dto.perfil === 'idoso' && { telefone: dto.telefone }),
               dataNascimento: new Date(pessoa.dataNascimento),
               enderecoId,
             },
@@ -278,8 +281,8 @@ export class AuthService {
     };
   }
 
-  me(id: number) {
-    return this.prisma.usuario.findUniqueOrThrow({
+  async me(id: number) {
+    const usuario = await this.prisma.usuario.findUniqueOrThrow({
       where: { id },
       select: {
         ...usuarioSeguro,
@@ -287,7 +290,7 @@ export class AuthService {
           include: {
             endereco: true,
             responsavelIdosos: {
-              include: { idoso: { include: { endereco: true } } },
+              include: { idoso: { include: incluirFotoIdoso } },
             },
           },
         },
@@ -302,34 +305,34 @@ export class AuthService {
         foto: { select: { updatedAt: true } },
       },
     });
+    return {
+      ...usuario,
+      perfil: usuario.responsavel?.responsavelIdosos.some(
+        (vinculo) => vinculo.parentesco === 'PROPRIO',
+      )
+        ? 'IDOSO_INDEPENDENTE'
+        : usuario.tipoUsuario,
+      responsavel: usuario.responsavel
+        ? {
+            ...usuario.responsavel,
+            responsavelIdosos: usuario.responsavel.responsavelIdosos.map(
+              (vinculo) => ({
+                ...vinculo,
+                idoso: apresentarIdoso(vinculo.idoso),
+              }),
+            ),
+          }
+        : null,
+    };
   }
 
-  /** Aceita JPEG, PNG ou WebP (confere o conteúdo, não só o tipo informado). */
+  /** Aceita JPEG, PNG ou WebP e valida o conteúdo antes de gravar. */
   async salvarFoto(usuarioId: number, imagem?: Imagem) {
-    const b = imagem?.buffer;
-    const mime =
-      b && b.length > 12
-        ? b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff
-          ? 'image/jpeg'
-          : b
-                .subarray(0, 8)
-                .equals(
-                  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-                )
-            ? 'image/png'
-            : b.subarray(0, 4).toString('latin1') === 'RIFF' &&
-                b.subarray(8, 12).toString('latin1') === 'WEBP'
-              ? 'image/webp'
-              : null
-        : null;
-    if (!b || !mime)
-      throw new BadRequestException(
-        'Envie uma foto JPEG, PNG ou WebP de até 3 MB.',
-      );
+    const dados = dadosImagemPerfil(imagem);
     const foto = await this.prisma.fotoPerfil.upsert({
       where: { usuarioId },
-      create: { usuarioId, mime, conteudo: new Uint8Array(b) },
-      update: { mime, conteudo: new Uint8Array(b) },
+      create: { usuarioId, ...dados },
+      update: dados,
       select: { updatedAt: true },
     });
     return { fotoVersao: foto.updatedAt };

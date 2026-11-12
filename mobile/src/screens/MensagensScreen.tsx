@@ -1,11 +1,10 @@
+import { fs } from '../theme/tipografia';
+import { MotionView } from '../motion/MotionView';
+import { staggerDelay } from '../motion/policy';
+import { SkeletonList } from '../motion/SkeletonList';
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Avatar } from '../components/Avatar';
 import { Notice } from '../components/Notice';
@@ -18,7 +17,7 @@ import {
   rotuloData,
   type Conversa,
 } from '../services/mensagens';
-import { useStyles, useTheme } from '../theme/ThemeContext';
+import { useStyles } from '../theme/ThemeContext';
 import type { Paleta } from '../theme';
 import type { ScreenProps } from '../types/navigation';
 
@@ -26,7 +25,6 @@ const INTERVALO_MS = 10000;
 
 export function MensagensScreen({ navigation }: ScreenProps<'Mensagens'>) {
   const styles = useStyles(criarStyles);
-  const colors = useTheme();
   const { usuario } = useAuth();
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -65,18 +63,20 @@ export function MensagensScreen({ navigation }: ScreenProps<'Mensagens'>) {
       subtitle="Converse com quem cuida com você"
       tab="Mensagens"
     >
-      {carregando && <ActivityIndicator color={colors.primary} />}
+      {carregando && !conversas.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
       {!carregando && !erro && !conversas.length && (
         <Notice>
           {`Você ainda não tem conversas. Assim que houver uma contratação, os ${outroLado} aparecem aqui para você conversar.`}
         </Notice>
       )}
-      {conversas.map(({ contato, ultimaMensagem, naoLidas }) => {
+      {conversas.map(({ contato, ultimaMensagem, naoLidas }, index) => {
         const minha = ultimaMensagem?.remetenteId === usuario?.id;
         return (
           <TouchableOpacity
             key={contato.id}
+            enter
+            delay={staggerDelay(index)}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel={`Abrir conversa com ${nomeDoContato(contato)}`}
@@ -116,11 +116,15 @@ export function MensagensScreen({ navigation }: ScreenProps<'Mensagens'>) {
                     : 'Toque para começar a conversar'}
                 </Text>
                 {naoLidas > 0 && (
-                  <View style={styles.contador}>
+                  <MotionView
+                    trigger={naoLidas}
+                    preset="pop"
+                    style={styles.contador}
+                  >
                     <Text style={styles.contadorTexto}>
                       {naoLidas > 99 ? '99+' : naoLidas}
                     </Text>
-                  </View>
+                  </MotionView>
                 )}
               </View>
             </View>
@@ -145,9 +149,9 @@ const criarStyles = (colors: Paleta) =>
     },
     info: { flex: 1, gap: 4 },
     linha: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    nome: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.text },
-    data: { fontSize: 12, color: colors.muted },
-    previa: { flex: 1, fontSize: 14, color: colors.muted },
+    nome: { flex: 1, fontSize: fs(16), fontWeight: '700', color: colors.text },
+    data: { fontSize: fs(12), color: colors.muted },
+    previa: { flex: 1, fontSize: fs(14), color: colors.muted },
     previaNova: { color: colors.text, fontWeight: '600' },
     contador: {
       minWidth: 22,
@@ -158,5 +162,5 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'center',
       backgroundColor: colors.primary,
     },
-    contadorTexto: { fontSize: 12, fontWeight: '700', color: colors.surface },
+    contadorTexto: { fontSize: fs(12), fontWeight: '700', color: colors.surface },
   });

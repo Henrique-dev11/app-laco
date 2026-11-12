@@ -1,11 +1,10 @@
+import { fs } from '../theme/tipografia';
+import { MotionView } from '../motion/MotionView';
+import { staggerDelay } from '../motion/policy';
+import { SkeletonList } from '../motion/SkeletonList';
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
 import { Notice } from '../components/Notice';
@@ -129,6 +128,7 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
           </View>
         </View>
         <Button
+          loading={enviando}
           title={
             enviando
               ? 'Salvando...'
@@ -175,7 +175,7 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
       </View>
       {!!mensagem && <Notice>{mensagem}</Notice>}
       <Text style={appStyles.section}>Meus horários</Text>
-      {carregando && <ActivityIndicator color={colors.caregiver} />}
+      {carregando && !dados.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
       {!carregando && !erro && !dados.length && (
         <Notice>
@@ -183,8 +183,12 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
           disponibilidade acima.
         </Notice>
       )}
-      {dados.map((item) => (
-        <View key={item.id} style={appStyles.card}>
+      {dados.map((item, index) => (
+        <MotionView
+          delay={staggerDelay(index)}
+          key={item.id}
+          style={appStyles.card}
+        >
           <View style={appStyles.row}>
             <Text style={appStyles.name}>{statusLabels[item.diaSemana]}</Text>
             <View style={appStyles.badge}>
@@ -221,9 +225,10 @@ function FormularioDisponibilidade({ cuidadorId }: { cuidadorId: number }) {
               );
             }}
           />
-        </View>
+        </MotionView>
       ))}
       <Button
+        loading={carregando}
         title="Atualizar horários"
         variant="outline"
         disabled={enviando || carregando}
@@ -266,7 +271,7 @@ const criarStyles = (colors: Paleta) =>
       backgroundColor: colors.caregiver,
       borderColor: colors.caregiver,
     },
-    dayText: { color: colors.primaryDark, fontWeight: '600', fontSize: 12 },
+    dayText: { color: colors.primaryDark, fontWeight: '600', fontSize: fs(12) },
     selectedText: { color: colors.surface },
     hours: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
     half: { flex: 1, minWidth: 120 },

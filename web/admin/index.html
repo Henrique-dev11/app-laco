@@ -75,26 +75,47 @@
             >Laço<small>Administração</small></span
           ></a
         >
-        <div class="sidebar-section">ACOMPANHAMENTO</div>
-        <button class="sidebar-link selected" data-filter="TODOS">
-          <span aria-hidden="true">♡</span> Cuidadores
-        </button>
-        <button class="sidebar-link" data-filter="PENDENTE">
-          <span aria-hidden="true">◷</span> Aguardando análise
-          <span id="sidebar-count" class="sidebar-count">0</span>
-        </button>
-        <div class="sidebar-note">
-          <span class="note-mark">♡</span
-          ><strong>Cuidado com responsabilidade</strong>
-          <p>Analise os dados e o currículo antes de liberar um novo perfil.</p>
-        </div>
+        <nav aria-label="Navegação administrativa">
+          <div class="sidebar-section">DASHBOARD</div>
+          <a class="sidebar-link" href="#visao-geral">◫ Visão geral</a>
+          <div class="sidebar-section">GERENCIAMENTO DE USUÁRIOS</div>
+          <a class="sidebar-link" href="#usuarios/cuidadores"
+            >♡ Cuidadores
+            <span id="sidebar-count" class="sidebar-count" hidden></span
+          ></a>
+          <a class="sidebar-link" href="#usuarios/responsaveis"
+            >◉ Responsáveis</a
+          >
+          <a class="sidebar-link" href="#usuarios/independentes"
+            >◇ Idosos independentes</a
+          >
+          <a class="sidebar-link" href="#usuarios/idosos">♧ Idosos</a>
+          <div class="sidebar-section">CONTRATAÇÕES</div>
+          <a class="sidebar-link" href="#contratacoes"
+            >▤ Todas e acompanhamento</a
+          >
+          <div class="sidebar-section">RELATÓRIOS E DESEMPENHO</div>
+          <a class="sidebar-link" href="#relatorios/financeiro"
+            >↗ Valores contratados</a
+          >
+          <a class="sidebar-link" href="#relatorios/servicos"
+            >▥ Estatísticas de serviços</a
+          >
+          <a class="sidebar-link" href="#relatorios/crescimento"
+            >♧ Crescimento de usuários</a
+          >
+          <div class="sidebar-section">ADMINISTRAÇÃO</div>
+          <a class="sidebar-link" href="#administracao"
+            >⚙ Minha conta e acesso</a
+          >
+        </nav>
         <button id="logout" class="sidebar-link logout">
           <span aria-hidden="true">↪</span> Sair da conta
         </button>
       </aside>
       <div class="workspace">
         <header class="topbar">
-          <span>Gestão de cuidadores</span>
+          <span id="breadcrumb">Visão geral</span>
           <div class="admin-user">
             <span id="admin-avatar" class="avatar">A</span>
             <div>
@@ -106,102 +127,16 @@
         <main class="main-content">
           <div class="page-heading">
             <div>
-              <span class="eyebrow">PESSOAS QUE FAZEM A DIFERENÇA</span>
-              <h1>Cuidadores</h1>
-              <p class="muted">
-                Conheça os profissionais e acompanhe a liberação de cada perfil.
+              <span class="eyebrow">LAÇO · GESTÃO E CUIDADO</span>
+              <h1 id="page-title">Visão geral</h1>
+              <p id="page-description" class="muted">
+                Acompanhe as pessoas e os atendimentos do Laço.
               </p>
             </div>
             <button id="refresh" class="button outline">↻ Atualizar</button>
           </div>
           <p id="dashboard-message" class="notice" role="status" hidden></p>
-          <section class="stats" aria-label="Resumo dos cadastros">
-            <button class="stat-card" data-filter="TODOS">
-              <span>Total de cuidadores</span><strong id="total-count">—</strong
-              ><small>Cadastros recebidos</small>
-            </button>
-            <button class="stat-card pending" data-filter="PENDENTE">
-              <span>Aguardando análise</span
-              ><strong id="pending-count">—</strong
-              ><small>Precisam da sua atenção</small>
-            </button>
-            <button class="stat-card" data-filter="APROVADO">
-              <span>Perfis aprovados</span><strong id="approved-count">—</strong
-              ><small>Verificação concluída</small>
-            </button>
-            <button class="stat-card" data-filter="BLOQUEADO">
-              <span>Acesso bloqueado</span><strong id="blocked-count">—</strong
-              ><small>Contas sem acesso ao app</small>
-            </button>
-          </section>
-          <section class="list-panel" aria-labelledby="list-heading">
-            <div class="list-heading">
-              <div>
-                <h2 id="list-heading">Cadastros de cuidadores</h2>
-                <p id="results-label" class="muted">Carregando cadastros…</p>
-              </div>
-              <label class="search-field"
-                ><span class="sr-only">Buscar por nome ou e-mail</span
-                ><span aria-hidden="true">⌕</span
-                ><input
-                  id="search"
-                  type="search"
-                  placeholder="Buscar por nome ou e-mail"
-              /></label>
-            </div>
-            <div class="filters" aria-label="Filtrar cadastros">
-              <button
-                data-filter="TODOS"
-                class="filter selected"
-                aria-pressed="true"
-              >
-                Todos</button
-              ><button
-                data-filter="PENDENTE"
-                class="filter"
-                aria-pressed="false"
-              >
-                Pendentes</button
-              ><button
-                data-filter="APROVADO"
-                class="filter"
-                aria-pressed="false"
-              >
-                Aprovados</button
-              ><button
-                data-filter="REJEITADO"
-                class="filter"
-                aria-pressed="false"
-              >
-                Rejeitados</button
-              ><button
-                data-filter="BLOQUEADO"
-                class="filter"
-                aria-pressed="false"
-              >
-                Bloqueados
-              </button>
-            </div>
-            <div id="list-state" class="empty-state" role="status">
-              <span class="empty-icon">♡</span>
-              <h3 id="state-title">Carregando cadastros</h3>
-              <p id="state-description" class="muted">Aguarde um instante.</p>
-            </div>
-            <div id="table-wrap" class="table-wrap" hidden>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Cuidador</th>
-                    <th>Localização</th>
-                    <th>Verificação</th>
-                    <th>Conta</th>
-                    <th class="align-right">Análise</th>
-                  </tr>
-                </thead>
-                <tbody id="caregiver-rows"></tbody>
-              </table>
-            </div>
-          </section>
+          <div id="page-content" aria-live="polite"></div>
           <p class="page-footer">
             Laço · Conectando pessoas, fortalecendo o cuidado.
           </p>
@@ -228,7 +163,7 @@
         </button>
       </div>
       <div id="detail-content" class="detail-content"></div>
-      <footer class="dialog-actions">
+      <footer id="caregiver-actions" class="dialog-actions">
         <button id="approve" class="button primary">Aprovar e ativar</button
         ><button id="reject" class="button outline">Rejeitar perfil</button
         ><button id="account-action" class="button subtle">

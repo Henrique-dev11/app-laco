@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -17,6 +18,8 @@ export class ResponsavelIdosoService {
     idosoId: number,
     dto: CreateResponsavelIdosoDto,
   ) {
+    if (dto.parentesco === 'PROPRIO')
+      throw new BadRequestException('O vínculo próprio é definido no cadastro da conta do idoso.');
     const responsavel = await this.prisma.responsavel.findUnique({
       where: {
         id: responsavelId,
@@ -240,6 +243,10 @@ async update(
       'Vínculo entre responsável e idoso não encontrado.',
     );
   }
+
+  if ((dto.parentesco === 'PROPRIO' && vinculo.parentesco !== 'PROPRIO') ||
+      (vinculo.parentesco === 'PROPRIO' && dto.parentesco !== undefined && dto.parentesco !== 'PROPRIO'))
+    throw new BadRequestException('O vínculo próprio da conta do idoso não pode ser alterado.');
 
   if (dto.responsavelPrincipal === true) {
     const outroPrincipal =

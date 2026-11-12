@@ -1,3 +1,4 @@
+import { fs, lh } from '../theme/tipografia';
 import type { PropsWithChildren } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -64,16 +65,16 @@ const styles = StyleSheet.create({
   logo: { width: 190, height: 190, resizeMode: 'contain' },
   title: {
     color: colors.primaryDark,
-    fontSize: 20,
+    fontSize: fs(20),
     fontWeight: '700',
     textAlign: 'center',
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 14,
+    fontSize: fs(14),
     textAlign: 'center',
-    lineHeight: 21,
+    lineHeight: lh(21),
   },
-  footer: { textAlign: 'center', fontSize: 13, color: colors.muted },
+  footer: { textAlign: 'center', fontSize: fs(13), color: colors.muted },
   link: { color: colors.primaryDark, fontWeight: '700' },
 });

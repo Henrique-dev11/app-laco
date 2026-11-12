@@ -1,10 +1,6 @@
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { fs, lh } from '../theme/tipografia';
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
@@ -94,9 +90,9 @@ const criarStyles = (colors: Paleta) =>
     },
     info: { flex: 1, gap: 3 },
     linha: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    titulo: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
-    data: { fontSize: 12, color: colors.muted },
-    texto: { fontSize: 14, color: colors.muted, lineHeight: 20 },
+    titulo: { flex: 1, fontSize: fs(15), fontWeight: '700', color: colors.text },
+    data: { fontSize: fs(12), color: colors.muted },
+    texto: { fontSize: fs(14), color: colors.muted, lineHeight: lh(20) },
     contador: {
       minWidth: 22,
       height: 22,
@@ -106,5 +102,5 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'center',
       backgroundColor: colors.primary,
     },
-    contadorTexto: { fontSize: 12, fontWeight: '700', color: colors.surface },
+    contadorTexto: { fontSize: fs(12), fontWeight: '700', color: colors.surface },
   });

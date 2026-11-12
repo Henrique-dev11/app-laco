@@ -1,87 +1,42 @@
 # Laço
 
-O **Laço** é uma plataforma desenvolvida como projeto de TCC com o objetivo de conectar cuidadores de idosos e pessoas que procuram serviços de cuidado.
+Plataforma para conectar cuidadores e pessoas que precisam de cuidado, com
+aplicativo React Native/Expo, painel administrativo web e API NestJS com
+PostgreSQL.
 
-O projeto será composto por um aplicativo mobile e uma aplicação web, ambos utilizando o mesmo backend por meio de uma API REST.
+## Começar
 
-## Objetivo
+1. [Instalação em uma nova máquina](docs/instalacao.md): ferramentas, banco,
+   API, aplicativo, painel e primeiro administrador.
+2. [Configuração](docs/configuracao.md): arquivos `.env`, endereços e acesso
+   pelo celular.
+3. [Desenvolvimento](docs/desenvolvimento.md): atualizar o projeto, trabalhar
+   com dependências e migrations e executar testes.
+4. [Solução de problemas](docs/solucao-de-problemas.md): banco, portas, Expo
+   Go, firewall e acesso ao painel.
 
-Permitir que usuários encontrem cuidadores, consultem serviços e disponibilidades, realizem agendamentos e acompanhem atendimentos.
+## Estrutura
 
-A plataforma também contará com uma área web para cuidadores e administração do sistema.
+| Pasta/arquivo                | Responsabilidade                               |
+| ---------------------------- | ---------------------------------------------- |
+| [api/](api/README.md)        | API NestJS, Prisma e migrations                |
+| [mobile/](mobile/README.md)  | Aplicativo Expo SDK 58 para iOS, Android e web |
+| [web/](web/README.md)        | Painel administrativo e site público           |
+| [compose.yaml](compose.yaml) | PostgreSQL 17 para desenvolvimento local       |
+| [docs/](docs/)               | Guias de instalação e trabalho da equipe       |
 
-## Estrutura do projeto
+Use Node.js e npm nas versões registradas em [`.nvmrc`](.nvmrc) e
+[`api/package.json`](api/package.json). API e aplicativo têm instalações npm
+separadas; os comandos completos estão no guia de instalação.
 
-```text
-app-web-laco/
-├── api/
-├── mobile/
-├── web/
-├── docs/
-└── README.md
-```
+## Endereços locais
 
-* `api/` — Backend e API REST
-* `mobile/` — Aplicativo mobile
-* `web/` — Aplicação web e painel administrativo
-* `docs/` — Documentação do projeto
+| Serviço                     | Endereço padrão             |
+| --------------------------- | --------------------------- |
+| API                         | http://localhost:3000       |
+| Metro / aplicativo Expo Web | http://localhost:8081       |
+| Painel administrativo       | http://localhost:5173/admin |
+| Site público                | http://localhost:5173       |
 
-## Tecnologias
-
-### Mobile
-
-* React Native
-* Expo
-* TypeScript
-
-### Backend
-
-* Node.js
-* NestJS
-* Prisma ORM
-
-### Banco de Dados
-
-* PostgreSQL
-
-### Ferramentas
-
-* Docker
-* Git
-* GitHub
-* Visual Studio Code
-
-## Arquitetura
-
-```text
-Mobile ─────┐
-            │
-            ▼
-         API REST
-            │
-            ▼
-         Backend
-            │
-            ▼
-       PostgreSQL
-            ▲
-            │
-            │
-Web ────────┘
-```
-
-O aplicativo mobile e a aplicação web utilizarão a mesma API e o mesmo banco de dados.
-
-## Status
-
-Projeto em desenvolvimento.
-
-A integração de desenvolvimento já inclui cadastro transacional, login, sessão, perfil, serviços, busca de cuidadores aprovados, contratação, disponibilidade e agenda persistidos no PostgreSQL. O painel administrativo funcional está em `web/admin/`, e `web/site/` está reservado para o site público.
-
-Para aprovar cuidadores, consulte o [painel administrativo](web/README.md). O [padrão visual](docs/arquitetura/frontend/padrao-front-laco.md) segue a referência local `front-laco`.
-
-Consulte o [roteiro de execução e integração](docs/teste/integracao-frontend-banco.md) e o [guia de testes](docs/teste/teste-banco.md).
-
-## Projeto acadêmico
-
-Projeto desenvolvido como TCC do curso de **Desenvolvimento de Sistemas**.
+Para usar o aplicativo no celular, configure o IP do computador no `.env` do
+mobile e mantenha os dispositivos no mesmo Wi-Fi.

@@ -1,8 +1,10 @@
+import { fs } from '../theme/tipografia';
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import {
   Image,
+  ActivityIndicator,
   StyleSheet,
   Text,
-  TouchableOpacity,
   type ImageSourcePropType,
 } from 'react-native';
 import type { Paleta } from '../theme';
@@ -15,6 +17,8 @@ type Props = {
   imageSource?: ImageSourcePropType;
   variant?: 'filled' | 'outline';
   disabled?: boolean;
+  loading?: boolean;
+  selected?: boolean;
 };
 
 export function Button({
@@ -24,6 +28,8 @@ export function Button({
   imageSource,
   variant = 'filled',
   disabled,
+  loading = false,
+  selected,
 }: Props) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
@@ -31,9 +37,13 @@ export function Button({
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{
+        disabled: !!disabled || loading,
+        busy: loading,
+        selected,
+      }}
       activeOpacity={0.8}
-      disabled={disabled}
+      disabled={disabled || loading}
       onPress={onPress}
       style={[
         styles.button,
@@ -41,10 +51,17 @@ export function Button({
           backgroundColor: variant === 'outline' ? colors.surface : cor,
           borderColor: cor,
         },
-        disabled && styles.disabled,
+        (disabled || loading) && styles.disabled,
       ]}
     >
-      {imageSource && <Image source={imageSource} style={styles.icon} />}
+      {loading ? (
+        <ActivityIndicator
+          color={variant === 'outline' ? cor : colors.surface}
+          size="small"
+        />
+      ) : (
+        imageSource && <Image source={imageSource} style={styles.icon} />
+      )}
       <Text
         style={[
           styles.text,
@@ -60,7 +77,7 @@ export function Button({
 const criarStyles = (colors: Paleta) =>
   StyleSheet.create({
     button: {
-      minHeight: 48,
+      minHeight: 56,
       paddingHorizontal: 20,
       paddingVertical: 14,
       borderRadius: 28,
@@ -70,7 +87,7 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'center',
       gap: 12,
     },
-    text: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
+    text: { fontSize: fs(16), fontWeight: '700', textAlign: 'center' },
     icon: { width: 24, height: 24, resizeMode: 'contain' },
     disabled: { opacity: 0.5 },
   });

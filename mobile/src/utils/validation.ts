@@ -9,6 +9,31 @@ export function somenteNumeros(value: string) {
   return value.replace(/\D/g, '');
 }
 
+export function formatarCpf(value: string) {
+  return somenteNumeros(value)
+    .slice(0, 11)
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+}
+
+export function formatarCep(value: string) {
+  return somenteNumeros(value)
+    .slice(0, 8)
+    .replace(/^(\d{5})(\d)/, '$1-$2');
+}
+
+export function formatarTelefone(value: string) {
+  const numeros = somenteNumeros(value).slice(0, 13);
+  // Preserva os números internacionais já aceitos pelo cadastro (até 13 dígitos).
+  const internacional = numeros.length > 11;
+  const prefixo = internacional ? `+${numeros.slice(0, -11)} ` : '';
+  const local = internacional ? numeros.slice(-11) : numeros;
+  if (local.length <= 2) return prefixo + local;
+  const corte = local.length > 10 ? 7 : 6;
+  return `${prefixo}(${local.slice(0, 2)}) ${local.slice(2, corte)}${local.length > corte ? '-' + local.slice(corte) : ''}`;
+}
+
 export function formatarData(value: string) {
   const numeros = somenteNumeros(value).slice(0, 8);
   if (numeros.length > 4)

@@ -1,4 +1,6 @@
-import { Text, TouchableOpacity, View } from 'react-native';
+import { MotionView } from '../motion/MotionView';
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
+import { Text, View } from 'react-native';
 import { Button } from './Button';
 import { useAppStyles } from '../theme/appStyles';
 import { useTheme } from '../theme/ThemeContext';
@@ -45,7 +47,11 @@ export function CalendarioDisponivel({
           onPress={() => onMes(mudarMes(mes, 1))}
         />
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+      <MotionView
+        trigger={mes}
+        preset="fade"
+        style={{ flexDirection: 'row', flexWrap: 'wrap' }}
+      >
         {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((dia) => (
           <Text
             key={dia}
@@ -97,7 +103,7 @@ export function CalendarioDisponivel({
             <View key={`vazio-${index}`} style={{ width: '14.285%' }} />
           ),
         )}
-      </View>
+      </MotionView>
       <Text style={styles.helper}>
         Dias destacados têm horários livres. Horário de São Paulo.
       </Text>

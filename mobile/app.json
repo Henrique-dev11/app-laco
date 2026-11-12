@@ -30,7 +30,9 @@
           "photosPermission": "O Laço usa suas fotos para você escolher a foto do seu perfil.",
           "cameraPermission": "O Laço usa a câmera para você tirar a foto do seu perfil."
         }
-      ]
+      ],
+      "expo-status-bar",
+      "expo-font"
     ]
   }
 }

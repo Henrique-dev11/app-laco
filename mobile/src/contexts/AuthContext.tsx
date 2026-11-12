@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -7,7 +8,7 @@ import {
 } from 'react';
 import { isAxiosError } from 'axios';
 import { api, definirToken, mensagemErro } from '../services/api';
-import { recuperarFotoPendente } from '../services/foto';
+import { recuperarFotoPendente, type FotoPendente } from '../services/foto';
 import { lerToken, gravarToken } from '../services/sessao';
 import type { Sessao, UsuarioAtual } from '../types/auth';
 
@@ -19,6 +20,8 @@ type Auth = {
   entrar: (email: string, senha: string) => Promise<void>;
   sair: () => Promise<void>;
   atualizar: () => Promise<void>;
+  fotoPendente: FotoPendente | null;
+  limparFotoPendente: () => void;
 };
 const Context = createContext<Auth | null>(null);
 
@@ -27,6 +30,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [carregando, setCarregando] = useState(true);
   const [erroInicial, setErroInicial] = useState('');
   const [tentativa, setTentativa] = useState(0);
+  const [fotoPendente, setFotoPendente] = useState<FotoPendente | null>(null);
+  const limparFotoPendente = useCallback(() => setFotoPendente(null), []);
 
   useEffect(() => {
     let ativo = true;
@@ -39,7 +44,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
           error.config?.url !== '/auth/login'
         ) {
           definirToken(null);
-          if (ativo) setUsuario(null);
+          if (ativo) {
+            setUsuario(null);
+            setFotoPendente(null);
+          }
           try {
             await gravarToken(null);
           } catch {
@@ -61,10 +69,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
           if (ativo) setUsuario(response.data);
           try {
             // App reiniciado pelo Android enquanto a câmera estava aberta.
-            if (await recuperarFotoPendente()) {
-              const atual = await api.get<UsuarioAtual>('/auth/me');
-              if (ativo) setUsuario(atual.data);
-            }
+            const foto = await recuperarFotoPendente(response.data.id);
+            if (ativo) setFotoPendente(foto);
           } catch {
             /* A foto pendente não deve impedir o login. */
           }
@@ -100,12 +106,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
     definirToken(data.token);
     setUsuario(data.usuario);
+    setFotoPendente(null);
     setErroInicial('');
   }
   async function sair() {
     await api.post('/auth/logout');
     definirToken(null);
     setUsuario(null);
+    setFotoPendente(null);
     try {
       await gravarToken(null);
     } catch {
@@ -125,6 +133,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         entrar,
         sair,
         atualizar,
+        fotoPendente,
+        limparFotoPendente,
       }}
     >
       {children}

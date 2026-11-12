@@ -1,3 +1,5 @@
+import { AdminModule } from './admin/admin.module.js';
+import { PropostaModule } from './proposta/proposta.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
@@ -33,7 +35,9 @@ import { AuthModule } from './auth/auth.module.js';
     ContratacaoModule,
     AvaliacaoModule,
     MensagemModule,
+    PropostaModule,
     AuthModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

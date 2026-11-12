@@ -1,6 +1,7 @@
+import { MotionView } from '../motion/MotionView';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Text } from 'react-native';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { CalendarioDisponivel } from '../components/CalendarioDisponivel';
 import { Notice } from '../components/Notice';
@@ -130,7 +131,7 @@ export function AgendarAtendimentoScreen({
             </Text>
           )}
           {!!dia && (
-            <View style={styles.card}>
+            <MotionView trigger={dia} preset="fade" style={styles.card}>
               <Text style={styles.section}>
                 Horários em {dia.split('-').reverse().join('/')}
               </Text>
@@ -139,6 +140,7 @@ export function AgendarAtendimentoScreen({
                 ?.horarios.map((h) => (
                   <Button
                     key={h.inicio}
+                    selected={horario?.inicio === h.inicio}
                     title={`${h.horaInicio} às ${h.horaFim}`}
                     variant={
                       horario?.inicio === h.inicio ? 'filled' : 'outline'
@@ -147,12 +149,13 @@ export function AgendarAtendimentoScreen({
                     onPress={() => setHorario(h)}
                   />
                 ))}
-            </View>
+            </MotionView>
           )}
           {!!horario && (
             <Notice>{`Confirmar ${dia.split('-').reverse().join('/')} das ${horario.horaInicio} às ${horario.horaFim}, horário de São Paulo.`}</Notice>
           )}
           <Button
+            loading={salvando}
             title={salvando ? 'Confirmando...' : 'Confirmar agendamento'}
             disabled={!horario || salvando || carregando}
             onPress={() => {

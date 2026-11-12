@@ -1,4 +1,7 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { fs } from '../theme/tipografia';
+import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
+import { Animated, StyleSheet, Text, View } from 'react-native';
+import { useMotionValue } from '../motion/useMotionValue';
 import { colors } from '../theme';
 
 type Props = { step: number; total: number; onBack: () => void; color: string };
@@ -19,18 +22,26 @@ export function StepHeader({ step, total, onBack, color }: Props) {
         accessibilityLabel={`Etapa ${step} de ${total}`}
       >
         {Array.from({ length: total }, (_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.bar,
-              { backgroundColor: i < step ? color : colors.border },
-            ]}
-          />
+          <ProgressBar key={i} filled={i < step} color={color} />
         ))}
       </View>
       <Text style={styles.label}>
         Etapa {step} de {total}
       </Text>
+    </View>
+  );
+}
+
+function ProgressBar({ filled, color }: { filled: boolean; color: string }) {
+  const opacity = useMotionValue(filled ? 1 : 0);
+  return (
+    <View style={styles.bar}>
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: color, borderRadius: 2, opacity },
+        ]}
+      />
     </View>
   );
 }
@@ -46,8 +57,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   back: { width: 44, height: 44, justifyContent: 'center' },
-  arrow: { fontSize: 26, fontWeight: '700' },
+  arrow: { fontSize: fs(26), fontWeight: '700' },
   progress: { flexDirection: 'row', flex: 1, gap: 6, marginRight: 16 },
-  bar: { flex: 1, height: 4, borderRadius: 2 },
-  label: { fontSize: 12, color: colors.muted },
+  bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.border },
+  label: { fontSize: fs(12), color: colors.muted },
 });

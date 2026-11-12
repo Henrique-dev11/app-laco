@@ -1,8 +1,6 @@
+import { CriarPropostaScreen } from '../screens/CriarPropostaScreen';
 import { AgendarAtendimentoScreen } from '../screens/AgendarAtendimentoScreen';
-import {
-  EditarCuidadorScreen,
-  EditarResponsavelScreen,
-} from '../screens/EditarPerfilScreen';
+import { EditarPerfilScreen } from '../screens/EditarPerfilScreen';
 import { MeusIdososScreen } from '../screens/MeusIdososScreen';
 import {
   AdicionarIdosoScreen,
@@ -33,7 +31,9 @@ import { PerfilScreen } from '../screens/PerfilScreen';
 import { useTheme } from '../theme/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
-import { ActivityIndicator, Text } from 'react-native';
+import { ActivityIndicator, Platform, Text } from 'react-native';
+import { useMotion } from '../motion/MotionProvider';
+import { motionDurations, nativeTransition } from '../motion/policy';
 import { ScreenLayout } from '../layouts/ScreenLayout';
 import { Button } from '../components/Button';
 import { BuscarCuidadorScreen } from '../screens/BuscarCuidadorScreen';
@@ -53,6 +53,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export function AppRoutes() {
   const { usuario, carregando, erroInicial, tentarRestaurar } = useAuth();
   const colors = useTheme();
+  const { reducedMotion } = useMotion();
   if (carregando)
     return (
       <ScreenLayout>
@@ -71,11 +72,13 @@ export function AppRoutes() {
     <Stack.Navigator
       key={usuario ? `usuario-${usuario.id}` : 'visitante'}
       initialRouteName={usuario ? 'Home' : 'LoginType'}
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
         contentStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.primaryDark,
-      }}
+        animation: nativeTransition(route.name, reducedMotion, Platform.OS),
+        animationDuration: reducedMotion ? 0 : motionDurations.navigation,
+      })}
     >
       {!usuario ? (
         <>
@@ -112,19 +115,13 @@ export function AppRoutes() {
         </>
       ) : (
         <>
+          <Stack.Screen name="CriarProposta" component={CriarPropostaScreen} />
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen
             name="AgendarAtendimento"
             component={AgendarAtendimentoScreen}
           />
-          <Stack.Screen
-            name="EditarCuidador"
-            component={EditarCuidadorScreen}
-          />
-          <Stack.Screen
-            name="EditarResponsavel"
-            component={EditarResponsavelScreen}
-          />
+          <Stack.Screen name="EditarPerfil" component={EditarPerfilScreen} />
           <Stack.Screen name="MeusIdosos" component={MeusIdososScreen} />
           <Stack.Screen
             name="AdicionarIdoso"

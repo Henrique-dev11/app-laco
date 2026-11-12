@@ -4,12 +4,12 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme';
+import { MotionView } from '../motion/MotionView';
 
 type Props = PropsWithChildren<{
   header?: ReactNode;
@@ -44,7 +44,9 @@ export function ScreenLayout({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.content, contentStyle]}>{children}</View>
+          <MotionView preset="fade" style={[styles.content, contentStyle]}>
+            {children}
+          </MotionView>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

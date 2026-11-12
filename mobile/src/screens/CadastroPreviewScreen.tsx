@@ -1,3 +1,4 @@
+import { fs, lh } from '../theme/tipografia';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
@@ -111,6 +112,7 @@ export function CadastroPreviewScreen({
           </View>
           {!!erro && <Notice>{erro}</Notice>}
           <Button
+            loading={enviando}
             title={enviando ? 'Salvando...' : 'Confirmar cadastro'}
             color={config.color}
             disabled={enviando}
@@ -130,7 +132,7 @@ export function CadastroPreviewScreen({
   );
 }
 const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: 26, fontWeight: '700' },
+  title: { color: colors.text, fontSize: fs(26), fontWeight: '700' },
   card: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -138,6 +140,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
-  name: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  text: { color: colors.muted, fontSize: 14, lineHeight: 21 },
+  name: { color: colors.text, fontSize: fs(20), fontWeight: '700' },
+  text: { color: colors.muted, fontSize: fs(14), lineHeight: lh(21) },
 });

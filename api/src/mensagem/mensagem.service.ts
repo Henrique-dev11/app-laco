@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import type { Prisma } from '../generated/prisma/client.js';
 import type { Identidade } from '../auth/auth.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { EnviarMensagemDto } from './dto/enviar-mensagem.dto.js';
@@ -19,6 +20,7 @@ const contatoSelect = {
 
 const mensagemSelect = {
   id: true,
+  propostaId: true,
   remetenteId: true,
   conteudo: true,
   lidaEm: true,
@@ -37,7 +39,9 @@ export class MensagemService {
   /** Usuários que têm contratação com o usuário logado (o outro lado de cada uma). */
   private async contatos(usuario: Identidade) {
     const filtros = [
-      ...(usuario.responsavelId ? [{ responsavelId: usuario.responsavelId }] : []),
+      ...(usuario.responsavelId
+        ? [{ responsavelId: usuario.responsavelId }]
+        : []),
       ...(usuario.cuidadorId
         ? [{ cuidadorServico: { cuidadorId: usuario.cuidadorId } }]
         : []),
@@ -48,12 +52,17 @@ export class MensagemService {
       select: {
         responsavel: { select: { usuario: { select: contatoSelect } } },
         cuidadorServico: {
-          select: { cuidador: { select: { usuario: { select: contatoSelect } } } },
+          select: {
+            cuidador: { select: { usuario: { select: contatoSelect } } },
+          },
         },
       },
       orderBy: { id: 'desc' },
     });
-    const contatos = new Map<number, (typeof contratos)[number]['responsavel']['usuario']>();
+    const contatos = new Map<
+      number,
+      (typeof contratos)[number]['responsavel']['usuario']
+    >();
     for (const contrato of contratos)
       for (const outro of [
         contrato.responsavel.usuario,
@@ -63,10 +72,14 @@ export class MensagemService {
     return [...contatos.values()].slice(0, LIMITE_CONTATOS);
   }
 
-  private async exigirContato(meuId: number, outroId: number) {
+  async exigirContato(
+    meuId: number,
+    outroId: number,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
     if (meuId === outroId)
       throw new BadRequestException('Escolha outra pessoa para conversar.');
-    const contrato = await this.prisma.contratacao.findFirst({
+    const contrato = await db.contratacao.findFirst({
       where: {
         OR: [
           {

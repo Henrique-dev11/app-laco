@@ -1,13 +1,22 @@
+import { fs, lh } from '../theme/tipografia';
 import { StyleSheet, Text } from 'react-native';
 import type { Paleta } from '../theme';
 import { useStyles } from '../theme/ThemeContext';
+import { MotionView } from '../motion/MotionView';
+import { motionDurations } from '../motion/policy';
 
 export function Notice({ children }: { children: string }) {
   const styles = useStyles(criarStyles);
   return (
-    <Text accessibilityLiveRegion="polite" style={styles.notice}>
-      {children}
-    </Text>
+    <MotionView
+      trigger={children}
+      preset="fade"
+      duration={motionDurations.feedback}
+    >
+      <Text accessibilityLiveRegion="polite" style={styles.notice}>
+        {children}
+      </Text>
+    </MotionView>
   );
 }
 
@@ -18,7 +27,7 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 12,
       padding: 16,
       color: colors.primaryDark,
-      fontSize: 14,
-      lineHeight: 21,
+      fontSize: fs(14),
+      lineHeight: lh(21),
     },
   });
