@@ -1,3 +1,4 @@
+import { fs, lh } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useFocusEffect } from '@react-navigation/native';
 import { Button } from '../components/Button';
@@ -11,8 +12,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
-  Keyboard,
   Platform,
   StyleSheet,
   Text,
@@ -25,6 +24,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { Avatar } from '../components/Avatar';
+import { useAlturaTeclado } from '../hooks/useAlturaTeclado';
 import { Notice } from '../components/Notice';
 import { useAuth } from '../contexts/AuthContext';
 import { mensagemErro } from '../services/api';
@@ -67,9 +67,8 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
   const [animadas, setAnimadas] = useState<number[]>([]);
   const [novasNaoVistas, setNovasNaoVistas] = useState(0);
   const insets = useSafeAreaInsets();
-  const [tecladoVisivel, setTecladoVisivel] = useState(() =>
-    Keyboard.isVisible(),
-  );
+  const alturaTeclado = useAlturaTeclado();
+  const tecladoVisivel = alturaTeclado > 0;
 
   useEffect(() => {
     if (!animadas.length) return;
@@ -82,24 +81,6 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
     definirConversaAberta(usuarioId);
     return () => definirConversaAberta(null);
   }, [usuarioId]);
-
-  // O KeyboardAvoidingView controla o espaço do teclado. Estes eventos apenas
-  // retiram a área do indicador inferior enquanto a barra está acima dele.
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    const mostrar = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (event) => setTecladoVisivel(event.endCoordinates.height > 0),
-    );
-    const esconder = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setTecladoVisivel(false),
-    );
-    return () => {
-      mostrar.remove();
-      esconder.remove();
-    };
-  }, []);
 
   const atualizar = useCallback(
     async (ativo: () => boolean = () => true) => {
@@ -178,15 +159,17 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
   }
 
   const podeEnviar = !!texto.trim() && !enviando;
+  // No Android a altura informada pelo teclado não inclui a barra de
+  // navegação do sistema, que o app desenha por baixo: soma-se aqui para a
+  // barra de digitação ficar inteira acima do teclado.
+  const espacoTeclado =
+    alturaTeclado +
+    (Platform.OS === 'android' && tecladoVisivel ? insets.bottom : 0);
 
   return (
-    // Abrange também o cabeçalho e o topo seguro: o frame começa na origem da
-    // tela, como as coordenadas do teclado, sem offset fixo ou altura estimada.
-    <KeyboardAvoidingView
-      style={styles.safe}
-      enabled={Platform.OS !== 'web'}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    // O espaço do teclado vem de `useAlturaTeclado` e vira padding embaixo:
+    // a barra de digitação sobe junto e o texto digitado fica sempre visível.
+    <View style={[styles.safe, { paddingBottom: espacoTeclado }]}>
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
         <View style={styles.header}>
           <TouchableOpacity
@@ -387,7 +370,7 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
           <View
             style={[
               styles.barra,
-              { paddingBottom: 12 + (tecladoVisivel ? 0 : insets.bottom) },
+              { paddingBottom: 12 + (tecladoVisivel ? 8 : insets.bottom) },
             ]}
           >
             {!!usuario?.cuidador && (
@@ -400,7 +383,7 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
               >
                 <Ionicons
                   name="document-text-outline"
-                  size={22}
+                  size={26}
                   color={colors.surface}
                 />
               </TouchableOpacity>
@@ -431,14 +414,14 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
                 {enviando ? (
                   <ActivityIndicator color={colors.surface} />
                 ) : (
-                  <Ionicons name="send" size={20} color={colors.surface} />
+                  <Ionicons name="send" size={24} color={colors.surface} />
                 )}
               </MotionView>
             </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -463,7 +446,12 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 22,
       backgroundColor: colors.headerSoft,
     },
-    titulo: { flex: 1, fontSize: 18, fontWeight: '700', color: colors.surface },
+    titulo: {
+      flex: 1,
+      fontSize: fs(18),
+      fontWeight: '700',
+      color: colors.surface,
+    },
     corpo: { flex: 1, minHeight: 0, backgroundColor: colors.background },
     centro: { flex: 1 },
     listaArea: {
@@ -494,15 +482,15 @@ const criarStyles = (colors: Paleta) =>
       borderColor: colors.border,
       borderBottomLeftRadius: 4,
     },
-    textoMeu: { fontSize: 15, lineHeight: 21, color: colors.surface },
-    textoDele: { fontSize: 15, lineHeight: 21, color: colors.text },
+    textoMeu: { fontSize: fs(15), lineHeight: lh(21), color: colors.surface },
+    textoDele: { fontSize: fs(15), lineHeight: lh(21), color: colors.text },
     horaMeu: {
       alignSelf: 'flex-end',
-      fontSize: 11,
+      fontSize: fs(11),
       color: colors.surface,
       opacity: 0.8,
     },
-    horaDele: { alignSelf: 'flex-end', fontSize: 11, color: colors.muted },
+    horaDele: { alignSelf: 'flex-end', fontSize: fs(11), color: colors.muted },
     aviso: { paddingHorizontal: 16, paddingBottom: 8 },
     barra: {
       flexDirection: 'row',
@@ -516,11 +504,11 @@ const criarStyles = (colors: Paleta) =>
     campo: {
       flex: 1,
       minWidth: 0,
-      maxHeight: 120,
-      minHeight: 44,
+      maxHeight: 160,
+      minHeight: 52,
       paddingHorizontal: 16,
       paddingVertical: 10,
-      fontSize: 15,
+      fontSize: fs(15),
       color: colors.text,
       backgroundColor: colors.input,
       borderWidth: 1,
@@ -528,9 +516,9 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 22,
     },
     enviar: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.primary,

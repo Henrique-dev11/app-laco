@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text } from 'react-native';
@@ -22,7 +23,7 @@ export function QuickAccessCard({ title, icon, onPress }: Props) {
       style={styles.card}
       activeOpacity={0.8}
     >
-      <Ionicons name={icon} size={24} color={colors.primaryDark} />
+      <Ionicons name={icon} size={30} color={colors.primaryDark} />
       <Text style={styles.title}>{title}</Text>
     </TouchableOpacity>
   );
@@ -33,7 +34,7 @@ const criarStyles = (colors: Paleta) =>
     card: {
       flexGrow: 1,
       flexBasis: 140,
-      minHeight: 110,
+      minHeight: 120,
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 16,
@@ -42,5 +43,5 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'space-between',
       gap: 16,
     },
-    title: { color: colors.text, fontSize: 14, fontWeight: '700' },
+    title: { color: colors.text, fontSize: fs(14), fontWeight: '700' },
   });

@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionView } from '../motion/MotionView';
 import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
@@ -148,9 +149,9 @@ const criarStyles = (colors: Paleta) =>
     },
     info: { flex: 1, gap: 4 },
     linha: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    nome: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.text },
-    data: { fontSize: 12, color: colors.muted },
-    previa: { flex: 1, fontSize: 14, color: colors.muted },
+    nome: { flex: 1, fontSize: fs(16), fontWeight: '700', color: colors.text },
+    data: { fontSize: fs(12), color: colors.muted },
+    previa: { flex: 1, fontSize: fs(14), color: colors.muted },
     previaNova: { color: colors.text, fontWeight: '600' },
     contador: {
       minWidth: 22,
@@ -161,5 +162,5 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'center',
       backgroundColor: colors.primary,
     },
-    contadorTexto: { fontSize: 12, fontWeight: '700', color: colors.surface },
+    contadorTexto: { fontSize: fs(12), fontWeight: '700', color: colors.surface },
   });

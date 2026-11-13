@@ -1,3 +1,4 @@
+import { fs, lh } from '../../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../../motion/MotionPressable';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -170,7 +171,7 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
 
 const styles = StyleSheet.create({
   group: { gap: 8 },
-  label: { color: colors.primaryDark, fontSize: 13, fontWeight: '600' },
+  label: { color: colors.primaryDark, fontSize: fs(13), fontWeight: '600' },
   upload: {
     borderWidth: 1,
     borderStyle: 'dashed',
@@ -180,9 +181,9 @@ const styles = StyleSheet.create({
     padding: 16,
     justifyContent: 'center',
   },
-  uploadText: { color: colors.primaryDark, textAlign: 'center', fontSize: 14 },
-  helper: { color: colors.muted, fontSize: 12 },
-  error: { color: colors.error, fontSize: 12 },
+  uploadText: { color: colors.primaryDark, textAlign: 'center', fontSize: fs(14) },
+  helper: { color: colors.muted, fontSize: fs(12) },
+  error: { color: colors.error, fontSize: fs(12) },
   terms: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
   checkbox: {
     width: 24,
@@ -195,5 +196,5 @@ const styles = StyleSheet.create({
   },
   checked: { backgroundColor: colors.primaryDark },
   check: { color: colors.surface, fontWeight: '700' },
-  termsText: { flex: 1, color: colors.muted, fontSize: 12, lineHeight: 18 },
+  termsText: { flex: 1, color: colors.muted, fontSize: fs(12), lineHeight: lh(18) },
 });

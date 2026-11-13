@@ -1,3 +1,4 @@
+import { fs, lh } from '../theme/tipografia';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import type { Paleta } from '../theme';
 import { useStyles } from '../theme/ThemeContext';
@@ -41,7 +42,7 @@ const criarStyles = (colors: Paleta) =>
       backgroundColor: colors.input,
     },
     titulo: {
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: '700',
       letterSpacing: 1.5,
       color: colors.primaryDark,
@@ -58,7 +59,7 @@ const criarStyles = (colors: Paleta) =>
       borderColor: colors.primary,
     },
     caractere: {
-      fontSize: 32,
+      fontSize: fs(32),
       fontWeight: '800',
       color: colors.primaryDark,
       fontFamily: Platform.select({
@@ -68,9 +69,9 @@ const criarStyles = (colors: Paleta) =>
       }),
     },
     aviso: {
-      fontSize: 12,
+      fontSize: fs(12),
       textAlign: 'center',
-      lineHeight: 18,
+      lineHeight: lh(18),
       color: colors.muted,
     },
   });

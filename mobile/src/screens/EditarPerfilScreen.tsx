@@ -99,7 +99,12 @@ function FormularioPerfil({
 
   async function salvar() {
     if (salvando.current) return;
-    const atual = normalizarPerfil(dados);
+    // CPF e data de nascimento não são editáveis: nunca entram no envio.
+    const atual = {
+      ...normalizarPerfil(dados),
+      cpf: original.cpf,
+      dataNascimento: original.dataNascimento,
+    };
     const mudancas = alteracoes(original, atual);
     const enderecoAtual = dadosEndereco(endereco);
     const enderecoMudancas = alteracoes(enderecoOriginal, enderecoAtual);
@@ -199,6 +204,7 @@ function FormularioPerfil({
 
   function campo(campo: keyof DadosPerfil, label: string) {
     const telefone = campo === 'telefone' || campo === 'telefone2';
+    const bloqueado = campo === 'cpf' || campo === 'dataNascimento';
     const numerico = telefone || campo === 'cpf' || campo === 'dataNascimento';
     const profissional = ['biografia', 'experienciaProfissional'].includes(
       campo,
@@ -216,7 +222,11 @@ function FormularioPerfil({
         label={label}
         value={formatar(dados[campo])}
         error={erros[campo]}
-        editable={!enviando}
+        editable={!enviando && !bloqueado}
+        style={bloqueado ? { opacity: 0.6 } : undefined}
+        accessibilityHint={
+          bloqueado ? 'Este dado não pode ser alterado' : undefined
+        }
         maxLength={
           campo === 'cpf'
             ? 14
@@ -279,6 +289,10 @@ function FormularioPerfil({
         {campo('nomeSocial', 'Nome social')}
         {campo('dataNascimento', 'Data de nascimento (DD/MM/AAAA)*')}
         {campo('cpf', 'CPF*')}
+        <Text style={styles.helper}>
+          CPF e data de nascimento não podem ser alterados. Se algum estiver
+          errado, fale com a equipe do Laço.
+        </Text>
       </SecaoPerfil>
       <SecaoPerfil titulo="Informações de contato" icone="call-outline">
         {campo('email', 'E-mail*')}

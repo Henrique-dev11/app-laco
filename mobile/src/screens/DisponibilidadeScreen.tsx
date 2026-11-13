@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionView } from '../motion/MotionView';
 import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
@@ -270,7 +271,7 @@ const criarStyles = (colors: Paleta) =>
       backgroundColor: colors.caregiver,
       borderColor: colors.caregiver,
     },
-    dayText: { color: colors.primaryDark, fontWeight: '600', fontSize: 12 },
+    dayText: { color: colors.primaryDark, fontWeight: '600', fontSize: fs(12) },
     selectedText: { color: colors.surface },
     hours: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
     half: { flex: 1, minWidth: 120 },

@@ -1,3 +1,4 @@
+import { fs, lh } from '../theme/tipografia';
 import { StyleSheet, Text } from 'react-native';
 import type { Paleta } from '../theme';
 import { useStyles } from '../theme/ThemeContext';
@@ -26,7 +27,7 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 12,
       padding: 16,
       color: colors.primaryDark,
-      fontSize: 14,
-      lineHeight: 21,
+      fontSize: fs(14),
+      lineHeight: lh(21),
     },
   });

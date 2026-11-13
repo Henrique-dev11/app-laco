@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { StyleSheet, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button } from '../components/Button';
@@ -45,5 +46,5 @@ export function FeaturePreviewScreen({
 
 const criarStyles = (colors: Paleta) =>
   StyleSheet.create({
-    title: { fontSize: 26, fontWeight: '700', color: colors.text },
+    title: { fontSize: fs(26), fontWeight: '700', color: colors.text },
   });

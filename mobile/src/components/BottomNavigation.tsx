@@ -105,11 +105,18 @@ function TabButton({
       >
         <Ionicons
           name={icon}
-          size={22}
+          size={26}
           color={selected ? colors.surface : colors.tabInactive}
         />
       </Animated.View>
-      <Text style={[styles.text, selected && styles.active]}>{title}</Text>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+        style={[styles.text, selected && styles.active]}
+      >
+        {title}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -123,12 +130,12 @@ const criarStyles = (colors: Paleta) =>
     },
     item: {
       flex: 1,
-      minHeight: 48,
+      minHeight: 56,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 4,
     },
-    text: { color: colors.tabInactive, fontSize: 10 },
+    text: { color: colors.tabInactive, fontSize: 13 },
     highlight: {
       position: 'absolute',
       top: 0,

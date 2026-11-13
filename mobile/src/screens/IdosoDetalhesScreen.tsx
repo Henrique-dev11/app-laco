@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -81,7 +82,7 @@ export function IdosoDetalhesScreen({
               tamanho={104}
             />
             <Text
-              style={[appStyles.name, { textAlign: 'center', fontSize: 25 }]}
+              style={[appStyles.name, { textAlign: 'center', fontSize: fs(25) }]}
             >
               {idoso.nomeSocial || idoso.nome}
             </Text>

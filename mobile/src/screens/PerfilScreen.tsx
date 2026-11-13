@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { ScreenProps } from '../types/navigation';
@@ -193,7 +194,7 @@ export function PerfilScreen({ navigation, route }: ScreenProps<'Perfil'>) {
 
 const styles = StyleSheet.create({
   identity: { alignItems: 'center', gap: 10, paddingVertical: 24 },
-  title: { fontSize: 25, fontWeight: '700', textAlign: 'center', marginTop: 4 },
+  title: { fontSize: fs(25), fontWeight: '700', textAlign: 'center', marginTop: 4 },
   center: { textAlign: 'center' },
   centerBadge: { alignSelf: 'center' },
   actions: { gap: 12 },

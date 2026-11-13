@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
 import {
@@ -97,9 +98,9 @@ export function FormField({
 const criarStyles = (colors: Paleta) =>
   StyleSheet.create({
     group: { gap: 6 },
-    label: { fontSize: 13, fontWeight: '600', color: colors.primaryDark },
+    label: { fontSize: fs(13), fontWeight: '600', color: colors.primaryDark },
     field: {
-      minHeight: 46,
+      minHeight: 54,
       flexDirection: 'row',
       alignItems: 'center',
       borderWidth: 1,
@@ -112,15 +113,15 @@ const criarStyles = (colors: Paleta) =>
       minWidth: 0,
       paddingHorizontal: 12,
       paddingVertical: 12,
-      fontSize: 14,
+      fontSize: fs(14),
       color: colors.text,
     },
     invalid: { borderColor: colors.error },
     focus: { borderWidth: 2, borderRadius: 12 },
-    error: { fontSize: 12, color: colors.error },
+    error: { fontSize: fs(12), color: colors.error },
     eye: {
-      minHeight: 44,
-      width: 44,
+      minHeight: 48,
+      width: 48,
       justifyContent: 'center',
       alignItems: 'center',
     },

@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
@@ -131,9 +132,9 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
 const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: 8 },
   logo: { width: 220, height: 220, resizeMode: 'contain' },
-  title: { fontSize: 32, fontWeight: '700', color: colors.text },
+  title: { fontSize: fs(32), fontWeight: '700', color: colors.text },
   link: { color: colors.primaryDark, fontWeight: '600' },
-  muted: { color: colors.muted, fontSize: 13 },
+  muted: { color: colors.muted, fontSize: fs(13) },
   forgot: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' },
   social: { alignItems: 'center', gap: 12 },
   row: { flexDirection: 'row', gap: 20 },
@@ -147,5 +148,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   socialIcon: { width: 24, height: 24, resizeMode: 'contain' },
-  footer: { textAlign: 'center', fontSize: 13, color: colors.muted },
+  footer: { textAlign: 'center', fontSize: fs(13), color: colors.muted },
 });
