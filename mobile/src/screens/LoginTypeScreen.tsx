@@ -1,3 +1,4 @@
+import { fs, lh } from '../theme/tipografia';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { perfis } from '../constants/cadastro';
@@ -67,19 +68,19 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: 8 },
   logo: { width: 180, height: 180, resizeMode: 'contain' },
   title: {
-    fontSize: 22,
+    fontSize: fs(22),
     color: colors.text,
     fontWeight: '700',
     textAlign: 'center',
   },
-  subtitle: { color: colors.muted, fontSize: 14, textAlign: 'center' },
+  subtitle: { color: colors.muted, fontSize: fs(14), textAlign: 'center' },
   buttons: { gap: 16 },
   footer: { gap: 12 },
   link: { color: colors.primaryDark, fontWeight: '700' },
   terms: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: fs(12),
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: lh(18),
   },
 });

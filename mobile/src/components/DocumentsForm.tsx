@@ -1,6 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 import type { Documentos, ErrosFormulario } from '../types/cadastro';
-import { formatarData } from '../utils/validation';
+import { useBuscaCep } from '../hooks/useBuscaCep';
+import { formatarCep, formatarData } from '../utils/validation';
+import { AvisoCep } from './AvisoCep';
 import { FormField } from './FormField';
 
 type Props = {
@@ -21,6 +23,7 @@ export function DocumentsForm({
   function change(field: keyof Documentos, text: string) {
     onChange({ ...value, [field]: text });
   }
+  const statusCep = useBuscaCep(value, onChange);
   return (
     <View style={styles.form}>
       <View style={styles.row}>
@@ -43,10 +46,11 @@ export function DocumentsForm({
             maxLength={9}
             value={value.cep}
             error={errors.cep}
-            onChangeText={(text) => change('cep', text)}
+            onChangeText={(text) => change('cep', formatarCep(text))}
           />
         </View>
       </View>
+      <AvisoCep status={statusCep} />
       {(['rua', 'bairro', 'cidade', 'estado'] as const).map((field) => (
         <FormField
           key={field}

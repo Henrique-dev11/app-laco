@@ -1,3 +1,4 @@
+import { fs, lh } from '../theme/tipografia';
 import { useMotion } from '../motion/MotionProvider';
 import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
@@ -501,12 +502,12 @@ const criarStyles = (colors: Paleta) =>
     },
     buscaInput: {
       flex: 1,
-      fontSize: 15,
+      fontSize: fs(15),
       color: colors.text,
       paddingVertical: 10,
     },
     paraQuem: { gap: 8 },
-    rotulo: { fontSize: 13, fontWeight: '600', color: colors.muted },
+    rotulo: { fontSize: fs(13), fontWeight: '600', color: colors.muted },
     chips: { gap: 8 },
     chip: {
       paddingVertical: 8,
@@ -517,9 +518,9 @@ const criarStyles = (colors: Paleta) =>
       borderColor: colors.border,
     },
     chipAtivo: { backgroundColor: colors.primary, borderColor: colors.primary },
-    chipTexto: { fontSize: 14, fontWeight: '600', color: colors.primaryDark },
+    chipTexto: { fontSize: fs(14), fontWeight: '600', color: colors.primaryDark },
     chipTextoAtivo: { color: colors.surface },
-    contagem: { fontSize: 13, color: colors.muted },
+    contagem: { fontSize: fs(13), color: colors.muted },
     card: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -531,11 +532,11 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 18,
     },
     cardInfo: { flex: 1, gap: 3 },
-    nome: { fontSize: 16, fontWeight: '700', color: colors.text },
-    nomeGrande: { fontSize: 20, fontWeight: '700', color: colors.text },
+    nome: { fontSize: fs(16), fontWeight: '700', color: colors.text },
+    nomeGrande: { fontSize: fs(20), fontWeight: '700', color: colors.text },
     linha: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    nota: { fontSize: 13, fontWeight: '600', color: colors.text },
-    local: { fontSize: 13, color: colors.muted },
+    nota: { fontSize: fs(13), fontWeight: '600', color: colors.text },
+    local: { fontSize: fs(13), color: colors.muted },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
     tag: {
       maxWidth: 140,
@@ -544,14 +545,14 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 12,
       backgroundColor: colors.badge,
     },
-    tagTexto: { fontSize: 12, fontWeight: '600', color: colors.primaryDark },
+    tagTexto: { fontSize: fs(12), fontWeight: '600', color: colors.primaryDark },
     rodape: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       paddingVertical: 4,
     },
     link: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6 },
-    linkTexto: { fontSize: 14, fontWeight: '600', color: colors.primaryDark },
+    linkTexto: { fontSize: fs(14), fontWeight: '600', color: colors.primaryDark },
     fundoModal: {
       flex: 1,
       justifyContent: 'flex-end',
@@ -580,10 +581,10 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 16,
       backgroundColor: colors.background,
     },
-    notaGrande: { fontSize: 32, fontWeight: '700', color: colors.text },
+    notaGrande: { fontSize: fs(32), fontWeight: '700', color: colors.text },
     bloco: { gap: 10 },
-    secao: { fontSize: 16, fontWeight: '700', color: colors.text },
-    texto: { fontSize: 14, lineHeight: 21, color: colors.muted },
+    secao: { fontSize: fs(16), fontWeight: '700', color: colors.text },
+    texto: { fontSize: fs(14), lineHeight: lh(21), color: colors.muted },
     servico: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -593,14 +594,14 @@ const criarStyles = (colors: Paleta) =>
       borderColor: colors.border,
       borderRadius: 14,
     },
-    servicoNome: { fontSize: 15, fontWeight: '600', color: colors.text },
-    preco: { fontSize: 15, fontWeight: '700', color: colors.primaryDark },
+    servicoNome: { fontSize: fs(15), fontWeight: '600', color: colors.text },
+    preco: { fontSize: fs(15), fontWeight: '700', color: colors.primaryDark },
     solicitar: {
       paddingVertical: 8,
       paddingHorizontal: 14,
       borderRadius: 18,
       backgroundColor: colors.primary,
     },
-    solicitarTexto: { fontSize: 13, fontWeight: '700', color: colors.surface },
+    solicitarTexto: { fontSize: fs(13), fontWeight: '700', color: colors.surface },
     desativado: { opacity: 0.5 },
   });

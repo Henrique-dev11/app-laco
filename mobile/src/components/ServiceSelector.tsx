@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -115,7 +116,7 @@ const criarStyles = (colors: Paleta) =>
       paddingVertical: 10,
     },
     selected: { backgroundColor: colors.primaryDark },
-    text: { color: colors.primaryDark, fontSize: 12 },
+    text: { color: colors.primaryDark, fontSize: fs(12) },
     selectedText: { color: colors.surface },
-    error: { color: colors.error, fontSize: 12 },
+    error: { color: colors.error, fontSize: fs(12) },
   });

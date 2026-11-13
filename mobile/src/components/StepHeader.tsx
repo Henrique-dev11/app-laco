@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { useMotionValue } from '../motion/useMotionValue';
@@ -56,8 +57,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   back: { width: 44, height: 44, justifyContent: 'center' },
-  arrow: { fontSize: 26, fontWeight: '700' },
+  arrow: { fontSize: fs(26), fontWeight: '700' },
   progress: { flexDirection: 'row', flex: 1, gap: 6, marginRight: 16 },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.border },
-  label: { fontSize: 12, color: colors.muted },
+  label: { fontSize: fs(12), color: colors.muted },
 });

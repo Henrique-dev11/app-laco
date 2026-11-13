@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import {
   Image,
@@ -76,7 +77,7 @@ export function Button({
 const criarStyles = (colors: Paleta) =>
   StyleSheet.create({
     button: {
-      minHeight: 48,
+      minHeight: 56,
       paddingHorizontal: 20,
       paddingVertical: 14,
       borderRadius: 28,
@@ -86,7 +87,7 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'center',
       gap: 12,
     },
-    text: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
+    text: { fontSize: fs(16), fontWeight: '700', textAlign: 'center' },
     icon: { width: 24, height: 24, resizeMode: 'contain' },
     disabled: { opacity: 0.5 },
   });

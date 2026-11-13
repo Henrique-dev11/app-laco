@@ -2,6 +2,7 @@ import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Button } from '../components/Button';
+import { EnderecoForm } from '../components/EnderecoForm';
 import { FormField } from '../components/FormField';
 import { PersonalStep } from '../components/registration/PersonalStep';
 import { DocumentStep } from '../components/registration/DocumentStep';
@@ -106,32 +107,14 @@ export function ResponsavelStep3Screen({
           endereço que eu
         </Text>
       </TouchableOpacity>
-      {!cadastro.idoso.mesmoEndereco &&
-        (
-          [
-            'rua',
-            'numero',
-            'complemento',
-            'bairro',
-            'cidade',
-            'estado',
-            'cep',
-          ] as const
-        ).map((field) => (
-          <FormField
-            key={field}
-            label={`Endereço do idoso · ${field}`}
-            value={cadastro.idoso.endereco[field] ?? ''}
-            onChangeText={(value) =>
-              atualizarCadastro({
-                idoso: {
-                  ...cadastro.idoso,
-                  endereco: { ...cadastro.idoso.endereco, [field]: value },
-                },
-              })
-            }
-          />
-        ))}
+      {!cadastro.idoso.mesmoEndereco && (
+        <EnderecoForm
+          value={cadastro.idoso.endereco}
+          onChange={(endereco) =>
+            atualizarCadastro({ idoso: { ...cadastro.idoso, endereco } })
+          }
+        />
+      )}
       {!!errors.endereco && <Text>{errors.endereco}</Text>}
       <Button
         title="Finalizar"

@@ -74,6 +74,8 @@ function FormularioIdoso({
   const [concluido, setConcluido] = useState<number | null>(null);
   const salvando = useRef(false);
   const dadosPersistidos = useRef(false);
+  const cpfBloqueado = !!registroId && !!original.cpf;
+  const nascimentoBloqueado = !!registroId && !!original.dataNascimento;
   usePreventRemove(enviando && !concluido, () => {});
   useEffect(() => {
     if (idoso && fotoPendente?.idosoId === idoso.id) limparFotoPendente();
@@ -90,7 +92,13 @@ function FormularioIdoso({
 
   async function salvar() {
     if (salvando.current || concluido) return;
-    const atual = normalizarDadosIdoso(dados);
+    const normalizado = normalizarDadosIdoso(dados);
+    // CPF e data de nascimento já cadastrados não mudam.
+    const atual = {
+      ...normalizado,
+      ...(cpfBloqueado && { cpf: original.cpf }),
+      ...(nascimentoBloqueado && { dataNascimento: original.dataNascimento }),
+    };
     const mudancas = alteracoes(original, atual);
     const enderecoAtual = dadosEndereco(endereco);
     const enderecoPatch = alteracoes(enderecoOriginal, enderecoAtual);
@@ -199,6 +207,9 @@ function FormularioIdoso({
     campo: 'nome' | 'nomeSocial' | 'dataNascimento' | 'cpf' | 'telefone',
     label: string,
   ) {
+    const bloqueado =
+      (campo === 'cpf' && cpfBloqueado) ||
+      (campo === 'dataNascimento' && nascimentoBloqueado);
     const formatar =
       campo === 'cpf'
         ? formatarCpf
@@ -213,7 +224,11 @@ function FormularioIdoso({
         label={label}
         value={formatar(dados[campo])}
         error={erros[campo]}
-        editable={!enviando}
+        editable={!enviando && !bloqueado}
+        style={bloqueado ? { opacity: 0.6 } : undefined}
+        accessibilityHint={
+          bloqueado ? 'Este dado não pode ser alterado' : undefined
+        }
         maxLength={
           campo === 'cpf'
             ? 14
@@ -269,6 +284,11 @@ function FormularioIdoso({
         {campo('nomeSocial', 'Nome social')}
         {campo('dataNascimento', 'Data de nascimento (DD/MM/AAAA)*')}
         {campo('cpf', 'CPF (opcional)')}
+        {(cpfBloqueado || nascimentoBloqueado) && (
+          <Text style={styles.helper}>
+            CPF e data de nascimento já cadastrados não podem ser alterados.
+          </Text>
+        )}
       </SecaoPerfil>
       <SecaoPerfil titulo="Informações de contato" icone="call-outline">
         {campo('telefone', 'Telefone (opcional)')}

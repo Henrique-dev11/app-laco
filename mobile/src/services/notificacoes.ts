@@ -19,6 +19,14 @@ function carregar(): Notificacoes | null {
     Constants.executionEnvironment === ExecutionEnvironment.StoreClient
   )
     return (modulo = null);
+  // Se o app instalado não traz os módulos nativos das notificações (Expo Go
+  // ou build antigo), o require abaixo dispara o erro vermelho mesmo dentro do
+  // try/catch. Conferir antes evita o erro e cai no aviso interno do app.
+  const nativos = (
+    globalThis as { expo?: { modules?: Record<string, unknown> } }
+  ).expo?.modules;
+  if (Platform.OS === 'android' && nativos && !nativos.ExpoTopicSubscriptionModule)
+    return (modulo = null);
   try {
     const carregado = require('expo-notifications') as Notificacoes;
     // Mostra o aviso mesmo com o app aberto (aparece na área de notificação).

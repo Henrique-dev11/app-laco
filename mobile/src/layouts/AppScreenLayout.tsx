@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useState } from 'react';
@@ -138,17 +139,17 @@ const criarStyles = (colors: Paleta) =>
     grow: { flex: 1 },
     overline: {
       color: colors.onHeader,
-      fontSize: 10,
+      fontSize: fs(10),
       fontWeight: '700',
       letterSpacing: 1.5,
     },
     title: {
       color: colors.surface,
-      fontSize: 21,
+      fontSize: fs(21),
       fontWeight: '700',
       marginTop: 3,
     },
-    subtitle: { color: colors.onHeader, fontSize: 12, marginTop: 5 },
+    subtitle: { color: colors.onHeader, fontSize: fs(12), marginTop: 5 },
     scroll: { flexGrow: 1, padding: 24 },
     content: { width: '100%', maxWidth: 640, alignSelf: 'center', gap: 20 },
   });

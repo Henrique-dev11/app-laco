@@ -1,3 +1,4 @@
+import { fs, lh } from './tipografia';
 import { StyleSheet } from 'react-native';
 import type { Paleta } from './index';
 import { useStyles } from './ThemeContext';
@@ -18,10 +19,10 @@ const criarAppStyles = (colors: Paleta) =>
       alignItems: 'center',
       gap: 12,
     },
-    name: { fontSize: 18, fontWeight: '600', color: colors.text },
-    section: { fontSize: 16, fontWeight: '700', color: colors.text },
-    text: { fontSize: 14, color: colors.muted, lineHeight: 21 },
-    helper: { fontSize: 12, color: colors.muted, lineHeight: 18 },
+    name: { fontSize: fs(18), fontWeight: '600', color: colors.text },
+    section: { fontSize: fs(16), fontWeight: '700', color: colors.text },
+    text: { fontSize: fs(14), color: colors.muted, lineHeight: lh(21) },
+    helper: { fontSize: fs(12), color: colors.muted, lineHeight: lh(18) },
     avatar: {
       width: 48,
       height: 48,
@@ -30,7 +31,7 @@ const criarAppStyles = (colors: Paleta) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatarText: { fontSize: 20, fontWeight: '700', color: colors.primaryDark },
+    avatarText: { fontSize: fs(20), fontWeight: '700', color: colors.primaryDark },
     badge: {
       alignSelf: 'flex-start',
       paddingVertical: 6,
@@ -38,7 +39,7 @@ const criarAppStyles = (colors: Paleta) =>
       borderRadius: 20,
       backgroundColor: colors.badge,
     },
-    badgeText: { color: colors.primaryDark, fontSize: 12, fontWeight: '600' },
+    badgeText: { color: colors.primaryDark, fontSize: fs(12), fontWeight: '600' },
     separator: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
   });
 

@@ -1,3 +1,4 @@
+import { fs } from '../theme/tipografia';
 import { MotionView } from '../motion/MotionView';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useEffect, useState } from 'react';
@@ -153,6 +154,6 @@ const criarStyles = (colors: Paleta) =>
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 3 },
     },
-    nome: { fontSize: 15, fontWeight: '700', color: colors.text },
-    texto: { fontSize: 14, color: colors.muted },
+    nome: { fontSize: fs(15), fontWeight: '700', color: colors.text },
+    texto: { fontSize: fs(14), color: colors.muted },
   });
