@@ -7,16 +7,20 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { AccessibilityInfo, AppState, Platform } from 'react-native';
+import { usePreferenciasAcessibilidade } from '../accessibility/AcessibilidadeContext';
 const Context = createContext({ reducedMotion: true, active: true });
 
 export function MotionProvider({ children }: PropsWithChildren) {
   // Até conhecer a preferência, o conteúdo fica disponível sem movimento.
-  const [reducedMotion, setReducedMotion] = useState(() =>
+  const [reducedMotionSistema, setReducedMotion] = useState(() =>
     Platform.OS === 'web' && typeof window !== 'undefined'
       ? (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ??
         true)
       : true,
   );
+  // Reduz o movimento se o sistema OU a acessibilidade do Laço pedir.
+  const { preferencias } = usePreferenciasAcessibilidade();
+  const reducedMotion = reducedMotionSistema || preferencias.reduzirAnimacoes;
   const [active, setActive] = useState(AppState.currentState !== 'background');
   useEffect(() => {
     const state = AppState.addEventListener('change', (value) =>

@@ -1,15 +1,8 @@
 import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
-import {
-  Image,
-  Animated,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-} from 'react-native';
+import { Image, Animated, StyleSheet, View, type TextInputProps } from 'react-native';
+import { Text, TextInput } from '../accessibility/Texto';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
 import { useMotionValue } from '../motion/useMotionValue';

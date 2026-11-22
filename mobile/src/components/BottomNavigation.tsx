@@ -1,6 +1,7 @@
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { useMotionValue } from '../motion/useMotionValue';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
@@ -112,7 +113,7 @@ function TabButton({
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        minimumFontScale={0.85}
+        minimumFontScale={0.6}
         style={[styles.text, selected && styles.active]}
       >
         {title}

@@ -1,7 +1,8 @@
 import { MotionView } from '../motion/MotionView';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Text } from 'react-native';
+import { ActivityIndicator } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { CalendarioDisponivel } from '../components/CalendarioDisponivel';
 import { Notice } from '../components/Notice';

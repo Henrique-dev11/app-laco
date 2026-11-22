@@ -5,27 +5,26 @@ import { SkeletonList } from '../motion/SkeletonList';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { isAxiosError } from 'axios';
 import { useMemo, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { CamadaLeitura, Text, TextInput } from '../accessibility/Texto';
+import { BotaoAcessibilidade } from '../accessibility/BotaoAcessibilidade';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
+import { Estrelas } from '../components/Estrelas';
 import { FormField } from '../components/FormField';
+import { ListaAvaliacoes, ResumoNota } from '../components/ListaAvaliacoes';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
+import { useAvaliacoes } from '../hooks/useAvaliacoes';
 import { useListaApi } from '../hooks/useListaApi';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
 import { useStyles, useTheme } from '../theme/ThemeContext';
 import type { Paleta } from '../theme';
 import type { ScreenProps } from '../types/navigation';
+import { ESPACO_BOTAO } from '../utils/acessibilidade';
+import { formatarMedia, normalizarMedia } from '../utils/avaliacoes';
 
 type Cuidador = {
   id: number;
@@ -37,6 +36,9 @@ type Cuidador = {
   };
   endereco: { cidade: string; estado: string };
   biografia: string | null;
+  /** Nota média e total de avaliações do cuidador (`null`/0 = ainda sem avaliações). */
+  avaliacaoMedia?: number | string | null;
+  totalAvaliacoes?: number;
   cuidadorServicos: {
     id: number;
     preco: string;
@@ -54,34 +56,6 @@ const normalizar = (texto: string) =>
 
 const nomeDe = (c: Cuidador) => c.usuario.nomeSocial || c.usuario.nome;
 const preco = (valor: string) => Number(valor).toFixed(2).replace('.', ',');
-
-/** PROVISÓRIO: nota fictícia fixa por cuidador, até existir a avaliação real. */
-function avaliacaoProvisoria(cuidadorId: number) {
-  const nota = 4.3 + ((cuidadorId * 7) % 8) / 10;
-  return { nota, quantidade: 3 + ((cuidadorId * 5) % 20) };
-}
-
-function Estrelas({ nota, tamanho = 14 }: { nota: number; tamanho?: number }) {
-  const colors = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', gap: 1 }}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Ionicons
-          key={n}
-          name={
-            nota >= n - 0.25
-              ? 'star'
-              : nota >= n - 0.75
-                ? 'star-half'
-                : 'star-outline'
-          }
-          size={tamanho}
-          color={colors.caregiver}
-        />
-      ))}
-    </View>
-  );
-}
 
 type Selecionada = {
   id: number;
@@ -114,6 +88,8 @@ export function BuscarCuidadorScreen({
   const [mensagem, setMensagem] = useState('');
   const [busca, setBusca] = useState('');
   const [selecionado, setSelecionado] = useState<Cuidador | null>(null);
+  // Muda a cada abertura dos detalhes, para recarregar as avaliações do cuidador.
+  const [abertura, setAbertura] = useState(0);
   const [selecionada, setSelecionada] = useState<Selecionada | null>(null);
   const [observacoes, setObservacoes] = useState('');
 
@@ -136,6 +112,7 @@ export function BuscarCuidadorScreen({
     setMensagem('');
     setSelecionada(null);
     setObservacoes('');
+    setAbertura((n) => n + 1);
     setSelecionado(cuidador);
   }
 
@@ -176,7 +153,8 @@ export function BuscarCuidadorScreen({
   }
 
   const aberto = selecionado;
-  const avaliacao = aberto ? avaliacaoProvisoria(aberto.id) : null;
+  // Avaliações reais do cuidador aberto (nada é consultado com os detalhes fechados).
+  const avaliacoes = useAvaliacoes(aberto?.id ?? null, abertura);
 
   return (
     <AppScreenLayout
@@ -261,7 +239,7 @@ export function BuscarCuidadorScreen({
       )}
 
       {filtrados.map((cuidador, index) => {
-        const { nota } = avaliacaoProvisoria(cuidador.id);
+        const nota = normalizarMedia(cuidador.avaliacaoMedia);
         const servicos = cuidador.cuidadorServicos;
         return (
           <TouchableOpacity
@@ -285,8 +263,12 @@ export function BuscarCuidadorScreen({
                 {nomeDe(cuidador)}
               </Text>
               <View style={styles.linha}>
-                <Estrelas nota={nota} />
-                <Text style={styles.nota}>{nota.toFixed(1)}</Text>
+                {nota !== null && <Estrelas nota={nota} />}
+                <Text style={styles.nota}>
+                  {nota !== null
+                    ? `${formatarMedia(nota)} (${cuidador.totalAvaliacoes ?? 0})`
+                    : 'Sem avaliações'}
+                </Text>
               </View>
               <Text style={styles.local} numberOfLines={1}>
                 {cuidador.endereco.cidade}/{cuidador.endereco.estado}
@@ -335,153 +317,162 @@ export function BuscarCuidadorScreen({
         animationType={reducedMotion ? 'none' : 'slide'}
         onRequestClose={fechar}
       >
-        <Pressable style={styles.fundoModal} onPress={fechar}>
-          <Pressable style={styles.folha} onPress={() => undefined}>
-            {aberto && avaliacao && (
-              <ScrollView
-                contentContainerStyle={styles.folhaConteudo}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.alca} />
-                <View style={styles.folhaTopo}>
-                  <Avatar
-                    nome={nomeDe(aberto)}
-                    usuarioId={aberto.usuario.id}
-                    versao={aberto.usuario.foto?.updatedAt}
-                    tamanho={72}
-                  />
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.nomeGrande}>{nomeDe(aberto)}</Text>
-                    <Text style={styles.local}>
-                      {aberto.endereco.cidade}/{aberto.endereco.estado}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel="Fechar"
-                    onPress={fechar}
-                    hitSlop={10}
-                  >
-                    <Ionicons name="close" size={26} color={colors.muted} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.avaliacao}>
-                  <Text style={styles.notaGrande}>
-                    {avaliacao.nota.toFixed(1)}
-                  </Text>
-                  <View style={{ gap: 2 }}>
-                    <Estrelas nota={avaliacao.nota} tamanho={18} />
-                    <Text style={styles.local}>
-                      {avaliacao.quantidade} avaliações · provisória
-                    </Text>
-                  </View>
-                </View>
-
-                {!!aberto.biografia && (
-                  <View style={styles.bloco}>
-                    <Text style={styles.secao}>Sobre</Text>
-                    <Text style={styles.texto}>{aberto.biografia}</Text>
-                  </View>
-                )}
-
-                {selecionada ? (
-                  <View style={styles.bloco}>
-                    <Text style={styles.secao}>Revisar solicitação</Text>
-                    <Text style={styles.texto}>
-                      {selecionada.cuidador} · {selecionada.nome}
-                    </Text>
-                    <Text style={styles.texto}>
-                      Idoso:{' '}
-                      {idosos.find((i) => i.idoso.id === idosoId)?.idoso.nome}
-                    </Text>
-                    <Text style={styles.texto}>
-                      Preço de referência: R$ {preco(selecionada.preco)} ·{' '}
-                      {selecionada.duracaoMinutos} minutos
-                    </Text>
-                    <Notice>
-                      O preço-base e a duração acima serão usados nesta
-                      solicitação. Aguarde o aceite do cuidador.
-                    </Notice>
-                    <FormField
-                      label="Informações sobre o atendimento (opcional)"
-                      value={observacoes}
-                      onChangeText={setObservacoes}
-                      maxLength={2000}
-                      multiline
-                      editable={!enviando}
+        <CamadaLeitura>
+          <Pressable style={styles.fundoModal} onPress={fechar}>
+            <Pressable style={styles.folha} onPress={() => undefined}>
+              {aberto && (
+                <ScrollView
+                  contentContainerStyle={styles.folhaConteudo}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.alca} />
+                  <View style={styles.folhaTopo}>
+                    <Avatar
+                      nome={nomeDe(aberto)}
+                      usuarioId={aberto.usuario.id}
+                      versao={aberto.usuario.foto?.updatedAt}
+                      tamanho={72}
                     />
-                    <Button
-                      loading={enviando}
-                      title={enviando ? 'Enviando...' : 'Confirmar solicitação'}
-                      disabled={enviando || !idosoId}
-                      onPress={() => {
-                        void solicitar(selecionada.id);
-                      }}
-                    />
-                    <Button
-                      title="Voltar à escolha de serviços"
-                      variant="outline"
-                      disabled={enviando}
-                      onPress={() => setSelecionada(null)}
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.bloco}>
-                    <Text style={styles.secao}>Serviços</Text>
-                    {!aberto.cuidadorServicos.length && (
-                      <Text style={styles.texto}>
-                        Este cuidador ainda não cadastrou serviços.
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.nomeGrande}>{nomeDe(aberto)}</Text>
+                      <Text style={styles.local}>
+                        {aberto.endereco.cidade}/{aberto.endereco.estado}
                       </Text>
-                    )}
-                    {aberto.cuidadorServicos.map((oferta) => (
-                      <View key={oferta.id} style={styles.servico}>
-                        <View style={styles.cardInfo}>
-                          <Text style={styles.servicoNome}>
-                            {oferta.servico.nome}
-                          </Text>
-                          <Text style={styles.local}>
-                            {oferta.duracaoMinutos} minutos
-                          </Text>
-                        </View>
-                        <Text style={styles.preco}>
-                          R$ {preco(oferta.preco)}
-                        </Text>
-                        <TouchableOpacity
-                          accessibilityRole="button"
-                          disabled={enviando || !idosoId}
-                          onPress={() =>
-                            setSelecionada({
-                              id: oferta.id,
-                              nome: oferta.servico.nome,
-                              cuidador: nomeDe(aberto),
-                              preco: oferta.preco,
-                              duracaoMinutos: oferta.duracaoMinutos,
-                            })
-                          }
-                          style={[
-                            styles.solicitar,
-                            (enviando || !idosoId) && styles.desativado,
-                          ]}
-                        >
-                          <Text style={styles.solicitarTexto}>Selecionar</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
+                    </View>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Fechar"
+                      onPress={fechar}
+                      hitSlop={10}
+                    >
+                      <Ionicons name="close" size={26} color={colors.muted} />
+                    </TouchableOpacity>
                   </View>
-                )}
 
-                {!idosoId && (
-                  <Notice>
-                    Vincule um idoso para poder solicitar uma contratação.
-                  </Notice>
-                )}
-                {!!mensagem && <Notice>{mensagem}</Notice>}
-                <Button title="Fechar" variant="outline" onPress={fechar} />
-              </ScrollView>
-            )}
+                  {/* Nota média e quantidade, vindas das avaliações reais. */}
+                  {!avaliacoes.erro && (
+                    <ResumoNota
+                      resumo={avaliacoes.resumo}
+                      carregando={avaliacoes.carregando}
+                    />
+                  )}
+
+                  {!!aberto.biografia && (
+                    <View style={styles.bloco}>
+                      <Text style={styles.secao}>Sobre</Text>
+                      <Text style={styles.texto}>{aberto.biografia}</Text>
+                    </View>
+                  )}
+
+                  {selecionada ? (
+                    <View style={styles.bloco}>
+                      <Text style={styles.secao}>Revisar solicitação</Text>
+                      <Text style={styles.texto}>
+                        {selecionada.cuidador} · {selecionada.nome}
+                      </Text>
+                      <Text style={styles.texto}>
+                        Idoso:{' '}
+                        {idosos.find((i) => i.idoso.id === idosoId)?.idoso.nome}
+                      </Text>
+                      <Text style={styles.texto}>
+                        Preço de referência: R$ {preco(selecionada.preco)} ·{' '}
+                        {selecionada.duracaoMinutos} minutos
+                      </Text>
+                      <Notice>
+                        O preço-base e a duração acima serão usados nesta
+                        solicitação. Aguarde o aceite do cuidador.
+                      </Notice>
+                      <FormField
+                        label="Informações sobre o atendimento (opcional)"
+                        value={observacoes}
+                        onChangeText={setObservacoes}
+                        maxLength={2000}
+                        multiline
+                        editable={!enviando}
+                      />
+                      <Button
+                        loading={enviando}
+                        title={enviando ? 'Enviando...' : 'Confirmar solicitação'}
+                        disabled={enviando || !idosoId}
+                        onPress={() => {
+                          void solicitar(selecionada.id);
+                        }}
+                      />
+                      <Button
+                        title="Voltar à escolha de serviços"
+                        variant="outline"
+                        disabled={enviando}
+                        onPress={() => setSelecionada(null)}
+                      />
+                    </View>
+                  ) : (
+                    <View style={styles.bloco}>
+                      <Text style={styles.secao}>Serviços</Text>
+                      {!aberto.cuidadorServicos.length && (
+                        <Text style={styles.texto}>
+                          Este cuidador ainda não cadastrou serviços.
+                        </Text>
+                      )}
+                      {aberto.cuidadorServicos.map((oferta) => (
+                        <View key={oferta.id} style={styles.servico}>
+                          <View style={styles.cardInfo}>
+                            <Text style={styles.servicoNome}>
+                              {oferta.servico.nome}
+                            </Text>
+                            <Text style={styles.local}>
+                              {oferta.duracaoMinutos} minutos
+                            </Text>
+                          </View>
+                          <Text style={styles.preco}>
+                            R$ {preco(oferta.preco)}
+                          </Text>
+                          <TouchableOpacity
+                            accessibilityRole="button"
+                            disabled={enviando || !idosoId}
+                            onPress={() =>
+                              setSelecionada({
+                                id: oferta.id,
+                                nome: oferta.servico.nome,
+                                cuidador: nomeDe(aberto),
+                                preco: oferta.preco,
+                                duracaoMinutos: oferta.duracaoMinutos,
+                              })
+                            }
+                            style={[
+                              styles.solicitar,
+                              (enviando || !idosoId) && styles.desativado,
+                            ]}
+                          >
+                            <Text style={styles.solicitarTexto}>Selecionar</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {!idosoId && (
+                    <Notice>
+                      Vincule um idoso para poder solicitar uma contratação.
+                    </Notice>
+                  )}
+                  {!!mensagem && <Notice>{mensagem}</Notice>}
+                  {/* Avaliações (estrelas e comentários) deste cuidador. */}
+                  {!selecionada && (
+                    <ListaAvaliacoes
+                      resumo={avaliacoes.resumo}
+                      carregando={avaliacoes.carregando}
+                      erro={avaliacoes.erro}
+                      atualizar={avaliacoes.atualizar}
+                    />
+                  )}
+                  <Button title="Fechar" variant="outline" onPress={fechar} />
+                </ScrollView>
+              )}
+            </Pressable>
           </Pressable>
-        </Pressable>
+          {/* O botão global fica sob o modal; este mantém a acessibilidade à mão. */}
+          <BotaoAcessibilidade elevado={false} />
+        </CamadaLeitura>
       </Modal>
     </AppScreenLayout>
   );
@@ -564,7 +555,8 @@ const criarStyles = (colors: Paleta) =>
       borderTopLeftRadius: 28,
       borderTopRightRadius: 28,
     },
-    folhaConteudo: { padding: 20, paddingBottom: 32, gap: 18 },
+    // O espaço extra no fim deixa o conteúdo rolar para fora de trás do botão de acessibilidade.
+    folhaConteudo: { padding: 20, paddingBottom: 32 + ESPACO_BOTAO, gap: 18 },
     alca: {
       alignSelf: 'center',
       width: 44,
@@ -573,15 +565,6 @@ const criarStyles = (colors: Paleta) =>
       backgroundColor: colors.border,
     },
     folhaTopo: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-    avaliacao: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 14,
-      padding: 14,
-      borderRadius: 16,
-      backgroundColor: colors.background,
-    },
-    notaGrande: { fontSize: fs(32), fontWeight: '700', color: colors.text },
     bloco: { gap: 10 },
     secao: { fontSize: fs(16), fontWeight: '700', color: colors.text },
     texto: { fontSize: fs(14), lineHeight: lh(21), color: colors.muted },

@@ -1,12 +1,7 @@
 import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
-import {
-  Image,
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  type ImageSourcePropType,
-} from 'react-native';
+import { Image, ActivityIndicator, StyleSheet, type ImageSourcePropType } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
 

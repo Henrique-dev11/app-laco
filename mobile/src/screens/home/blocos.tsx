@@ -1,7 +1,8 @@
 import { fs, lh } from '../../theme/tipografia';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '../../accessibility/Texto';
 import { Avatar } from '../../components/Avatar';
 import { MotionPressable as TouchableOpacity } from '../../motion/MotionPressable';
 import type { Paleta } from '../../theme';

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { carregarFoto } from '../services/foto';
 import { useTheme } from '../theme/ThemeContext';
 

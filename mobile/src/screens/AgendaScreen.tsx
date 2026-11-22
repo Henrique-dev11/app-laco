@@ -3,7 +3,7 @@ import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Text } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';

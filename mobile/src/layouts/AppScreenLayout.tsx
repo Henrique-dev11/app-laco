@@ -2,14 +2,8 @@ import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +16,7 @@ import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
 import { MotionView } from '../motion/MotionView';
+import { ESPACO_BOTAO } from '../utils/acessibilidade';
 
 type Props = PropsWithChildren<{
   title: string;
@@ -150,6 +145,7 @@ const criarStyles = (colors: Paleta) =>
       marginTop: 3,
     },
     subtitle: { color: colors.onHeader, fontSize: fs(12), marginTop: 5 },
-    scroll: { flexGrow: 1, padding: 24 },
+    // O espaço extra no fim deixa o conteúdo rolar para fora de trás do botão de acessibilidade.
+    scroll: { flexGrow: 1, padding: 24, paddingBottom: 24 + ESPACO_BOTAO },
     content: { width: '100%', maxWidth: 640, alignSelf: 'center', gap: 20 },
   });

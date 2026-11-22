@@ -1,23 +1,26 @@
 import { fs, lh } from '../../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../../motion/MotionPressable';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '../../accessibility/Texto';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '../Button';
 import { DocumentsForm } from '../DocumentsForm';
 import { FormField } from '../FormField';
 import { ServiceSelector } from '../ServiceSelector';
-import { perfis } from '../../constants/cadastro';
 import { useCadastro } from '../../contexts/CadastroContext';
 import { RegistrationLayout } from '../../layouts/RegistrationLayout';
 import { selecionarCurriculo } from '../../services/documentos';
-import { colors } from '../../theme';
+import { corDoPerfil, type Paleta } from '../../theme';
+import { useStyles, useTheme } from '../../theme/ThemeContext';
 import type { Documentos, ErrosFormulario, Perfil } from '../../types/cadastro';
 import type { RootStackParamList } from '../../types/navigation';
 import { validarDocumentos } from '../../utils/validation';
 
 export function DocumentStep({ perfil }: { perfil: Perfil }) {
+  const styles = useStyles(criarStyles);
+  const paleta = useTheme();
   const { cadastro, atualizarCadastro } = useCadastro();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -161,7 +164,7 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
       }
       <Button
         title="Continuar"
-        color={perfis[perfil].color}
+        color={corDoPerfil(paleta, perfil)}
         onPress={continuar}
         disabled={selecionando}
       />
@@ -169,32 +172,33 @@ export function DocumentStep({ perfil }: { perfil: Perfil }) {
   );
 }
 
-const styles = StyleSheet.create({
-  group: { gap: 8 },
-  label: { color: colors.primaryDark, fontSize: fs(13), fontWeight: '600' },
-  upload: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.primary,
-    borderRadius: 12,
-    minHeight: 70,
-    padding: 16,
-    justifyContent: 'center',
-  },
-  uploadText: { color: colors.primaryDark, textAlign: 'center', fontSize: fs(14) },
-  helper: { color: colors.muted, fontSize: fs(12) },
-  error: { color: colors.error, fontSize: fs(12) },
-  terms: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checked: { backgroundColor: colors.primaryDark },
-  check: { color: colors.surface, fontWeight: '700' },
-  termsText: { flex: 1, color: colors.muted, fontSize: fs(12), lineHeight: lh(18) },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    group: { gap: 8 },
+    label: { color: colors.primaryDark, fontSize: fs(13), fontWeight: '600' },
+    upload: {
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: colors.primary,
+      borderRadius: 12,
+      minHeight: 70,
+      padding: 16,
+      justifyContent: 'center',
+    },
+    uploadText: { color: colors.primaryDark, textAlign: 'center', fontSize: fs(14) },
+    helper: { color: colors.muted, fontSize: fs(12) },
+    error: { color: colors.error, fontSize: fs(12) },
+    terms: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: 5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checked: { backgroundColor: colors.primaryDark },
+    check: { color: colors.surface, fontWeight: '700' },
+    termsText: { flex: 1, color: colors.muted, fontSize: fs(12), lineHeight: lh(18) },
+  });

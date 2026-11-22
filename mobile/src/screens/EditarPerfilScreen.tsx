@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Text, View } from 'react-native';
+import { Keyboard, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { usePreventRemove } from '@react-navigation/native';
 import { isAxiosError } from 'axios';
 import { Button } from '../components/Button';

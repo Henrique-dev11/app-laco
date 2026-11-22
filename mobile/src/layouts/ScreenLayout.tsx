@@ -8,8 +8,9 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import { MotionView } from '../motion/MotionView';
+import { ESPACO_BOTAO } from '../utils/acessibilidade';
 
 type Props = PropsWithChildren<{
   header?: ReactNode;
@@ -22,9 +23,10 @@ export function ScreenLayout({
   children,
   header,
   contentStyle,
-  backgroundColor = colors.surface,
+  backgroundColor,
   topInset = true,
 }: Props) {
+  const colors = useTheme();
   return (
     <SafeAreaView
       edges={
@@ -32,7 +34,7 @@ export function ScreenLayout({
           ? ['top', 'bottom', 'left', 'right']
           : ['bottom', 'left', 'right']
       }
-      style={[styles.safe, { backgroundColor }]}
+      style={[styles.safe, { backgroundColor: backgroundColor ?? colors.surface }]}
     >
       {header}
       <KeyboardAvoidingView
@@ -56,7 +58,13 @@ export function ScreenLayout({
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 24 },
+  // O espaço extra no fim deixa o conteúdo rolar para fora de trás do botão de acessibilidade.
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24 + ESPACO_BOTAO,
+  },
   content: {
     width: '100%',
     maxWidth: 480,

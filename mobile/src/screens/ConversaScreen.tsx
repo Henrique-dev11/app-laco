@@ -9,15 +9,8 @@ import { juntarMensagens as juntar, idsNovasMensagens } from '../utils/chat';
 import { PropostaCard } from '../components/PropostaCard';
 import { listarPropostas, type Proposta } from '../services/propostas';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Platform, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '../accessibility/Texto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   SafeAreaView,

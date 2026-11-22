@@ -1,6 +1,7 @@
 import { fs } from '../../theme/tipografia';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../../accessibility/Texto';
 import type { PropsWithChildren } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../components/Avatar';
@@ -12,6 +13,7 @@ import { MotionView } from '../../motion/MotionView';
 import type { Paleta } from '../../theme';
 import { useStyles, useTheme } from '../../theme/ThemeContext';
 import type { ScreenProps } from '../../types/navigation';
+import { ESPACO_BOTAO } from '../../utils/acessibilidade';
 
 export type HomeProps = Pick<ScreenProps<'Home'>, 'navigation'>;
 
@@ -137,6 +139,7 @@ const criarStyles = (colors: Paleta) =>
       fontWeight: '700',
       color: colors.surface,
     },
-    scroll: { padding: 24, flexGrow: 1 },
+    // O espaço extra no fim deixa o conteúdo rolar para fora de trás do botão de acessibilidade.
+    scroll: { padding: 24, paddingBottom: 24 + ESPACO_BOTAO, flexGrow: 1 },
     content: { gap: 20, width: '100%', maxWidth: 640, alignSelf: 'center' },
   });

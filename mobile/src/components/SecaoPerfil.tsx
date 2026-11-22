@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAppStyles } from '../theme/appStyles';
 import { useTheme } from '../theme/ThemeContext';

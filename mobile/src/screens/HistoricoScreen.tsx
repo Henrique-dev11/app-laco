@@ -3,8 +3,11 @@ import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
 import type { ScreenProps } from '../types/navigation';
 import { useState } from 'react';
-import { Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../accessibility/Texto';
+import { AvaliarCuidador } from '../components/AvaliarCuidador';
 import { Button } from '../components/Button';
+import { Estrelas } from '../components/Estrelas';
 import { Notice } from '../components/Notice';
 import { CodigoDestaque } from '../components/CodigoDestaque';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
@@ -23,6 +26,8 @@ type Contratacao = {
   nomeServico: string;
   itemProposta: { propostaId: number; proposta: { versao: number } } | null;
   observacoes: string | null;
+  /** Avaliação do cuidador feita nesta contratação (`null` = ainda não avaliada). */
+  avaliacao?: { id: number; nota: number; comentario: string | null } | null;
   agendamento: null | { inicio: string };
   idoso: { nome: string };
   responsavel: { usuario: { nome: string } };
@@ -46,6 +51,11 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
   const [enviando, setEnviando] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState('');
   const [mensagem, setMensagem] = useState('');
+  // Contratação concluída cujo cuidador está sendo avaliado (modal aberto).
+  const [avaliando, setAvaliando] = useState<{
+    id: number;
+    cuidador: string;
+  } | null>(null);
   // Código digitado pelo cuidador e código mostrado ao responsável, por contratação.
   const [codigos, setCodigos] = useState<Record<number, string>>({});
   const [codigosGerados, setCodigosGerados] = useState<Record<number, string>>(
@@ -235,6 +245,34 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
               />
             </>
           )}
+          {/* Avaliação: só depois de concluída; cada atendimento é avaliado uma vez. */}
+          {contrato.status === 'CONCLUIDA' && !!contrato.avaliacao && (
+            <View style={appStyles.row}>
+              <Text style={appStyles.text}>
+                {usuario?.cuidador ? 'Avaliação recebida:' : 'Sua avaliação:'}
+              </Text>
+              <Estrelas nota={contrato.avaliacao.nota} tamanho={18} />
+              {!!contrato.avaliacao.comentario && (
+                <Text style={appStyles.text}>
+                  “{contrato.avaliacao.comentario}”
+                </Text>
+              )}
+            </View>
+          )}
+          {!!usuario?.responsavel &&
+            contrato.status === 'CONCLUIDA' &&
+            !contrato.avaliacao && (
+              <Button
+                title="Avaliar cuidador"
+                disabled={enviando}
+                onPress={() =>
+                  setAvaliando({
+                    id: contrato.id,
+                    cuidador: contrato.cuidadorServico.cuidador.usuario.nome,
+                  })
+                }
+              />
+            )}
           {['SOLICITADA', 'ACEITA'].includes(contrato.status) && (
             <Button
               title="Cancelar contratação"
@@ -254,6 +292,16 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
         variant="outline"
         disabled={carregando || enviando}
         onPress={atualizar}
+      />
+      <AvaliarCuidador
+        contratacaoId={avaliando?.id ?? null}
+        cuidadorNome={avaliando?.cuidador ?? ''}
+        onClose={() => setAvaliando(null)}
+        onEnviada={() => {
+          setAvaliando(null);
+          setMensagem('Avaliação enviada. Obrigado por ajudar outras famílias!');
+          atualizar();
+        }}
       />
     </AppScreenLayout>
   );

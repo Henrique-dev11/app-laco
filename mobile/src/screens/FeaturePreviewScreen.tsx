@@ -1,5 +1,6 @@
 import { fs } from '../theme/tipografia';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
