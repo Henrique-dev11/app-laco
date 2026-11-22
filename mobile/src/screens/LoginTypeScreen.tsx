@@ -1,14 +1,18 @@
 import { fs, lh } from '../theme/tipografia';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { Button } from '../components/Button';
 import { perfis } from '../constants/cadastro';
 import { useCadastro } from '../contexts/CadastroContext';
 import { ScreenLayout } from '../layouts/ScreenLayout';
-import { colors } from '../theme';
+import { corDoPerfil, type Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 import type { Perfil } from '../types/cadastro';
 import type { ScreenProps } from '../types/navigation';
 
 export function LoginTypeScreen({ navigation }: ScreenProps<'LoginType'>) {
+  const styles = useStyles(criarStyles);
+  const colors = useTheme();
   const { iniciarCadastro } = useCadastro();
   function selecionar(perfil: Perfil) {
     iniciarCadastro(perfil);
@@ -37,7 +41,7 @@ export function LoginTypeScreen({ navigation }: ScreenProps<'LoginType'>) {
           <Button
             key={perfil}
             title={perfis[perfil].titulo}
-            color={perfis[perfil].color}
+            color={corDoPerfil(colors, perfil)}
             imageSource={perfis[perfil].icon}
             onPress={() => selecionar(perfil)}
           />
@@ -63,24 +67,25 @@ export function LoginTypeScreen({ navigation }: ScreenProps<'LoginType'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: { justifyContent: 'space-between', gap: 32 },
-  header: { alignItems: 'center', gap: 8 },
-  logo: { width: 180, height: 180, resizeMode: 'contain' },
-  title: {
-    fontSize: fs(22),
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  subtitle: { color: colors.muted, fontSize: fs(14), textAlign: 'center' },
-  buttons: { gap: 16 },
-  footer: { gap: 12 },
-  link: { color: colors.primaryDark, fontWeight: '700' },
-  terms: {
-    color: colors.muted,
-    fontSize: fs(12),
-    textAlign: 'center',
-    lineHeight: lh(18),
-  },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    content: { justifyContent: 'space-between', gap: 32 },
+    header: { alignItems: 'center', gap: 8 },
+    logo: { width: 180, height: 180, resizeMode: 'contain' },
+    title: {
+      fontSize: fs(22),
+      color: colors.text,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    subtitle: { color: colors.muted, fontSize: fs(14), textAlign: 'center' },
+    buttons: { gap: 16 },
+    footer: { gap: 12 },
+    link: { color: colors.primaryDark, fontWeight: '700' },
+    terms: {
+      color: colors.muted,
+      fontSize: fs(12),
+      textAlign: 'center',
+      lineHeight: lh(18),
+    },
+  });

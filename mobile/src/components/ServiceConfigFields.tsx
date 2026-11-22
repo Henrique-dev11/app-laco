@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { Button } from './Button';
 import { FormField } from './FormField';
 import { useAppStyles } from '../theme/appStyles';

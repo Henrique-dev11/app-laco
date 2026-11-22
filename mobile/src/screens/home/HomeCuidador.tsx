@@ -1,7 +1,8 @@
 import { fs } from '../../theme/tipografia';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '../../accessibility/Texto';
 import { Notice } from '../../components/Notice';
 import { QuickAccessCard } from '../../components/QuickAccessCard';
 import { useAuth } from '../../contexts/AuthContext';

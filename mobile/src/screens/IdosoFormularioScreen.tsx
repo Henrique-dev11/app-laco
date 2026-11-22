@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
-import { ActivityIndicator, Keyboard, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { isAxiosError } from 'axios';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { FormField } from '../components/FormField';

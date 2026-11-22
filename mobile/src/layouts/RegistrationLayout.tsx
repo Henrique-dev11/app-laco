@@ -1,11 +1,13 @@
 import { fs, lh } from '../theme/tipografia';
 import type { PropsWithChildren } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StepHeader } from '../components/StepHeader';
 import { perfis } from '../constants/cadastro';
-import { colors } from '../theme';
+import { corDoPerfil, type Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 import type { Perfil } from '../types/cadastro';
 import type { RootStackParamList } from '../types/navigation';
 import { ScreenLayout } from './ScreenLayout';
@@ -26,6 +28,8 @@ export function RegistrationLayout({
   showLogo = true,
   children,
 }: Props) {
+  const styles = useStyles(criarStyles);
+  const paleta = useTheme();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const config = perfis[perfil];
@@ -35,7 +39,7 @@ export function RegistrationLayout({
         <StepHeader
           step={step}
           total={config.etapas}
-          color={config.color}
+          color={corDoPerfil(paleta, perfil)}
           onBack={() => navigation.goBack()}
         />
       }
@@ -60,21 +64,22 @@ export function RegistrationLayout({
   );
 }
 
-const styles = StyleSheet.create({
-  header: { alignItems: 'center', gap: 6 },
-  logo: { width: 190, height: 190, resizeMode: 'contain' },
-  title: {
-    color: colors.primaryDark,
-    fontSize: fs(20),
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: fs(14),
-    textAlign: 'center',
-    lineHeight: lh(21),
-  },
-  footer: { textAlign: 'center', fontSize: fs(13), color: colors.muted },
-  link: { color: colors.primaryDark, fontWeight: '700' },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    header: { alignItems: 'center', gap: 6 },
+    logo: { width: 190, height: 190, resizeMode: 'contain' },
+    title: {
+      color: colors.primaryDark,
+      fontSize: fs(20),
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    subtitle: {
+      color: colors.muted,
+      fontSize: fs(14),
+      textAlign: 'center',
+      lineHeight: lh(21),
+    },
+    footer: { textAlign: 'center', fontSize: fs(13), color: colors.muted },
+    link: { color: colors.primaryDark, fontWeight: '700' },
+  });

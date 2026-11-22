@@ -1,6 +1,7 @@
 import { MotionView } from '../motion/MotionView';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { Button } from './Button';
 import { useAppStyles } from '../theme/appStyles';
 import { useTheme } from '../theme/ThemeContext';

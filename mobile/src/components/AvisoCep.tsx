@@ -1,4 +1,5 @@
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import type { StatusCep } from '../hooks/useBuscaCep';
 import type { Paleta } from '../theme';
 import { useStyles } from '../theme/ThemeContext';

@@ -3,7 +3,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '../Button';
 import { PersonalDataForm } from '../PersonalDataForm';
-import { perfis } from '../../constants/cadastro';
+import { corDoPerfil } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
 import { useCadastro } from '../../contexts/CadastroContext';
 import { RegistrationLayout } from '../../layouts/RegistrationLayout';
 import type {
@@ -15,6 +16,7 @@ import type { RootStackParamList } from '../../types/navigation';
 import { validarPessoal } from '../../utils/validation';
 
 export function PersonalStep({ perfil }: { perfil: Perfil }) {
+  const paleta = useTheme();
   const { cadastro, atualizarCadastro } = useCadastro();
   const [errors, setErrors] = useState<ErrosFormulario<DadosPessoais>>({});
   const navigation =
@@ -44,7 +46,7 @@ export function PersonalStep({ perfil }: { perfil: Perfil }) {
       />
       <Button
         title="Continuar"
-        color={perfis[perfil].color}
+        color={corDoPerfil(paleta, perfil)}
         onPress={continuar}
       />
     </RegistrationLayout>

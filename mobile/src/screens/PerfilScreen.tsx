@@ -1,6 +1,7 @@
 import { fs } from '../theme/tipografia';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import type { ScreenProps } from '../types/navigation';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';

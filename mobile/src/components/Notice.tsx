@@ -1,5 +1,6 @@
 import { fs, lh } from '../theme/tipografia';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import type { Paleta } from '../theme';
 import { useStyles } from '../theme/ThemeContext';
 import { MotionView } from '../motion/MotionView';

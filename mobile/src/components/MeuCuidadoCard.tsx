@@ -1,5 +1,6 @@
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';

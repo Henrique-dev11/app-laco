@@ -1,6 +1,7 @@
 import { fs, lh } from '../theme/tipografia';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { StepHeader } from '../components/StepHeader';
@@ -11,13 +12,16 @@ import { valoresOferta } from '../utils/ofertas';
 import { salvarCadastro } from '../services/cadastro';
 import { mensagemErro } from '../services/api';
 import { useListaApi } from '../hooks/useListaApi';
-import { colors } from '../theme';
+import { corDoPerfil, type Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 import type { Servico } from '../types/servico';
 import type { ScreenProps } from '../types/navigation';
 
 export function CadastroPreviewScreen({
   navigation,
 }: ScreenProps<'CadastroPreview'>) {
+  const styles = useStyles(criarStyles);
+  const paleta = useTheme();
   const { cadastro, limparCadastro } = useCadastro();
   const [config] = useState(() => perfis[cadastro.perfil]);
   const { dados: servicos } = useListaApi<Servico>('/servicos');
@@ -45,7 +49,7 @@ export function CadastroPreviewScreen({
           <StepHeader
             step={config.etapas}
             total={config.etapas}
-            color={config.color}
+            color={corDoPerfil(paleta, cadastro.perfil)}
             onBack={() => {
               if (!enviando) navigation.goBack();
             }}
@@ -63,7 +67,7 @@ export function CadastroPreviewScreen({
           </Notice>
           <Button
             title="Ir para o login"
-            color={config.color}
+            color={corDoPerfil(paleta, cadastro.perfil)}
             onPress={() =>
               navigation.reset({ index: 0, routes: [{ name: 'Login' }] })
             }
@@ -114,7 +118,7 @@ export function CadastroPreviewScreen({
           <Button
             loading={enviando}
             title={enviando ? 'Salvando...' : 'Confirmar cadastro'}
-            color={config.color}
+            color={corDoPerfil(paleta, cadastro.perfil)}
             disabled={enviando}
             onPress={() => {
               void salvar();
@@ -131,15 +135,16 @@ export function CadastroPreviewScreen({
     </ScreenLayout>
   );
 }
-const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: fs(26), fontWeight: '700' },
-  card: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    padding: 20,
-    gap: 12,
-  },
-  name: { color: colors.text, fontSize: fs(20), fontWeight: '700' },
-  text: { color: colors.muted, fontSize: fs(14), lineHeight: lh(21) },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    title: { color: colors.text, fontSize: fs(26), fontWeight: '700' },
+    card: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      padding: 20,
+      gap: 12,
+    },
+    name: { color: colors.text, fontSize: fs(20), fontWeight: '700' },
+    text: { color: colors.muted, fontSize: fs(14), lineHeight: lh(21) },
+  });

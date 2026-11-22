@@ -1,7 +1,8 @@
 import { fs } from '../theme/tipografia';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';

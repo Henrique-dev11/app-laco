@@ -1,6 +1,7 @@
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { Button } from '../components/Button';
 import { EnderecoForm } from '../components/EnderecoForm';
 import { FormField } from '../components/FormField';
@@ -8,7 +9,8 @@ import { PersonalStep } from '../components/registration/PersonalStep';
 import { DocumentStep } from '../components/registration/DocumentStep';
 import { useCadastro } from '../contexts/CadastroContext';
 import { RegistrationLayout } from '../layouts/RegistrationLayout';
-import { perfis } from '../constants/cadastro';
+import { corDoPerfil } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import type { DadosIdoso, ErrosFormulario } from '../types/cadastro';
 import type { ScreenProps } from '../types/navigation';
 import { formatarData, validarIdoso } from '../utils/validation';
@@ -23,6 +25,7 @@ export function ResponsavelStep2Screen() {
 export function ResponsavelStep3Screen({
   navigation,
 }: ScreenProps<'ResponsavelStep3'>) {
+  const paleta = useTheme();
   const { cadastro, atualizarCadastro } = useCadastro();
   const [errors, setErrors] = useState<ErrosFormulario<DadosIdoso>>({});
   function change(field: keyof DadosIdoso, value: string) {
@@ -118,7 +121,7 @@ export function ResponsavelStep3Screen({
       {!!errors.endereco && <Text>{errors.endereco}</Text>}
       <Button
         title="Finalizar"
-        color={perfis.responsavel.color}
+        color={corDoPerfil(paleta, 'responsavel')}
         onPress={finalizar}
       />
     </RegistrationLayout>

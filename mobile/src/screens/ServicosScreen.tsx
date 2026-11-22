@@ -1,7 +1,8 @@
 import { MotionView } from '../motion/MotionView';
 import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';

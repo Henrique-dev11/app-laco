@@ -1,18 +1,22 @@
 import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
 import { Notice } from '../components/Notice';
 import { useAuth } from '../contexts/AuthContext';
 import { mensagemErro } from '../services/api';
 import { ScreenLayout } from '../layouts/ScreenLayout';
-import { colors } from '../theme';
+import { corDoPerfil, type Paleta } from '../theme';
+import { useStyles, useTheme } from '../theme/ThemeContext';
 import type { ScreenProps } from '../types/navigation';
 import { emailValido } from '../utils/validation';
 
 export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
+  const styles = useStyles(criarStyles);
+  const paleta = useTheme();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [errors, setErrors] = useState<{ email?: string; senha?: string }>({});
@@ -79,7 +83,7 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
       <Button
         loading={enviando}
         title={enviando ? 'Entrando...' : 'Entrar'}
-        color={colors.elderly}
+        color={corDoPerfil(paleta, 'idoso')}
         disabled={enviando}
         onPress={() => {
           void entrar();
@@ -129,24 +133,25 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  header: { alignItems: 'center', gap: 8 },
-  logo: { width: 220, height: 220, resizeMode: 'contain' },
-  title: { fontSize: fs(32), fontWeight: '700', color: colors.text },
-  link: { color: colors.primaryDark, fontWeight: '600' },
-  muted: { color: colors.muted, fontSize: fs(13) },
-  forgot: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' },
-  social: { alignItems: 'center', gap: 12 },
-  row: { flexDirection: 'row', gap: 20 },
-  socialButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  socialIcon: { width: 24, height: 24, resizeMode: 'contain' },
-  footer: { textAlign: 'center', fontSize: fs(13), color: colors.muted },
-});
+const criarStyles = (colors: Paleta) =>
+  StyleSheet.create({
+    header: { alignItems: 'center', gap: 8 },
+    logo: { width: 220, height: 220, resizeMode: 'contain' },
+    title: { fontSize: fs(32), fontWeight: '700', color: colors.text },
+    link: { color: colors.primaryDark, fontWeight: '600' },
+    muted: { color: colors.muted, fontSize: fs(13) },
+    forgot: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' },
+    social: { alignItems: 'center', gap: 12 },
+    row: { flexDirection: 'row', gap: 20 },
+    socialButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    socialIcon: { width: 24, height: 24, resizeMode: 'contain' },
+    footer: { textAlign: 'center', fontSize: fs(13), color: colors.muted },
+  });

@@ -1,7 +1,8 @@
 import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Text } from '../accessibility/Texto';
 import { listarServicos } from '../services/servicos';
 import type { Servico } from '../types/servico';
 import type { Paleta } from '../theme';

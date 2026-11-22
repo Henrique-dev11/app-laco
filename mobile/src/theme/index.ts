@@ -128,3 +128,18 @@ export const paletas = {
   cuidador: criarPaleta(cadastro.caregiver),
   idoso: criarPaleta(cadastro.elderly),
 } as const;
+
+/**
+ * Cor do botão de cadastro de cada perfil na paleta atual. Em alto contraste
+ * as três cores viram a cor de destaque do modo (veja `theme/contraste.ts`).
+ */
+export function corDoPerfil(
+  paleta: Paleta,
+  perfil: 'cuidador' | 'responsavel' | 'idoso',
+) {
+  return {
+    cuidador: paleta.caregiver,
+    responsavel: paleta.responsible,
+    idoso: paleta.elderly,
+  }[perfil];
+}
