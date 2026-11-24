@@ -229,6 +229,49 @@ describe('Dashboard administrativa: dados reais, paginação e relatórios', () 
     );
     expect(r.body.classificacaoIndependentes).toContain('próprio cuidado');
   });
+  it('resume pagamentos liberados e em contestação respeitando a disponibilidade', async () => {
+    const previous = process.env.FINANCEIRO_SIMULADO;
+    try {
+      process.env.FINANCEIRO_SIMULADO = '1';
+      await db.pagamentoSimulado.createMany({
+        data: [
+          {
+            contratacaoId: contratos[2],
+            cuidadorId,
+            status: 'LIBERADO',
+            bruto: '20.20',
+            comissao: '2.02',
+            liquido: '18.18',
+          },
+          {
+            contratacaoId: contratos[1],
+            cuidadorId,
+            status: 'EM_CONTESTACAO',
+            bruto: '100.10',
+            comissao: '10.01',
+            liquido: '90.09',
+          },
+        ],
+      });
+      const response = await get('/admin/resumo').expect(200);
+      expect(response.body.pagamentos).toEqual({
+        disponivel: true,
+        liberados: { quantidade: 1, liquido: '18.18' },
+        emContestacao: { quantidade: 1, bruto: '100.10' },
+      });
+      await get('/admin/resumo', comumToken).expect(403);
+      process.env.FINANCEIRO_SIMULADO = '0';
+      expect(
+        (await get('/admin/resumo').expect(200)).body.pagamentos.disponivel,
+      ).toBe(false);
+    } finally {
+      await db.pagamentoSimulado.deleteMany({
+        where: { contratacaoId: { in: [contratos[2], contratos[1]] } },
+      });
+      if (previous === undefined) delete process.env.FINANCEIRO_SIMULADO;
+      else process.env.FINANCEIRO_SIMULADO = previous;
+    }
+  });
   it('pesquisa nomes, pagina de forma estável e combina verificação com situação', async () => {
     const a = await get(
       '/admin/usuarios/cuidadores?busca=admin%20gest%C3%A3o&limite=1&pagina=1',

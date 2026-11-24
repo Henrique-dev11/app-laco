@@ -17,6 +17,7 @@ type Props = PropsWithChildren<{
   contentStyle?: StyleProp<ViewStyle>;
   backgroundColor?: string;
   topInset?: boolean;
+  animateEntry?: boolean;
 }>;
 
 export function ScreenLayout({
@@ -25,6 +26,7 @@ export function ScreenLayout({
   contentStyle,
   backgroundColor,
   topInset = true,
+  animateEntry = true,
 }: Props) {
   const colors = useTheme();
   return (
@@ -34,7 +36,10 @@ export function ScreenLayout({
           ? ['top', 'bottom', 'left', 'right']
           : ['bottom', 'left', 'right']
       }
-      style={[styles.safe, { backgroundColor: backgroundColor ?? colors.surface }]}
+      style={[
+        styles.safe,
+        { backgroundColor: backgroundColor ?? colors.surface },
+      ]}
     >
       {header}
       <KeyboardAvoidingView
@@ -46,7 +51,11 @@ export function ScreenLayout({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <MotionView preset="fade" style={[styles.content, contentStyle]}>
+          <MotionView
+            animate={animateEntry}
+            preset="fade"
+            style={[styles.content, contentStyle]}
+          >
             {children}
           </MotionView>
         </ScrollView>

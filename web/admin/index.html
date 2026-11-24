@@ -75,7 +75,15 @@
             >Laço<small>Administração</small></span
           ></a
         >
-        <nav aria-label="Navegação administrativa">
+        <button
+          id="menu-toggle"
+          class="button outline"
+          aria-controls="admin-navigation"
+          aria-expanded="false"
+        >
+          Menu
+        </button>
+        <nav id="admin-navigation" aria-label="Navegação administrativa">
           <div class="sidebar-section">DASHBOARD</div>
           <a class="sidebar-link" href="#visao-geral">◫ Visão geral</a>
           <div class="sidebar-section">GERENCIAMENTO DE USUÁRIOS</div>
@@ -94,7 +102,7 @@
           <a class="sidebar-link" href="#contratacoes"
             >▤ Todas e acompanhamento</a
           >
-          <a class="sidebar-link" href="#pagamentos-simulados">Pagamentos simulados</a>
+          <a class="sidebar-link" href="#pagamentos-simulados">Pagamentos</a>
           <div class="sidebar-section">RELATÓRIOS E DESEMPENHO</div>
           <a class="sidebar-link" href="#relatorios/financeiro"
             >↗ Valores contratados</a

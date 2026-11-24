@@ -85,10 +85,10 @@ export class FinanceiroService {
         'Atendimento disponível apenas aos participantes.',
       );
     if (!principal.financeiroSimulado)
-      throw new NotFoundException('Atendimento sem pagamento simulado.');
+      throw new NotFoundException('Atendimento sem pagamento.');
     if (!financeiroAtivo())
       throw new ForbiddenException(
-        'Financeiro acadêmico desativado neste ambiente.',
+        'Financeiro desativado neste ambiente.',
       );
     const escopo = principal.visitaId ? { visitaId: chave } : { id: chave };
     const contratos = await tx.contratacao.findMany({
@@ -201,9 +201,9 @@ export class FinanceiroService {
     motivo?: string,
   ) {
     const descricao = {
-      RETENCAO: 'Pagamento fictício retido',
-      LIBERACAO: 'Crédito fictício liberado na carteira',
-      REEMBOLSO: 'Reembolso fictício ao responsável',
+      RETENCAO: 'Pagamento retido',
+      LIBERACAO: 'Crédito liberado na carteira',
+      REEMBOLSO: 'Reembolso ao responsável',
     }[tipo];
     await tx.movimentoSimulado.create({
       data: {
@@ -583,7 +583,7 @@ export class FinanceiroService {
           tipo: 'SAQUE',
           metodo,
           valor: quantia,
-          descricao: 'Saque virtual concluído',
+          descricao: 'Saque concluído',
         },
         select: movimentoSelect,
       });

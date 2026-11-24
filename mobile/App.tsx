@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Animated } from 'react-native';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Platform, View, type HostInstance } from 'react-native';
 import {
   AcessibilidadeProvider,
   usePreferenciasAcessibilidade,
@@ -15,7 +15,12 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { CadastroProvider } from './src/contexts/CadastroContext';
-import { AuthProvider } from './src/contexts/AuthContext';
+import {
+  PresentationProvider,
+  usePresentation,
+} from './src/motion/PresentationProvider';
+import { PresentationOverlay } from './src/motion/PresentationOverlay';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { AvisosMensagens } from './src/components/AvisosMensagens';
 import { AppRoutes } from './src/routes/AppRoutes';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
@@ -39,6 +44,17 @@ const TELAS_SEM_BARRA: readonly string[] = [
 
 function Shell() {
   const colors = useTheme();
+  const { carregando } = useAuth();
+  const { presentation, expired } = usePresentation();
+  const waiting = presentation.kind === 'abertura' && carregando;
+  const presenting = !expired || waiting;
+  const contentRef = useRef<HostInstance>(null);
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const element = contentRef.current as unknown as HTMLElement | null;
+    if (presenting) element?.setAttribute('inert', '');
+    else element?.removeAttribute('inert');
+  }, [presenting]);
   const { preferencias } = usePreferenciasAcessibilidade();
   const theme = useMemo(
     () => ({
@@ -87,13 +103,34 @@ function Shell() {
       onReady={updateRoute}
       onStateChange={updateRoute}
     >
-      <StatusBar style={claro ? 'light' : 'dark'} />
-      <Animated.View style={motion.style}>
-        <AppRoutes />
-      </Animated.View>
-      <AvisosMensagens navigationRef={navigationRef} />
+      <StatusBar
+        style={
+          presenting
+            ? preferencias.contraste === 'escuro'
+              ? 'light'
+              : 'dark'
+            : claro
+              ? 'light'
+              : 'dark'
+        }
+      />
+      <View
+        ref={contentRef}
+        style={{ flex: 1 }}
+        pointerEvents={presenting ? 'none' : 'auto'}
+        accessibilityElementsHidden={presenting}
+        importantForAccessibility={presenting ? 'no-hide-descendants' : 'auto'}
+      >
+        <Animated.View style={motion.style}>
+          <AppRoutes />
+        </Animated.View>
+        <AvisosMensagens navigationRef={navigationRef} />
+      </View>
+      {presenting && <PresentationOverlay waiting={waiting} />}
       {/* Botão fixo de acessibilidade: fica sobre todas as telas do app. */}
-      <BotaoAcessibilidade elevado={!TELAS_SEM_BARRA.includes(activeRoute)} />
+      <BotaoAcessibilidade
+        elevado={!presenting && !TELAS_SEM_BARRA.includes(activeRoute)}
+      />
     </NavigationContainer>
   );
 }
@@ -104,13 +141,15 @@ export default function App() {
       {/* Acessibilidade fica acima de movimento e tema, que dependem dela. */}
       <AcessibilidadeProvider>
         <MotionProvider>
-          <AuthProvider>
-            <ThemeProvider>
-              <CadastroProvider>
-                <Shell />
-              </CadastroProvider>
-            </ThemeProvider>
-          </AuthProvider>
+          <PresentationProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                <CadastroProvider>
+                  <Shell />
+                </CadastroProvider>
+              </ThemeProvider>
+            </AuthProvider>
+          </PresentationProvider>
         </MotionProvider>
       </AcessibilidadeProvider>
     </SafeAreaProvider>

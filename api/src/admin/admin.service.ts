@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { financeiroAtivo } from '../financeiro/financeiro.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { instanteLocal, partesLocais } from '../contratacao/horarios.js';
@@ -156,6 +157,7 @@ export class AdminService {
           independentes,
           status,
           pendentesVerificacao,
+          pagamentos,
         ] = await Promise.all([
           tx.cuidador.count(),
           tx.responsavel.count({ where: semAcessoProprio }),
@@ -165,6 +167,14 @@ export class AdminService {
           }),
           tx.contratacao.groupBy({ by: ['status'], _count: { _all: true } }),
           tx.cuidador.count({ where: { statusVerificacao: 'PENDENTE' } }),
+          financeiroAtivo()
+            ? tx.pagamentoSimulado.groupBy({
+                by: ['status'],
+                where: { status: { in: ['LIBERADO', 'EM_CONTESTACAO'] } },
+                _count: { _all: true },
+                _sum: { liquido: true, bruto: true },
+              })
+            : Promise.resolve([]),
         ]);
         const porStatus = Object.fromEntries(
           ['SOLICITADA', 'ACEITA', 'RECUSADA', 'CANCELADA', 'CONCLUIDA'].map(
@@ -180,6 +190,27 @@ export class AdminService {
           contratacoes: status.reduce((n, v) => n + v._count._all, 0),
           porStatus,
           atualizadoEm: new Date(),
+          pagamentos: {
+            disponivel: financeiroAtivo(),
+            liberados: {
+              quantidade:
+                pagamentos.find((p) => p.status === 'LIBERADO')?._count._all ??
+                0,
+              liquido:
+                pagamentos
+                  .find((p) => p.status === 'LIBERADO')
+                  ?._sum.liquido?.toFixed(2) ?? '0.00',
+            },
+            emContestacao: {
+              quantidade:
+                pagamentos.find((p) => p.status === 'EM_CONTESTACAO')?._count
+                  ._all ?? 0,
+              bruto:
+                pagamentos
+                  .find((p) => p.status === 'EM_CONTESTACAO')
+                  ?._sum.bruto?.toFixed(2) ?? '0.00',
+            },
+          },
           classificacaoIndependentes:
             'Idosos que gerenciam o próprio cuidado; incluídos no total de idosos e separados dos responsáveis.',
         };

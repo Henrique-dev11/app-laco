@@ -145,7 +145,7 @@ export class ContratacaoService {
         select: { financeiroSimulado: true, pagamentoSimulado: { select: { status: true } } },
       });
       if (contrato?.financeiroSimulado && contrato.pagamentoSimulado?.status !== 'RETIDO')
-        throw new ConflictException('Confirme o pagamento simulado antes de agendar.');
+        throw new ConflictException('Confirme o pagamento antes de agendar.');
       return this.agendarEmTransacao(tx, id, dataInicio, usuario);
     });
   }
