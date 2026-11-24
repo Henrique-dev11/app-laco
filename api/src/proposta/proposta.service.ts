@@ -1,3 +1,4 @@
+import { financeiroAtivo } from '../financeiro/financeiro.service.js';
 import {
   BadRequestException,
   ConflictException,
@@ -28,6 +29,8 @@ export const propostaInclude = {
         select: {
           id: true,
           status: true,
+          financeiroSimulado: true,
+          visitaId: true,
           agendamento: { select: { inicio: true, fim: true, ativo: true } },
         },
       },
@@ -99,6 +102,7 @@ export class PropostaService {
           status: { in: ['SOLICITADA', 'ACEITA'] },
           agendamento: null,
           itemPropostaId: null,
+          pagamentoSimulado: null,
         },
         select: {
           id: true,
@@ -165,6 +169,7 @@ export class PropostaService {
             status: { in: ['SOLICITADA', 'ACEITA'] },
             agendamento: null,
             itemPropostaId: null,
+          pagamentoSimulado: null,
           },
         });
         if (!contrato)
@@ -396,6 +401,7 @@ export class PropostaService {
                 duracaoMinutos: item.duracaoMinutos,
                 observacoes: p.observacoes,
                 status: 'ACEITA' as const,
+                financeiroSimulado: financeiroAtivo(),
                 itemPropostaId: item.id,
                 sessaoProposta: n + 1,
               };

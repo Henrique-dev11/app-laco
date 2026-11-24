@@ -1,3 +1,5 @@
+import { SaldoCarteira } from '../../components/CartoesCarteira';
+import { useConsultaApi } from '../../hooks/useConsultaApi';
 import { fs } from '../../theme/tipografia';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
@@ -28,12 +30,31 @@ export function HomeCuidador({ navigation }: HomeProps) {
   const colors = useTheme();
   const { usuario, atualizar } = useAuth();
   const { pendentes } = useNotificacoes();
-  const { agendados, proximo, erro, agora } = useAgendados();
+  const {
+    agendados,
+    proximo,
+    erro,
+    agora,
+    atualizar: atualizarAgenda,
+    carregando: agendaCarregando,
+  } = useAgendados();
+  const carteira = useConsultaApi<{ disponivel: string; pendente: string }>(
+    usuario?.cuidador ? '/financeiro/carteira?dias=7' : null,
+  );
   const [erroCadastro, setErroCadastro] = useState('');
   const cuidador = usuario?.cuidador;
   if (!usuario || !cuidador) return null;
   return (
-    <HomeShell navigation={navigation}>
+    <HomeShell
+      navigation={navigation}
+      atualizacao={{
+        atualizar: () => {
+          void atualizarAgenda();
+          void carteira.atualizar();
+        },
+        carregando: agendaCarregando || carteira.carregando,
+      }}
+    >
       {cuidador.statusVerificacao !== 'APROVADO' && (
         <Notice>
           {cuidador.statusVerificacao === 'PENDENTE'
@@ -111,6 +132,19 @@ export function HomeCuidador({ navigation }: HomeProps) {
           onPress={() => navigation.navigate('Historico')}
         />
       </View>
+      {carteira.dados && (
+        <SaldoCarteira
+          {...carteira.dados}
+          abrir={() => navigation.navigate('CarteiraVirtual')}
+        />
+      )}
+      {!carteira.dados && (
+        <QuickAccessCard
+          title="Carteira virtual"
+          icon="wallet-outline"
+          onPress={() => navigation.navigate('CarteiraVirtual')}
+        />
+      )}
       <SecaoTitulo>Meu perfil</SecaoTitulo>
       <LinhaPessoa
         nome={usuario.nomeSocial || usuario.nome}

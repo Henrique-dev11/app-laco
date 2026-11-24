@@ -17,6 +17,9 @@ export type Preferencias = {
   reduzirAnimacoes: boolean;
   velocidadeVoz: VelocidadeVoz;
   posicaoBotao: PosicaoBotao;
+  leituraPorToque?: boolean;
+  botaoOculto?: boolean;
+  pontoBotao?: { x: number; y: number };
 };
 
 /** Medidas do botão fixo de acessibilidade (px). */
@@ -60,6 +63,9 @@ export function normalizarPreferencias(bruto: unknown): Preferencias {
     bruto && typeof bruto === 'object' ? bruto : {}
   ) as Record<string, unknown>;
   const padrao = PREFERENCIAS_PADRAO;
+  const ponto = dados.pontoBotao as { x?: unknown; y?: unknown } | undefined;
+  const coordenadaValida = (valor: unknown): valor is number =>
+    typeof valor === 'number' && Number.isFinite(valor) && valor >= 0 && valor <= 1;
   return {
     escalaFonte: (ESCALAS_FONTE as readonly number[]).includes(
       dados.escalaFonte as number,
@@ -81,6 +87,11 @@ export function normalizarPreferencias(bruto: unknown): Preferencias {
     velocidadeVoz: velocidades.includes(dados.velocidadeVoz as VelocidadeVoz)
       ? (dados.velocidadeVoz as VelocidadeVoz)
       : padrao.velocidadeVoz,
+    ...(dados.leituraPorToque === true ? { leituraPorToque: true } : {}),
+    ...(dados.botaoOculto === true ? { botaoOculto: true } : {}),
+    ...(coordenadaValida(ponto?.x) && coordenadaValida(ponto?.y)
+      ? { pontoBotao: { x: ponto.x, y: ponto.y } }
+      : {}),
     posicaoBotao: posicoes.includes(dados.posicaoBotao as PosicaoBotao)
       ? (dados.posicaoBotao as PosicaoBotao)
       : padrao.posicaoBotao,

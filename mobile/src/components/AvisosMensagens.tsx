@@ -4,6 +4,8 @@ import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Text } from '../accessibility/Texto';
+import { lerAvisoPagamento } from '../services/avisosPagamento';
+import { aoToqueNoAvisoPagamento } from '../services/notificacoes';
 import type { NavigationContainerRefWithCurrent } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,6 +40,7 @@ export function AvisosMensagens({
 }) {
   const { usuario } = useAuth();
   const usuarioId = usuario?.id;
+  const cuidador = !!usuario?.cuidador;
   const styles = useStyles(criarStyles);
   const insets = useSafeAreaInsets();
   const [aviso, setAviso] = useState<Aviso | null>(null);
@@ -102,6 +105,26 @@ export function AvisosMensagens({
       removerToque();
     };
   }, [usuarioId, navigationRef]);
+
+  useEffect(() => {
+    if (!cuidador || !usuarioId) return;
+    let ativo = true;
+    const remover = aoToqueNoAvisoPagamento((id) => {
+      void lerAvisoPagamento(id)
+        .then((destino) => {
+          if (ativo && navigationRef.isReady())
+            navigationRef.navigate('VisitaFinanceira', destino);
+        })
+        .catch(() => {
+          if (ativo && navigationRef.isReady())
+            navigationRef.navigate('Notificacoes');
+        });
+    });
+    return () => {
+      ativo = false;
+      remover();
+    };
+  }, [cuidador, usuarioId, navigationRef]);
 
   // O aviso interno some sozinho.
   useEffect(() => {

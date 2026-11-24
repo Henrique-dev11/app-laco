@@ -74,8 +74,8 @@ export class AuthController {
     return this.auth.login(dto);
   }
 
-  @Get('me') me(@Req() req: Autenticado) {
-    return this.auth.me(req.usuario.id);
+  @Get('me') async me(@Req() req: Autenticado) {
+    return { ...await this.auth.me(req.usuario.id), sessaoExpiraEm: req.usuario.sessaoExpiraEm };
   }
   @Post('logout')
   @HttpCode(204)

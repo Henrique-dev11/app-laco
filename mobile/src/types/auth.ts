@@ -8,6 +8,7 @@ export type Endereco = {
   cep: string;
 };
 export type UsuarioAtual = {
+  sessaoExpiraEm?: string;
   id: number;
   nome: string;
   nomeSocial: string | null;

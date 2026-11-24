@@ -1,19 +1,16 @@
+import { useConsultaApi } from '../hooks/useConsultaApi';
 import { fs } from '../theme/tipografia';
 import { MotionView } from '../motion/MotionView';
 import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
-import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from '../accessibility/Texto';
-import { useFocusEffect } from '@react-navigation/native';
 import { Avatar } from '../components/Avatar';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useAuth } from '../contexts/AuthContext';
-import { mensagemErro } from '../services/api';
 import {
-  listarConversas,
   nomeDoContato,
   rotuloData,
   type Conversa,
@@ -27,34 +24,12 @@ const INTERVALO_MS = 10000;
 export function MensagensScreen({ navigation }: ScreenProps<'Mensagens'>) {
   const styles = useStyles(criarStyles);
   const { usuario } = useAuth();
-  const [conversas, setConversas] = useState<Conversa[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState('');
-
-  // Atualiza ao abrir a tela (inclusive ao voltar de uma conversa) e a cada 10 s.
-  useFocusEffect(
-    useCallback(() => {
-      let ativo = true;
-      async function carregar() {
-        try {
-          const lista = await listarConversas();
-          if (!ativo) return;
-          setConversas(lista);
-          setErro('');
-        } catch (error) {
-          if (ativo) setErro(mensagemErro(error));
-        } finally {
-          if (ativo) setCarregando(false);
-        }
-      }
-      void carregar();
-      const timer = setInterval(() => void carregar(), INTERVALO_MS);
-      return () => {
-        ativo = false;
-        clearInterval(timer);
-      };
-    }, []),
+  const consulta = useConsultaApi<Conversa[]>(
+    '/mensagens/conversas',
+    INTERVALO_MS,
   );
+  const { dados, carregando, erro } = consulta;
+  const conversas = dados ?? [];
 
   const outroLado = usuario?.cuidador ? 'responsáveis' : 'cuidadores';
 
@@ -63,6 +38,7 @@ export function MensagensScreen({ navigation }: ScreenProps<'Mensagens'>) {
       title="Mensagens"
       subtitle="Converse com quem cuida com você"
       tab="Mensagens"
+      atualizacao={consulta}
     >
       {carregando && !conversas.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
@@ -163,5 +139,9 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'center',
       backgroundColor: colors.primary,
     },
-    contadorTexto: { fontSize: fs(12), fontWeight: '700', color: colors.surface },
+    contadorTexto: {
+      fontSize: fs(12),
+      fontWeight: '700',
+      color: colors.surface,
+    },
   });

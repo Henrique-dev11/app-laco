@@ -22,6 +22,8 @@ export type Proposta = {
     contratacoes: {
       id: number;
       status: string;
+      financeiroSimulado?: boolean;
+      visitaId?: number | null;
       agendamento: { inicio: string; fim: string; ativo: boolean } | null;
     }[];
   }[];

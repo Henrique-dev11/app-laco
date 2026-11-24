@@ -1,3 +1,4 @@
+import { financeiroAtivo } from '../financeiro/financeiro.service.js';
 import {
   BadRequestException,
   Injectable,
@@ -24,7 +25,7 @@ const ALFABETO_CODIGO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const TAMANHO_CODIGO = 6;
 const MAX_TENTATIVAS_CODIGO = 5;
 // Nunca devolver o hash do código nem o contador de tentativas pela API.
-const contratacaoOmit = { codigoConclusaoHash: true, tentativasCodigo: true };
+const contratacaoOmit = { codigoConclusaoHash: true, codigoConclusaoExpiraEm: true, tentativasCodigo: true };
 
 const contratacaoInclude = {
   itemProposta: {
@@ -137,9 +138,16 @@ export class ContratacaoService {
   }
 
   async agendar(id: number, dataInicio: string, usuario: Identidade) {
-    return this.prisma.$transaction((tx) =>
-      this.agendarEmTransacao(tx, id, dataInicio, usuario),
-    );
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Contratacao" WHERE id = ${id} FOR UPDATE`;
+      const contrato = await tx.contratacao.findUnique({
+        where: { id },
+        select: { financeiroSimulado: true, pagamentoSimulado: { select: { status: true } } },
+      });
+      if (contrato?.financeiroSimulado && contrato.pagamentoSimulado?.status !== 'RETIDO')
+        throw new ConflictException('Confirme o pagamento simulado antes de agendar.');
+      return this.agendarEmTransacao(tx, id, dataInicio, usuario);
+    });
   }
 
   /** Compartilhado pelo agendamento manual e pela confirmação de proposta. */
@@ -260,11 +268,12 @@ export class ContratacaoService {
         'A oferta mudou. Atualize a busca e revise o preço e a duração antes de solicitar.',
       );
 
-    return this.prisma.contratacao.create({
+    const criar = (tx: Prisma.TransactionClient) => tx.contratacao.create({
       data: {
         responsavelId: dto.responsavelId,
         idosoId: dto.idosoId,
         cuidadorServicoId: dto.cuidadorServicoId,
+        financeiroSimulado: financeiroAtivo(),
         valorAcordado: oferta.preco,
         precoReferencia: oferta.preco,
         duracaoMinutos: oferta.duracaoMinutos,
@@ -275,6 +284,23 @@ export class ContratacaoService {
       },
       include: contratacaoInclude,
       omit: contratacaoOmit,
+    });
+    if (!dto.reutilizarSolicitacaoPendente) return criar(this.prisma);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Responsavel" WHERE id = ${dto.responsavelId} FOR UPDATE`;
+      const existente = await tx.contratacao.findFirst({
+        where: {
+          status: 'SOLICITADA',
+          responsavelId: dto.responsavelId,
+          idosoId: dto.idosoId,
+          cuidadorServicoId: dto.cuidadorServicoId,
+        },
+        orderBy: { id: 'desc' },
+        include: contratacaoInclude,
+        omit: contratacaoOmit,
+      });
+      return existente ?? criar(tx);
     });
   }
 
@@ -341,6 +367,8 @@ export class ContratacaoService {
       throw new NotFoundException('Contratação não encontrada.');
     }
 
+    if (contratacao.financeiroSimulado && ['CONCLUIDA', 'CANCELADA'].includes(dto.status))
+      throw new ConflictException('Use o acompanhamento financeiro da visita.');
     if (!['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario)) {
       const oferta = await this.prisma.cuidadorServico.findUniqueOrThrow({
         where: { id: contratacao.cuidadorServicoId },
@@ -376,13 +404,25 @@ export class ContratacaoService {
       );
     }
 
-    if (
-      dto.status === 'CONCLUIDA' &&
+    const principalId = contratacao.visitaId ?? id;
+    const hashValidado = dto.status === 'CONCLUIDA' &&
       !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario)
-    )
-      await this.validarCodigoConclusao(contratacao.visitaId ?? id, dto.codigo);
+      ? await this.validarCodigoConclusao(principalId, dto.codigo)
+      : null;
 
     await this.prisma.$transaction(async (tx) => {
+      if (hashValidado) {
+        await tx.$queryRaw`SELECT id FROM "Contratacao" WHERE id = ${principalId} FOR UPDATE`;
+        const atual = await tx.contratacao.findUnique({
+          where: { id: principalId },
+          select: { codigoConclusaoHash: true, codigoConclusaoExpiraEm: true },
+        });
+        if (atual?.codigoConclusaoHash !== hashValidado ||
+            !atual.codigoConclusaoExpiraEm ||
+            atual.codigoConclusaoExpiraEm.getTime() <= Date.now()) {
+          throw new BadRequestException('Código expirado ou substituído. Peça o código atual ao responsável.');
+        }
+      }
       const escopo =
         contratacao.visitaId && ['CONCLUIDA', 'CANCELADA'].includes(dto.status)
           ? { visitaId: contratacao.visitaId }
@@ -393,7 +433,7 @@ export class ContratacaoService {
           status: dto.status,
           // Concluída ou cancelada: o código deixa de valer.
           ...(['CONCLUIDA', 'CANCELADA'].includes(dto.status)
-            ? { codigoConclusaoHash: null, tentativasCodigo: 0 }
+            ? { codigoConclusaoHash: null, codigoConclusaoExpiraEm: null, tentativasCodigo: 0 }
             : {}),
         },
       });
@@ -420,7 +460,7 @@ export class ContratacaoService {
   async gerarCodigoConclusao(id: number, usuario: Identidade) {
     const contratacao = await this.prisma.contratacao.findUnique({
       where: { id },
-      select: { responsavelId: true, status: true, visitaId: true },
+      select: { responsavelId: true, status: true, visitaId: true, financeiroSimulado: true },
     });
     if (!contratacao)
       throw new NotFoundException('Contratação não encontrada.');
@@ -428,15 +468,20 @@ export class ContratacaoService {
       throw new ForbiddenException(
         'Somente o responsável por esta contratação pode gerar o código.',
       );
+    if (contratacao.financeiroSimulado)
+      throw new ConflictException('Emita o código pelo acompanhamento financeiro da visita.');
     if (contratacao.status !== 'ACEITA')
       throw new BadRequestException(
         'O código só pode ser gerado para atendimentos aceitos.',
       );
     const codigo = this.novoCodigo();
+    const hash = await bcrypt.hash(codigo, 10);
+    const expiraEm = new Date(Date.now() + 15 * 60_000);
     const result = await this.prisma.contratacao.updateMany({
       where: { id: contratacao.visitaId ?? id, status: 'ACEITA' },
       data: {
-        codigoConclusaoHash: await bcrypt.hash(codigo, 10),
+        codigoConclusaoHash: hash,
+        codigoConclusaoExpiraEm: expiraEm,
         tentativasCodigo: 0,
       },
     });
@@ -444,7 +489,7 @@ export class ContratacaoService {
       throw new ConflictException(
         'A contratação foi alterada. Atualize os dados e tente novamente.',
       );
-    return { codigo };
+    return { codigo, expiraEm };
   }
 
   /** Cada tentativa é contabilizada ANTES da comparação, para não permitir corrida. */
@@ -457,18 +502,21 @@ export class ContratacaoService {
       where: {
         id,
         codigoConclusaoHash: { not: null },
+        codigoConclusaoExpiraEm: { gt: new Date() },
         tentativasCodigo: { lt: MAX_TENTATIVAS_CODIGO },
       },
       data: { tentativasCodigo: { increment: 1 } },
     });
     const atual = await this.prisma.contratacao.findUnique({
       where: { id },
-      select: { codigoConclusaoHash: true, tentativasCodigo: true },
+      select: { codigoConclusaoHash: true, codigoConclusaoExpiraEm: true, tentativasCodigo: true },
     });
     if (!atual?.codigoConclusaoHash)
       throw new BadRequestException(
         'O responsável ainda não gerou o código de confirmação.',
       );
+    if (!atual.codigoConclusaoExpiraEm || atual.codigoConclusaoExpiraEm.getTime() <= Date.now())
+      throw new BadRequestException('Código expirado. Peça ao responsável para gerar um novo código.');
     if (!reservada.count)
       throw new HttpException(
         'Muitas tentativas incorretas. Peça ao responsável para gerar um novo código.',
@@ -489,5 +537,6 @@ export class ContratacaoService {
           : 'Código incorreto. Peça ao responsável para gerar um novo código.',
       );
     }
+    return atual.codigoConclusaoHash;
   }
 }

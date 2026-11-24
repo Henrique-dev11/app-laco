@@ -1,5 +1,15 @@
 import { fs, lh } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
+import { useState } from 'react';
+import { Button } from '../components/Button';
+import { useAuth } from '../contexts/AuthContext';
+import { useConsultaApi } from '../hooks/useConsultaApi';
+import { api, mensagemErro } from '../services/api';
+import {
+  lerAvisoPagamento,
+  urlDispositivoPagamento,
+} from '../services/avisosPagamento';
+import { obterTokenPushPagamento } from '../services/notificacoes';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Text } from '../accessibility/Texto';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -17,9 +27,63 @@ export function NotificacoesScreen({
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const { itens, carregando, erro } = useNotificacoes();
+  const { usuario } = useAuth();
+  const dispositivo = useConsultaApi<{ ativo: boolean }>(
+    usuario?.cuidador ? urlDispositivoPagamento : null,
+  );
+  const [erroAcao, setErroAcao] = useState('');
+  const [alterando, setAlterando] = useState(false);
+
+  async function alterarPermissao() {
+    if (alterando) return;
+    setErroAcao('');
+    setAlterando(true);
+    try {
+      if (dispositivo.dados?.ativo) await api.delete(urlDispositivoPagamento);
+      else
+        await api.put(urlDispositivoPagamento, {
+          token: await obterTokenPushPagamento(),
+        });
+      await dispositivo.atualizar();
+    } catch (error) {
+      setErroAcao(
+        error instanceof Error && !('isAxiosError' in error)
+          ? error.message
+          : mensagemErro(error),
+      );
+    } finally {
+      setAlterando(false);
+    }
+  }
+
+  async function abrirPagamento(id: number) {
+    setErroAcao('');
+    try {
+      const destino = await lerAvisoPagamento(id);
+      navigation.navigate('VisitaFinanceira', destino);
+    } catch (error) {
+      setErroAcao(mensagemErro(error));
+    }
+  }
 
   return (
     <AppScreenLayout title="Notificações" subtitle="Avisos sobre seus cuidados">
+      {usuario?.cuidador && (
+        <Button
+          title={
+            dispositivo.dados?.ativo
+              ? 'Desativar notificações no aparelho'
+              : 'Ativar notificações no aparelho'
+          }
+          variant="outline"
+          loading={alterando}
+          disabled={dispositivo.carregando}
+          onPress={() => void alterarPermissao()}
+        />
+      )}
+      {!!(erroAcao || dispositivo.erro) && (
+        <Notice>{erroAcao || dispositivo.erro}</Notice>
+      )}
       {carregando && <ActivityIndicator color={colors.primary} />}
       {!!erro && <Notice>{erro}</Notice>}
       {!carregando && !erro && !itens.length && (
@@ -30,16 +94,23 @@ export function NotificacoesScreen({
           key={item.id}
           activeOpacity={0.85}
           accessibilityRole="button"
-          onPress={() =>
-            item.conversa
-              ? navigation.navigate('Conversa', item.conversa)
-              : navigation.navigate('Historico')
-          }
+          onPress={() => {
+            if (item.pagamento) void abrirPagamento(item.pagamento.id);
+            else if (item.conversa)
+              navigation.navigate('Conversa', item.conversa);
+            else navigation.navigate('Historico');
+          }}
           style={[styles.item, item.pendente && styles.itemNovo]}
         >
           <View style={styles.icone}>
             <Ionicons
-              name={item.tipo === 'mensagem' ? 'chatbubble' : 'clipboard'}
+              name={
+                item.tipo === 'pagamento'
+                  ? 'wallet'
+                  : item.tipo === 'mensagem'
+                    ? 'chatbubble'
+                    : 'clipboard'
+              }
               size={20}
               color={colors.primaryDark}
             />
@@ -91,7 +162,12 @@ const criarStyles = (colors: Paleta) =>
     },
     info: { flex: 1, gap: 3 },
     linha: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    titulo: { flex: 1, fontSize: fs(15), fontWeight: '700', color: colors.text },
+    titulo: {
+      flex: 1,
+      fontSize: fs(15),
+      fontWeight: '700',
+      color: colors.text,
+    },
     data: { fontSize: fs(12), color: colors.muted },
     texto: { fontSize: fs(14), color: colors.muted, lineHeight: lh(20) },
     contador: {
@@ -103,5 +179,9 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'center',
       backgroundColor: colors.primary,
     },
-    contadorTexto: { fontSize: fs(12), fontWeight: '700', color: colors.surface },
+    contadorTexto: {
+      fontSize: fs(12),
+      fontWeight: '700',
+      color: colors.surface,
+    },
   });

@@ -131,6 +131,10 @@ export class SessionGuard implements CanActivate {
             contrato.cuidadorServico.cuidadorId === user.cuidadorId)
         );
       }
+      case 'PerfisConsultaController':
+        return true; // O endpoint particular valida o cuidador e a contratação.
+      case 'FinanceiroController':
+        return true; // O módulo financeiro autoriza cada ação e valida os participantes.
       case 'PropostaController':
         return true; // Serviço valida participantes, papéis e vínculo com o idoso.
       case 'MensagemController':

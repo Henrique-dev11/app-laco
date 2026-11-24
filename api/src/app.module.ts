@@ -1,4 +1,5 @@
 import { AdminModule } from './admin/admin.module.js';
+import { FinanceiroModule } from './financeiro/financeiro.module.js';
 import { PropostaModule } from './proposta/proposta.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -36,6 +37,7 @@ import { AuthModule } from './auth/auth.module.js';
     AvaliacaoModule,
     MensagemModule,
     PropostaModule,
+    FinanceiroModule,
     AuthModule,
     AdminModule,
   ],

@@ -96,11 +96,7 @@ Para acessar o painel de outro dispositivo no mesmo Wi-Fi, configure
 firewall exigir. A API pode continuar em `127.0.0.1` no `.env` do painel,
 pois o proxy roda no computador.
 
-## Pix em desenvolvimento
+## Financeiro acadêmico
 
-Defina `PIX_MERCADO_PAGO_TEST_TOKEN` em `api/.env` com o Access Token do
-ambiente de teste da sua aplicação no Mercado Pago e defina
-`PIX_MERCADO_PAGO_TEST_EMAIL` com o e-mail do comprador de teste. Reinicie a API e abra
-uma proposta aceita com a conta responsável. O botão **Gerar Pix** usa o
-valor da proposta e **Atualizar pagamento** consulta o provedor. A confirmação
-da visita pelo código é independente da cobrança de teste.
+O Pix e a carteira funcionam por simulação interna. Veja
+[configuração e roteiro para a banca](financeiro-simulado.md).

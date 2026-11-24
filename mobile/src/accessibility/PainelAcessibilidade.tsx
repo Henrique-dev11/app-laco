@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -61,25 +61,13 @@ export function PainelAcessibilidade({ visivel, onClose }: Props) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const { reducedMotion } = useMotion();
-  const { preferencias, atualizar, restaurar } = usePreferenciasAcessibilidade();
-  const { falando, lerTela, parar } = useLeitura();
-  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (temporizador.current) clearTimeout(temporizador.current);
-    },
-    [],
-  );
+  const { preferencias, atualizar, restaurar } =
+    usePreferenciasAcessibilidade();
+  const { falando, parar } = useLeitura();
 
   const escalaMinima = preferencias.escalaFonte === ESCALAS_FONTE[0];
   const escalaMaxima =
     preferencias.escalaFonte === ESCALAS_FONTE[ESCALAS_FONTE.length - 1];
-
-  /** Fecha o painel antes de ler, para a voz falar a tela e não o painel. */
-  function lerAgora() {
-    onClose();
-    temporizador.current = setTimeout(() => void lerTela(), 450);
-  }
 
   return (
     <Modal
@@ -89,15 +77,17 @@ export function PainelAcessibilidade({ visivel, onClose }: Props) {
       onRequestClose={onClose}
     >
       <ForaDaLeitura>
-        <Pressable
-          style={styles.fundo}
-          onPress={onClose}
-          accessibilityLabel="Fechar acessibilidade"
-        >
-          <Pressable style={styles.folha} onPress={() => undefined}>
+        <View style={styles.fundo}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={onClose}
+            accessible={false}
+          />
+          <View style={styles.folha} accessibilityViewIsModal>
             <ScrollView
               contentContainerStyle={styles.conteudo}
-              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
             >
               <View style={styles.alca} />
               <View style={styles.topo}>
@@ -174,11 +164,15 @@ export function PainelAcessibilidade({ visivel, onClose }: Props) {
 
               <Secao titulo="Leitura" icone="volume-high">
                 <Text style={styles.texto}>
-                  O Laço lê em voz alta o que aparece na tela.
+                  Toque em um texto ou botão na tela para ouvir seu conteúdo.
                 </Text>
-                <Button
-                  title="Ler o que está na tela"
-                  onPress={lerAgora}
+                <Switch
+                  accessibilityLabel="Leitura por toque"
+                  value={!!preferencias.leituraPorToque}
+                  onValueChange={(leituraPorToque) => {
+                    parar();
+                    atualizar({ leituraPorToque });
+                  }}
                 />
                 {falando && (
                   <Button
@@ -226,6 +220,38 @@ export function PainelAcessibilidade({ visivel, onClose }: Props) {
               </Secao>
 
               <Secao titulo="Botão de acessibilidade" icone="move">
+                <Interruptor
+                  titulo="Ocultar botão flutuante"
+                  descricao="Reative pelo menu Acessibilidade no perfil ou na tela de entrada."
+                  valor={!!preferencias.botaoOculto}
+                  onChange={(botaoOculto) => atualizar({ botaoOculto })}
+                />
+                <Text style={styles.texto}>Altura do botão</Text>
+                <View style={styles.chips}>
+                  {[
+                    { titulo: 'Topo', y: 0 },
+                    { titulo: 'Meio', y: 0.5 },
+                    { titulo: 'Embaixo', y: 1 },
+                  ].map(({ titulo, y }) => (
+                    <Chip
+                      key={y}
+                      titulo={titulo}
+                      selecionado={(preferencias.pontoBotao?.y ?? 1) === y}
+                      onPress={() =>
+                        atualizar({
+                          pontoBotao: {
+                            x:
+                              preferencias.pontoBotao?.x ??
+                              (preferencias.posicaoBotao === 'esquerda'
+                                ? 0
+                                : 1),
+                            y,
+                          },
+                        })
+                      }
+                    />
+                  ))}
+                </View>
                 <Text style={styles.texto}>Em qual lado da tela ele fica?</Text>
                 <View style={styles.chips}>
                   {posicoes.map((opcao) => (
@@ -233,7 +259,15 @@ export function PainelAcessibilidade({ visivel, onClose }: Props) {
                       key={opcao.valor}
                       titulo={opcao.titulo}
                       selecionado={preferencias.posicaoBotao === opcao.valor}
-                      onPress={() => atualizar({ posicaoBotao: opcao.valor })}
+                      onPress={() =>
+                        atualizar({
+                          posicaoBotao: opcao.valor,
+                          pontoBotao: {
+                            x: opcao.valor === 'esquerda' ? 0 : 1,
+                            y: preferencias.pontoBotao?.y ?? 1,
+                          },
+                        })
+                      }
                     />
                   ))}
                 </View>
@@ -249,8 +283,8 @@ export function PainelAcessibilidade({ visivel, onClose }: Props) {
               />
               <Button title="Fechar" onPress={onClose} />
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </ForaDaLeitura>
     </Modal>
   );
@@ -378,7 +412,7 @@ const criarStyles = (colors: Paleta) =>
       backgroundColor: 'rgba(0,0,0,0.45)',
     },
     folha: {
-      maxHeight: '92%',
+      height: '92%',
       backgroundColor: colors.surface,
       borderTopLeftRadius: 28,
       borderTopRightRadius: 28,
@@ -465,7 +499,11 @@ const criarStyles = (colors: Paleta) =>
       borderColor: colors.border,
     },
     chipAtivo: { backgroundColor: colors.primary, borderColor: colors.primary },
-    chipTexto: { fontSize: fs(14), fontWeight: '600', color: colors.primaryDark },
+    chipTexto: {
+      fontSize: fs(14),
+      fontWeight: '600',
+      color: colors.primaryDark,
+    },
     chipTextoAtivo: { color: colors.surface },
     desativado: { opacity: 0.4 },
   });

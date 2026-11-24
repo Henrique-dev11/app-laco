@@ -1,8 +1,5 @@
 import { api } from './api';
-import {
-  dadosAvaliacao,
-  normalizarMedia,
-} from '../utils/avaliacoes';
+import { dadosAvaliacao, normalizarMedia } from '../utils/avaliacoes';
 
 /**
  * Avaliações de cuidadores.
@@ -14,7 +11,7 @@ import {
  * - `POST /contratacoes/:id/avaliacao` `{ nota: 1..5, comentario?: string }`
  *   → somente o responsável contratante (inclui o idoso independente) de uma
  *   contratação CONCLUIDA; 409 se ela já foi avaliada.
- * - `GET /cuidadores/:cuidadorId/avaliacoes`
+ * - `GET /catalogo/cuidadores/:cuidadorId/avaliacoes`
  *   → `{ media, total, avaliacoes: Avaliacao[] }`, mais recentes primeiro.
  * - `GET /contratacoes` e `GET /catalogo/cuidadores` passam a trazer
  *   `avaliacao` (da contratação) e `avaliacaoMedia`/`totalAvaliacoes` (do cuidador).
@@ -34,20 +31,30 @@ export type ResumoAvaliacoes = {
 };
 
 export const urlAvaliacoesCuidador = (cuidadorId: number) =>
-  `/cuidadores/${cuidadorId}/avaliacoes`;
+  `/catalogo/cuidadores/${cuidadorId}/avaliacoes`;
 
 export async function listarAvaliacoes(
   cuidadorId: number,
   signal?: AbortSignal,
 ): Promise<ResumoAvaliacoes> {
-  const { data } = await api.get<ResumoAvaliacoes>(
-    urlAvaliacoesCuidador(cuidadorId),
-    { signal },
-  );
+  const { data } = await api.get<
+    Omit<ResumoAvaliacoes, 'avaliacoes'> & {
+      avaliacoes: (Omit<Avaliacao, 'autor' | 'criadoEm'> & {
+        autor: string;
+        createdAt: string;
+      })[];
+    }
+  >(urlAvaliacoesCuidador(cuidadorId), { signal });
   return {
     media: normalizarMedia(data.media),
     total: Number(data.total) || 0,
-    avaliacoes: data.avaliacoes ?? [],
+    avaliacoes: (data.avaliacoes ?? []).map(
+      ({ autor, createdAt, ...item }) => ({
+        ...item,
+        autor: { nome: autor },
+        criadoEm: createdAt,
+      }),
+    ),
   };
 }
 

@@ -1,6 +1,11 @@
 import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
-import { Image, ActivityIndicator, StyleSheet, type ImageSourcePropType } from 'react-native';
+import {
+  Image,
+  ActivityIndicator,
+  StyleSheet,
+  type ImageSourcePropType,
+} from 'react-native';
 import { Text } from '../accessibility/Texto';
 import type { Paleta } from '../theme';
 import { useStyles, useTheme } from '../theme/ThemeContext';
@@ -14,6 +19,7 @@ type Props = {
   disabled?: boolean;
   loading?: boolean;
   selected?: boolean;
+  compacto?: boolean;
 };
 
 export function Button({
@@ -25,6 +31,7 @@ export function Button({
   disabled,
   loading = false,
   selected,
+  compacto = false,
 }: Props) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
@@ -42,6 +49,7 @@ export function Button({
       onPress={onPress}
       style={[
         styles.button,
+        compacto && styles.compacto,
         {
           backgroundColor: variant === 'outline' ? colors.surface : cor,
           borderColor: cor,
@@ -82,6 +90,7 @@ const criarStyles = (colors: Paleta) =>
       justifyContent: 'center',
       gap: 12,
     },
+    compacto: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 8 },
     text: { fontSize: fs(16), fontWeight: '700', textAlign: 'center' },
     icon: { width: 24, height: 24, resizeMode: 'contain' },
     disabled: { opacity: 0.5 },

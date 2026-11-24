@@ -25,6 +25,7 @@ type Contratacao = {
   duracaoMinutos: number;
   nomeServico: string;
   visitaId?: number | null;
+  financeiroSimulado?: boolean;
   avaliacaoResponsavel?: {
     id: number;
     nota: number;
@@ -36,10 +37,10 @@ type Contratacao = {
   avaliacao?: { id: number; nota: number; comentario: string | null } | null;
   agendamento: null | { inicio: string };
   idoso: { nome: string };
-  responsavel: { usuario: { nome: string } };
+  responsavel: { usuario: { nome: string; id: number } };
   cuidadorServico: {
     cuidador: {
-      usuario: { nome: string };
+      usuario: { nome: string; id: number };
       disponibilidades: {
         diaSemana: string;
         horaInicio: string;
@@ -64,19 +65,17 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
   } | null>(null);
   // Código digitado pelo cuidador e código mostrado ao responsável, por contratação.
   const [codigos, setCodigos] = useState<Record<number, string>>({});
-  const [codigosGerados, setCodigosGerados] = useState<Record<number, string>>(
-    {},
-  );
+  const [codigosGerados, setCodigosGerados] = useState<Record<number, { codigo: string; expiraEm: string }>>({});
   async function gerarCodigo(id: number) {
     if (enviando) return;
     setEnviando(true);
     setAcaoPendente(`${id}:codigo`);
     setMensagem('');
     try {
-      const { data } = await api.post<{ codigo: string }>(
+      const { data } = await api.post<{ codigo: string; expiraEm: string }>(
         `/contratacoes/${id}/codigo-conclusao`,
       );
-      setCodigosGerados((current) => ({ ...current, [id]: data.codigo }));
+      setCodigosGerados((current) => ({ ...current, [id]: data }));
     } catch (error) {
       setMensagem(mensagemErro(error));
     } finally {
@@ -115,10 +114,22 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
       title="Histórico"
       subtitle="Acompanhe suas contratações"
       tab="Início"
+      atualizacao={{ atualizar, carregando }}
     >
       {carregando && !dados.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
       {!!mensagem && <Notice>{mensagem}</Notice>}
+      <Button
+        title={
+          usuario?.cuidador ? 'Carteira virtual' : 'Histórico de pagamentos'
+        }
+        variant="outline"
+        onPress={() =>
+          usuario?.cuidador
+            ? navigation.navigate('CarteiraVirtual')
+            : navigation.navigate('HistoricoFinanceiro')
+        }
+      />
       {!carregando && !erro && !dados.length && (
         <Notice>Você ainda não tem contratações.</Notice>
       )}
@@ -170,6 +181,28 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
             <Text style={appStyles.text}>
               Contratante: {contrato.responsavel.usuario.nome}
             </Text>
+            <Button
+              title={
+                usuario?.cuidador
+                  ? 'Ver perfil do responsável'
+                  : 'Ver perfil do cuidador'
+              }
+              variant="outline"
+              onPress={() =>
+                navigation.navigate(
+                  'PerfilConsulta',
+                  usuario?.cuidador
+                    ? {
+                        tipo: 'responsavel',
+                        usuarioId: contrato.responsavel.usuario.id,
+                      }
+                    : {
+                        tipo: 'cuidador',
+                        usuarioId: contrato.cuidadorServico.cuidador.usuario.id,
+                      },
+                )
+              }
+            />
             <Text style={appStyles.text}>
               {contrato.status === 'SOLICITADA'
                 ? 'Valor solicitado'
@@ -184,6 +217,16 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
                 Preço-base na solicitação: R${' '}
                 {Number(contrato.precoReferencia).toFixed(2).replace('.', ',')}
               </Text>
+            )}
+            {contrato.financeiroSimulado && (
+              <Button
+                title="Acompanhar visita e pagamento"
+                onPress={() =>
+                  navigation.navigate('VisitaFinanceira', {
+                    contratacaoId: contrato.id,
+                  })
+                }
+              />
             )}
             {!!contrato.observacoes && (
               <Text style={appStyles.text}>
@@ -219,6 +262,8 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
               )}
             {!!(usuario?.responsavel || usuario?.cuidador) &&
               contrato.status === 'ACEITA' &&
+              !contrato.financeiroSimulado &&
+              !contrato.itemProposta &&
               !contrato.agendamento && (
                 <Button
                   title="Agendar atendimento"
@@ -251,51 +296,55 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
                 />
               </>
             )}
-            {usuario?.cuidador && contrato.status === 'ACEITA' && (
-              <>
-                <FormField
-                  label="Código de confirmação (peça ao contratante)"
-                  value={codigos[contrato.id] ?? ''}
-                  maxLength={6}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  onChangeText={(codigo) =>
-                    setCodigos((current) => ({
-                      ...current,
-                      [contrato.id]: codigo.toUpperCase(),
-                    }))
-                  }
-                />
-                <Button
-                  title="Concluir atendimento"
-                  loading={acaoPendente === `${contrato.id}:CONCLUIDA`}
-                  disabled={enviando}
-                  onPress={() => {
-                    void concluir(contrato.id);
-                  }}
-                />
-              </>
-            )}
-            {!!usuario?.responsavel && contrato.status === 'ACEITA' && (
-              <>
-                {!!codigosGerados[contrato.id] && (
-                  <CodigoDestaque codigo={codigosGerados[contrato.id]} />
-                )}
-                <Button
-                  loading={acaoPendente === `${contrato.id}:codigo`}
-                  title={
-                    codigosGerados[contrato.id]
-                      ? 'Gerar novo código'
-                      : 'Mostrar código de conclusão'
-                  }
-                  variant="outline"
-                  disabled={enviando}
-                  onPress={() => {
-                    void gerarCodigo(contrato.id);
-                  }}
-                />
-              </>
-            )}
+            {!contrato.financeiroSimulado &&
+              usuario?.cuidador &&
+              contrato.status === 'ACEITA' && (
+                <>
+                  <FormField
+                    label="Código de confirmação (peça ao contratante)"
+                    value={codigos[contrato.id] ?? ''}
+                    maxLength={6}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    onChangeText={(codigo) =>
+                      setCodigos((current) => ({
+                        ...current,
+                        [contrato.id]: codigo.toUpperCase(),
+                      }))
+                    }
+                  />
+                  <Button
+                    title="Concluir atendimento"
+                    loading={acaoPendente === `${contrato.id}:CONCLUIDA`}
+                    disabled={enviando}
+                    onPress={() => {
+                      void concluir(contrato.id);
+                    }}
+                  />
+                </>
+              )}
+            {!contrato.financeiroSimulado &&
+              !!usuario?.responsavel &&
+              contrato.status === 'ACEITA' && (
+                <>
+                  {!!codigosGerados[contrato.id] && (
+                    <CodigoDestaque {...codigosGerados[contrato.id]} />
+                  )}
+                  <Button
+                    loading={acaoPendente === `${contrato.id}:codigo`}
+                    title={
+                      codigosGerados[contrato.id]
+                        ? 'Gerar novo código'
+                        : 'Mostrar código de conclusão'
+                    }
+                    variant="outline"
+                    disabled={enviando}
+                    onPress={() => {
+                      void gerarCodigo(contrato.id);
+                    }}
+                  />
+                </>
+              )}
             {/* Avaliação: só depois de concluída; cada atendimento é avaliado uma vez. */}
             {contrato.status === 'CONCLUIDA' && !!contrato.avaliacao && (
               <View style={appStyles.row}>
@@ -310,13 +359,13 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
                 )}
               </View>
             )}
-            {!!usuario?.responsavel &&
+            {!!(usuario?.responsavel || usuario?.cuidador) &&
               contrato.status === 'CONCLUIDA' &&
               !(usuario?.cuidador
                 ? contrato.avaliacaoResponsavel
                 : contrato.avaliacao) && (
                 <Button
-                  title="Avaliar atendimento"
+                  title={usuario?.cuidador ? 'Avaliar responsável' : 'Avaliar cuidador'}
                   disabled={enviando}
                   onPress={() =>
                     setAvaliando({
@@ -328,31 +377,27 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
                   }
                 />
               )}
-            {['SOLICITADA', 'ACEITA'].includes(contrato.status) && (
-              <Button
-                title={
-                  contrato.visitaId ? 'Cancelar visita' : 'Cancelar contratação'
-                }
-                loading={acaoPendente === `${contrato.id}:CANCELADA`}
-                variant="outline"
-                disabled={enviando}
-                onPress={() => {
-                  void mudarStatus(contrato.id, 'CANCELADA');
-                }}
-              />
-            )}
+            {!contrato.financeiroSimulado &&
+              ['SOLICITADA', 'ACEITA'].includes(contrato.status) && (
+                <Button
+                  title={
+                    contrato.visitaId
+                      ? 'Cancelar visita'
+                      : 'Cancelar contratação'
+                  }
+                  loading={acaoPendente === `${contrato.id}:CANCELADA`}
+                  variant="outline"
+                  disabled={enviando}
+                  onPress={() => {
+                    void mudarStatus(contrato.id, 'CANCELADA');
+                  }}
+                />
+              )}
           </MotionView>
         ))}
-      <Button
-        title="Atualizar contratações"
-        loading={carregando}
-        variant="outline"
-        disabled={carregando || enviando}
-        onPress={atualizar}
-      />
       <AvaliarCuidador
         contratacaoId={avaliando?.id ?? null}
-        cuidadorNome={avaliando?.cuidador ?? ''}
+        avaliadoNome={avaliando?.cuidador ?? ''}
         onClose={() => setAvaliando(null)}
         onEnviada={() => {
           setAvaliando(null);

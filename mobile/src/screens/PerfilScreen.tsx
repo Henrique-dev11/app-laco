@@ -1,3 +1,4 @@
+import { AtalhoAcessibilidade } from '../accessibility/AtalhoAcessibilidade';
 import { fs } from '../theme/tipografia';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -159,8 +160,24 @@ export function PerfilScreen({ navigation, route }: ScreenProps<'Perfil'>) {
             : 'Há uma foto recuperada da câmera ou galeria. Acesse “Editar perfil” para revisar e salvar.'}
         </Notice>
       )}
+      {!!usuario.sessaoExpiraEm && (
+        <Notice>{`Sessão válida até ${new Date(usuario.sessaoExpiraEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}</Notice>
+      )}
       {!!erro && <Notice>{erro}</Notice>}
       <View style={styles.actions}>
+        {!!perfil && (
+          <Button
+            title="Ver prévia do meu perfil"
+            variant="outline"
+            onPress={() =>
+              navigation.navigate('PerfilConsulta', {
+                usuarioId: usuario.id,
+                tipo: usuario.cuidador ? 'cuidador' : 'responsavel',
+                proprio: true,
+              })
+            }
+          />
+        )}
         {!!perfil && (
           <Button
             title="Editar perfil"
@@ -189,13 +206,19 @@ export function PerfilScreen({ navigation, route }: ScreenProps<'Perfil'>) {
           }}
         />
       </View>
+      <AtalhoAcessibilidade />
     </AppScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
   identity: { alignItems: 'center', gap: 10, paddingVertical: 24 },
-  title: { fontSize: fs(25), fontWeight: '700', textAlign: 'center', marginTop: 4 },
+  title: {
+    fontSize: fs(25),
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 4,
+  },
   center: { textAlign: 'center' },
   centerBadge: { alignSelf: 'center' },
   actions: { gap: 12 },

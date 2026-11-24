@@ -14,11 +14,21 @@ import { HomeShell, type HomeProps } from './HomeShell';
 /** Home do responsável: quem ele cuida e como encontrar um cuidador. */
 export function HomeResponsavel({ navigation }: HomeProps) {
   const { usuario } = useAuth();
-  const { agendados, proximo, erro, agora } = useAgendados();
+  const {
+    agendados,
+    proximo,
+    erro,
+    agora,
+    atualizar: atualizarAgenda,
+    carregando: agendaCarregando,
+  } = useAgendados();
   if (!usuario?.responsavel) return null;
   const idosos = usuario.responsavel.responsavelIdosos;
   return (
-    <HomeShell navigation={navigation}>
+    <HomeShell
+      navigation={navigation}
+      atualizacao={{ atualizar: atualizarAgenda, carregando: agendaCarregando }}
+    >
       <ProximoAtendimento
         proximo={proximo}
         agora={agora}

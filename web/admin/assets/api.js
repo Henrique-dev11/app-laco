@@ -71,6 +71,13 @@ export function createApi({
         token: null,
       }),
     perfil: () => request('/auth/me'),
+    movimentosSimulados: () => request('/financeiro/admin/movimentos'),
+    pagamentosSimulados: () => request('/financeiro/pagamentos'),
+    resolverPagamento: (id, acao, motivo) =>
+      request(`/financeiro/admin/visitas/${id}/resolver`, {
+        method: 'POST',
+        body: { acao, motivo },
+      }),
     resumo: () => request('/admin/resumo'),
     usuarios: (categoria, params) =>
       request(

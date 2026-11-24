@@ -5,6 +5,8 @@ import {
   Pressable,
   type TouchableOpacityProps,
 } from 'react-native';
+import { DentroDeControle, useLeituraPorToque } from '../accessibility/Texto';
+import { extrairTexto } from '../utils/acessibilidade';
 import { useMotion } from './MotionProvider';
 import { motionDurations } from './policy';
 import { easeOut, nativeDriver } from './useMotionValue';
@@ -17,11 +19,14 @@ export function MotionPressable({
   disabled,
   enter = false,
   delay = 0,
+  onPress,
+  children,
   onPressIn,
   onPressOut,
   activeOpacity = 0.85,
   ...props
 }: Props) {
+  const ler = useLeituraPorToque();
   const { reducedMotion, active } = useMotion();
   const [scale] = useState(() => new Animated.Value(1));
   const [pressedOpacity] = useState(() => new Animated.Value(1));
@@ -100,6 +105,18 @@ export function MotionPressable({
     <Touchable
       {...props}
       disabled={disabled}
+      onPress={
+        ler && onPress
+          ? (event) => {
+              const rotulo =
+                props.accessibilityLabel ??
+                props['aria-label'] ??
+                extrairTexto(children);
+              if (rotulo.trim()) ler(rotulo);
+              onPress(event);
+            }
+          : onPress
+      }
       aria-busy={props['aria-busy'] ?? props.accessibilityState?.busy}
       aria-expanded={
         props['aria-expanded'] ?? props.accessibilityState?.expanded
@@ -132,6 +149,10 @@ export function MotionPressable({
           ],
         },
       ]}
-    />
+    >
+      <DentroDeControle.Provider value={!!onPress}>
+        {children}
+      </DentroDeControle.Provider>
+    </Touchable>
   );
 }
