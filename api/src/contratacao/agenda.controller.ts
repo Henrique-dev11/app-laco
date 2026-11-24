@@ -31,6 +31,7 @@ export class AgendaController {
         contratacao: {
           select: {
             id: true,
+            visitaId: true,
             status: true,
             nomeServico: true,
             duracaoMinutos: true,

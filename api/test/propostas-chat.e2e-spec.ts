@@ -215,6 +215,7 @@ describe('Propostas no chat, confirmação atômica e agendas', () => {
         await db.propostaAtendimento.deleteMany({
           where: { responsavelId: r.id },
         });
+        await db.avaliacao.deleteMany({ where: { cuidadorId: c.id } });
         await db.contratacao.deleteMany({ where: { responsavelId: r.id } });
         await db.disponibilidade.deleteMany({
           where: { cuidadorId: { in: [c.id, y.id] } },
@@ -369,6 +370,8 @@ describe('Propostas no chat, confirmação atômica e agendas', () => {
     });
     expect(contratos).toHaveLength(3);
     expect(contratos[0].id).toBe(contratoId);
+    expect(contratos.filter((contrato) => contrato.visitaId === contratoId)).toHaveLength(2);
+    expect(contratos.filter((contrato) => contrato.visitaId === null)).toHaveLength(1);
     expect(
       contratos.every((c) => c.status === 'ACEITA' && c.agendamento?.ativo),
     ).toBe(true);
@@ -447,6 +450,41 @@ describe('Propostas no chat, confirmação atômica e agendas', () => {
     ).toBe('PENDENTE');
     expect(await db.agendamento.count({ where: { cuidadorId: c.id } })).toBe(4);
     await post(url(), proposta).expect(409);
+  });
+  it('confirma os serviços da visita com um código e permite uma avaliação em cada direção', async () => {
+    const pendente = await db.propostaAtendimento.findFirstOrThrow({
+      where: { responsavelId: r.id, cuidadorId: c.id, status: 'PENDENTE' },
+    });
+    await responder(pendente.id, 'RECUSADA').expect(201);
+    const proposta = await post(url(), {
+      idosoId,
+      total: '30.00',
+      itens: [
+        { cuidadorServicoId: ofertaId, preco: '10.00', duracaoMinutos: 15,
+          inicios: [`${data}T11:30:00-03:00`, `${data2}T11:30:00-03:00`] },
+        { cuidadorServicoId: oferta2, preco: '10.00', duracaoMinutos: 15,
+          inicios: [`${data}T11:45:00-03:00`] },
+      ],
+    }).expect(201);
+    await responder(proposta.body.id, 'ACEITA').expect(201);
+    const contratos = await db.contratacao.findMany({
+      where: { itemProposta: { propostaId: proposta.body.id } },
+    });
+    const separada = contratos.find((item) => item.visitaId === null)!;
+    const membros = contratos.filter((item) => item.visitaId !== null);
+    expect(membros).toHaveLength(2);
+    const codigo = await post(`/contratacoes/${membros[0].id}/codigo-conclusao`, {}, r.token).expect(201);
+    await http().patch(`/contratacoes/${membros[1].id}/status`).auth(c.token, { type: 'bearer' })
+      .send({ status: 'CONCLUIDA', codigo: codigo.body.codigo }).expect(200);
+    expect(await db.contratacao.count({
+      where: { id: { in: membros.map(({ id }) => id) }, status: 'CONCLUIDA' },
+    })).toBe(2);
+    expect((await db.contratacao.findUniqueOrThrow({ where: { id: separada.id } })).status).toBe('ACEITA');
+    for (const token of [r.token, c.token]) {
+      await post(`/contratacoes/${membros[0].id}/avaliacao`, { nota: 5 }, token).expect(201);
+      await post(`/contratacoes/${membros[1].id}/avaliacao`, { nota: 4 }, token).expect(409);
+    }
+    await get(`/contratacoes/${membros[0].id}`, x.token).expect(403);
   });
   it('reflete cancelamento nas duas agendas e preserva os termos aceitos no cartão', async () => {
     await http()

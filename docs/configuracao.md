@@ -44,7 +44,7 @@ final. Inclua a origem do Expo Web se usar outro IP ou porta, como
 
 O administrador local pode ser criado com `npm run admin:criar`. As variáveis
 opcionais `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` permitem criá-lo pelo
-seed de desenvolvimento; se usadas, informe ambas. A senha deve ter de 12 a
+seed de desenvolvimento; se usadas, informe ambas. A senha deve ter pelo menos 8 caracteres e no máximo
 72 bytes. Não existe uma senha administrativa padrão para distribuir.
 
 ## Aplicativo: `mobile/.env`
@@ -95,3 +95,12 @@ Para acessar o painel de outro dispositivo no mesmo Wi-Fi, configure
 `http://IP_DO_COMPUTADOR:5173/admin`. Libere essa porta para a rede local se o
 firewall exigir. A API pode continuar em `127.0.0.1` no `.env` do painel,
 pois o proxy roda no computador.
+
+## Pix em desenvolvimento
+
+Defina `PIX_MERCADO_PAGO_TEST_TOKEN` em `api/.env` com o Access Token do
+ambiente de teste da sua aplicação no Mercado Pago e defina
+`PIX_MERCADO_PAGO_TEST_EMAIL` com o e-mail do comprador de teste. Reinicie a API e abra
+uma proposta aceita com a conta responsável. O botão **Gerar Pix** usa o
+valor da proposta e **Atualizar pagamento** consulta o provedor. A confirmação
+da visita pelo código é independente da cobrança de teste.

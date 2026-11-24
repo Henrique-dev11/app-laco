@@ -116,13 +116,20 @@ export class SessionGuard implements CanActivate {
         );
       }
       case 'AvaliacaoController': {
-        // Só criar passa por aqui (a listagem é pública): precisa ser o responsável do contrato.
+        // Só criar passa por aqui (a listagem é pública): precisa participar do contrato.
         const contrato = await this.prisma.contratacao.findUnique({
           where: { id: Number.isInteger(id) ? id : -1 },
-          select: { responsavelId: true },
+          select: {
+            responsavelId: true,
+            cuidadorServico: { select: { cuidadorId: true } },
+          },
         });
         if (!contrato) return true; // o serviço responde 404
-        return contrato.responsavelId === user.responsavelId;
+        return (
+          contrato.responsavelId === user.responsavelId ||
+          (user.tipoUsuario === 'CUIDADOR' &&
+            contrato.cuidadorServico.cuidadorId === user.cuidadorId)
+        );
       }
       case 'PropostaController':
         return true; // Serviço valida participantes, papéis e vínculo com o idoso.

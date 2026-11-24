@@ -149,7 +149,7 @@ Para criar o primeiro administrador local, abra um terminal interativo em
 npm run admin:criar
 ```
 
-Informe nome, e-mail e senha de 12 a 72 bytes. O comando cria uma conta nova
+Informe nome, e-mail e senha de 8 caracteres no mínimo e 72 bytes no máximo. O comando cria uma conta nova
 de desenvolvimento; escolha um e-mail ainda não cadastrado. Entre no painel
 com essas credenciais. Responsáveis e cuidadores se cadastram pelo app.
 

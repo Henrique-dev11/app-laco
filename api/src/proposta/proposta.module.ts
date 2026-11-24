@@ -1,3 +1,4 @@
+import { PixTesteService } from './pix-teste.service.js';
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { MensagemModule } from '../mensagem/mensagem.module.js';
@@ -7,6 +8,6 @@ import { PropostaService } from './proposta.service.js';
 @Module({
   imports: [PrismaModule, MensagemModule, ContratacaoModule],
   controllers: [PropostaController],
-  providers: [PropostaService],
+  providers: [PropostaService, PixTesteService],
 })
 export class PropostaModule {}

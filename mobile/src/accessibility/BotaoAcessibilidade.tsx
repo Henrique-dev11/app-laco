@@ -16,8 +16,7 @@ const ESPACO_BARRA_INFERIOR = 96;
 
 /**
  * Botão fixo de acessibilidade, num canto de todas as telas. Fica sobre o
- * conteúdo (posição absoluta) e abre o painel de ajustes. Some enquanto o
- * teclado está aberto, para não cobrir o campo que a pessoa está digitando.
+ * conteúdo e abre o painel de ajustes. Com o teclado aberto, fica acima dos campos inferiores.
  * `elevado` (padrão) o mantém acima da barra inferior; nas telas sem barra
  * (login e cadastro) ele fica rente ao canto.
  */
@@ -30,7 +29,7 @@ export function BotaoAcessibilidade({ elevado = true }: { elevado?: boolean }) {
   const lado = preferencias.posicaoBotao === 'esquerda' ? 'left' : 'right';
   return (
     <>
-      {teclado === 0 && (
+      {
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
           <TouchableOpacity
             accessibilityRole="button"
@@ -43,7 +42,8 @@ export function BotaoAcessibilidade({ elevado = true }: { elevado?: boolean }) {
               {
                 [lado]: MARGEM,
                 bottom:
-                  insets.bottom + (elevado ? ESPACO_BARRA_INFERIOR : MARGEM),
+                  Math.max(insets.bottom, teclado) +
+                  (elevado ? ESPACO_BARRA_INFERIOR : MARGEM),
                 backgroundColor: colors.primaryDark,
                 borderColor: colors.surface,
               },
@@ -52,7 +52,7 @@ export function BotaoAcessibilidade({ elevado = true }: { elevado?: boolean }) {
             <Ionicons name="accessibility" size={30} color={colors.surface} />
           </TouchableOpacity>
         </View>
-      )}
+      }
       <PainelAcessibilidade visivel={aberto} onClose={() => setAberto(false)} />
     </>
   );

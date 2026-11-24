@@ -1,27 +1,28 @@
 import { MotionView } from '../motion/MotionView';
 import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
-import { View } from 'react-native';
 import { Text } from '../accessibility/Texto';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
 import { useListaApi } from '../hooks/useListaApi';
 import { useAppStyles } from '../theme/appStyles';
+import type { ScreenProps } from '../types/navigation';
 import type { Servico } from '../types/servico';
 
-export function ServicosScreen() {
+export function ServicosScreen({ navigation }: ScreenProps<'Servicos'>) {
   const appStyles = useAppStyles();
   const { dados, carregando, erro, atualizar } =
     useListaApi<Servico>('/servicos');
+  const ativos = dados.filter((servico) => servico.ativo);
   return (
     <AppScreenLayout title="Serviços" subtitle="Cuidados para cada necessidade">
       {carregando && !dados.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
-      {!carregando && !erro && !dados.length && (
+      {!carregando && !erro && !ativos.length && (
         <Notice>Nenhum serviço disponível no momento.</Notice>
       )}
-      {dados.map((servico, index) => (
+      {ativos.map((servico, index) => (
         <MotionView
           delay={staggerDelay(index)}
           key={servico.id}
@@ -31,11 +32,15 @@ export function ServicosScreen() {
           {!!servico.descricao && (
             <Text style={appStyles.text}>{servico.descricao}</Text>
           )}
-          <View style={appStyles.badge}>
-            <Text style={appStyles.badgeText}>
-              {servico.ativo ? 'Disponível' : 'Indisponível'}
-            </Text>
-          </View>
+          <Button
+            title="Buscar cuidadores"
+            onPress={() =>
+              navigation.navigate('BuscarCuidador', {
+                servicoId: servico.id,
+                nomeServico: servico.nome,
+              })
+            }
+          />
         </MotionView>
       ))}
       <Button

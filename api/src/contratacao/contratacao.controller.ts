@@ -32,8 +32,8 @@ export class ContratacaoController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.contratacaoService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @Req() req: Autenticado) {
+    return this.contratacaoService.findOne(id, req.usuario);
   }
 
   @Patch(':id/status')

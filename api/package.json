@@ -28,7 +28,11 @@
     "db:generate": "prisma generate --config prisma7.config.ts",
     "db:migrate": "prisma migrate deploy --config prisma7.config.ts",
     "db:seed": "prisma db seed --config prisma7.config.ts",
-    "admin:criar": "node scripts/create-admin.mjs"
+    "admin:criar": "node scripts/create-admin.mjs",
+    "db:seed:usuarios": "node prisma/seed-usuarios.mjs",
+    "db:seed:contratos": "node prisma/seed-contratos.mjs",
+    "db:seed:fotos-idosos": "node prisma/seed-fotos-idosos.mjs",
+    "db:seed:agenda-chats": "node prisma/seed-agenda-chats.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

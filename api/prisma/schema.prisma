@@ -235,6 +235,9 @@ model Disponibilidade {
 }
 
 model Contratacao {
+  visitaId Int?
+  @@index([visitaId])
+  avaliacaoResponsavel AvaliacaoResponsavel?
   itemPropostaId Int?
   sessaoProposta Int?
   itemProposta ItemPropostaAtendimento? @relation("ContratosProposta", fields: [itemPropostaId], references: [id])
@@ -369,6 +372,8 @@ enum StatusPropostaAtendimento {
 }
 
 model PropostaAtendimento {
+  pixOrdemId String? @unique
+  pixReferencia String? @unique
   id Int @id @default(autoincrement())
   negociacaoId String @default(uuid())
   versao Int @default(1)
@@ -404,4 +409,13 @@ model ItemPropostaAtendimento {
   cuidadorServico CuidadorServico @relation(fields: [cuidadorServicoId], references: [id])
   contratacaoOrigem Contratacao? @relation("OrigemProposta", fields: [contratacaoOrigemId], references: [id])
   contratacoes Contratacao[] @relation("ContratosProposta")
+}
+
+model AvaliacaoResponsavel {
+  id Int @id @default(autoincrement())
+  contratacaoId Int @unique
+  contratacao Contratacao @relation(fields: [contratacaoId], references: [id], onDelete: Cascade)
+  nota Int
+  comentario String? @db.VarChar(1000)
+  createdAt DateTime @default(now())
 }
