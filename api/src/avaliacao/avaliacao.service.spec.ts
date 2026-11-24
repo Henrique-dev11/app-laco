@@ -61,10 +61,10 @@ describe('avaliação de atendimento', () => {
     await expect(service.criar(1, { nota: 1 }, responsavel)).rejects.toThrow(/já foi avaliado/);
   });
 
-  it('só o responsável da contratação avalia (nem cuidador, nem admin, nem outro responsável)', async () => {
+  it('apenas os participantes avaliam', async () => {
     const { service, avaliacoes } = criarServico();
-    for (const quem of [cuidador, admin, outroResponsavel])
-      await expect(service.criar(1, { nota: 5 }, quem)).rejects.toThrow(/Somente o responsável/);
+    for (const quem of [admin, outroResponsavel])
+      await expect(service.criar(1, { nota: 5 }, quem)).rejects.toThrow(/Somente os participantes/);
     expect(avaliacoes).toHaveLength(0);
   });
 

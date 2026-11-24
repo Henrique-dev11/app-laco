@@ -105,6 +105,8 @@ export class PropostaService {
           idosoId: true,
           cuidadorServicoId: true,
           status: true,
+          precoReferencia: true,
+          duracaoMinutos: true,
         },
       }),
     ]);
@@ -368,6 +370,7 @@ export class PropostaService {
           await this.disponivel(tx, p.cuidadorId);
           await this.origens(tx, p.itens, p.responsavelId, p.idosoId);
           await this.datas(tx, p.cuidadorId, p.itens);
+          const sessoes: { id: number; inicio: Date; fim: number }[] = [];
           for (const item of p.itens) {
             if (
               !(await tx.cuidadorServico.findFirst({
@@ -407,6 +410,12 @@ export class PropostaService {
                       },
                     })
                   : await tx.contratacao.create({ data });
+              const inicio = item.inicios[n];
+              sessoes.push({
+                id: contrato.id,
+                inicio,
+                fim: inicio.getTime() + item.duracaoMinutos * 60000,
+              });
               await this.contratacoes.agendarEmTransacao(
                 tx,
                 contrato.id,
@@ -415,6 +424,29 @@ export class PropostaService {
               );
             }
           }
+          sessoes.sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
+          let visita: typeof sessoes = [];
+          const vincularVisita = async () => {
+            if (visita.length < 2) return;
+            await tx.contratacao.updateMany({
+              where: { id: { in: visita.map((sessao) => sessao.id) } },
+              data: { visitaId: visita[0].id },
+            });
+          };
+          for (const sessao of sessoes) {
+            const anterior = visita.at(-1);
+            if (
+              anterior &&
+              (anterior.fim !== sessao.inicio.getTime() ||
+                partesLocais(anterior.inicio).data !==
+                  partesLocais(sessao.inicio).data)
+            ) {
+              await vincularVisita();
+              visita = [];
+            }
+            visita.push(sessao);
+          }
+          await vincularVisita();
         }
         const resultado = await tx.propostaAtendimento.update({
           where: { id },

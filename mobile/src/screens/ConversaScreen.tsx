@@ -6,8 +6,7 @@ import { AnimatedCollapse } from '../motion/AnimatedCollapse';
 import { MotionView } from '../motion/MotionView';
 import { SkeletonList } from '../motion/SkeletonList';
 import { juntarMensagens as juntar, idsNovasMensagens } from '../utils/chat';
-import { PropostaCard } from '../components/PropostaCard';
-import { listarPropostas, type Proposta } from '../services/propostas';
+import { listarPropostas, statusProposta, type Proposta } from '../services/propostas';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '../accessibility/Texto';
@@ -265,37 +264,16 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
                     (p) => p.id === item.propostaId,
                   );
                   if (proposta) {
-                    const ultima = !propostas.some(
-                      (p) =>
-                        p.negociacaoId === proposta.negociacaoId &&
-                        p.versao > proposta.versao,
-                    );
                     return (
                       <MotionView
                         animate={animadas.includes(item.id)}
                         preset="fade"
                         style={{ gap: 4 }}
                       >
-                        <PropostaCard
-                          proposta={proposta}
-                          contatoId={usuarioId}
-                          podeRevisar={
-                            ultima &&
-                            [
-                              'PENDENTE',
-                              'RECUSADA',
-                              'ALTERACOES_SOLICITADAS',
-                            ].includes(proposta.status)
-                          }
-                          atualizar={() => atualizar()}
-                          novaVersao={() =>
-                            navigation.navigate('CriarProposta', {
-                              usuarioId,
-                              anterior: proposta,
-                            })
-                          }
-                          verAgenda={() => navigation.navigate('Agenda')}
-                        />
+                        <Text style={styles.horaDele}>Proposta · {statusProposta[proposta.status] ?? proposta.status}</Text>
+                        <Button title="Visualizar proposta" variant="outline" onPress={() =>
+                          navigation.navigate('DetalheProposta', { usuarioId, propostaId: proposta.id })
+                        } />
                         <Text style={styles.horaDele}>
                           {rotuloHora(item.createdAt)}
                         </Text>

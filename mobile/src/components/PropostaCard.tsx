@@ -1,3 +1,4 @@
+import { ResumoVisitas } from './ResumoVisitas';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '../accessibility/Texto';
@@ -103,6 +104,9 @@ export function PropostaCard({
           ))}
         </View>
       ))}
+      {p.status === 'PENDENTE' && <ResumoVisitas itens={p.itens.map((item) => ({
+        nome: item.nomeServico, inicios: item.inicios, duracao: item.duracaoMinutos,
+      }))} />}
       {!!p.observacoes && (
         <Text style={styles.text}>Observações: {p.observacoes}</Text>
       )}

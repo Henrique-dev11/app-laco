@@ -31,6 +31,9 @@ const contratacaoInclude = {
     select: { propostaId: true, proposta: { select: { versao: true } } },
   },
   agendamento: true,
+  avaliacaoResponsavel: {
+    select: { id: true, nota: true, comentario: true, createdAt: true },
+  },
   avaliacao: {
     select: { id: true, nota: true, comentario: true, createdAt: true },
   },
@@ -286,15 +289,26 @@ export class ContratacaoService {
             ],
           },
       orderBy: { createdAt: 'desc' },
-      include: contratacaoInclude,
+      include: {
+        ...contratacaoInclude,
+        avaliacaoResponsavel:
+          !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario) &&
+          contratacaoInclude.avaliacaoResponsavel,
+      },
       omit: contratacaoOmit,
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, usuario?: Identidade) {
     const contratacao = await this.prisma.contratacao.findUnique({
       where: { id },
-      include: contratacaoInclude,
+      include: {
+        ...contratacaoInclude,
+        avaliacaoResponsavel:
+          !!usuario &&
+          !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario) &&
+          contratacaoInclude.avaliacaoResponsavel,
+      },
       omit: contratacaoOmit,
     });
 
@@ -302,6 +316,15 @@ export class ContratacaoService {
       throw new NotFoundException('Contratação não encontrada.');
     }
 
+    if (
+      usuario &&
+      !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario) &&
+      contratacao.responsavelId !== usuario.responsavelId &&
+      contratacao.cuidadorServico.cuidador.usuario.id !== usuario.id
+    )
+      throw new ForbiddenException(
+        'Somente os participantes podem ver esta contratação.',
+      );
     return contratacao;
   }
 
@@ -357,11 +380,15 @@ export class ContratacaoService {
       dto.status === 'CONCLUIDA' &&
       !['ADMIN', 'SUPER_ADMIN'].includes(usuario.tipoUsuario)
     )
-      await this.validarCodigoConclusao(id, dto.codigo);
+      await this.validarCodigoConclusao(contratacao.visitaId ?? id, dto.codigo);
 
     await this.prisma.$transaction(async (tx) => {
+      const escopo =
+        contratacao.visitaId && ['CONCLUIDA', 'CANCELADA'].includes(dto.status)
+          ? { visitaId: contratacao.visitaId }
+          : { id };
       const result = await tx.contratacao.updateMany({
-        where: { id, status: contratacao.status },
+        where: { ...escopo, status: contratacao.status },
         data: {
           status: dto.status,
           // Concluída ou cancelada: o código deixa de valer.
@@ -376,7 +403,7 @@ export class ContratacaoService {
         );
       if (dto.status === 'CANCELADA')
         await tx.agendamento.updateMany({
-          where: { contratacaoId: id },
+          where: { contratacao: escopo },
           data: { ativo: false },
         });
     });
@@ -393,7 +420,7 @@ export class ContratacaoService {
   async gerarCodigoConclusao(id: number, usuario: Identidade) {
     const contratacao = await this.prisma.contratacao.findUnique({
       where: { id },
-      select: { responsavelId: true, status: true },
+      select: { responsavelId: true, status: true, visitaId: true },
     });
     if (!contratacao)
       throw new NotFoundException('Contratação não encontrada.');
@@ -407,7 +434,7 @@ export class ContratacaoService {
       );
     const codigo = this.novoCodigo();
     const result = await this.prisma.contratacao.updateMany({
-      where: { id, status: 'ACEITA' },
+      where: { id: contratacao.visitaId ?? id, status: 'ACEITA' },
       data: {
         codigoConclusaoHash: await bcrypt.hash(codigo, 10),
         tentativasCodigo: 0,

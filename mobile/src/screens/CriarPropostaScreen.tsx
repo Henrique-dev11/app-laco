@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { ResumoVisitas } from '../components/ResumoVisitas';
+import { useCallback, useState, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, View } from 'react-native';
 import { Text } from '../accessibility/Texto';
@@ -14,6 +15,7 @@ import {
   valorProposta,
   urlPropostas,
   type ContextoProposta,
+  type Proposta,
 } from '../services/propostas';
 import {
   centavosProposta,
@@ -72,6 +74,40 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
           : {}),
       })) ?? [],
   );
+  const [adicionando, setAdicionando] = useState(false);
+  const origens =
+    contexto?.contratacoes.filter((contrato) =>
+      contexto.ofertas.some(
+        (oferta) => oferta.id === contrato.cuidadorServicoId,
+      ),
+    ) ?? [];
+  function selecionarOrigem(
+    origem: ContextoProposta['contratacoes'][number],
+    dados: ContextoProposta,
+  ) {
+    const oferta = dados.ofertas.find(
+      (item) => item.id === origem.cuidadorServicoId,
+    );
+    if (!oferta) return;
+    setOrigemPrincipal(origem.id);
+    setIdosoId(origem.idosoId);
+    setItens([
+      {
+        cuidadorServicoId: oferta.id,
+        nome: oferta.servico.nome,
+        preco: origem.precoReferencia,
+        duracao: String(origem.duracaoMinutos),
+        unidade: 'minutos',
+        inicios: [],
+        contratacaoOrigemId: origem.id,
+      },
+    ]);
+  }
+  const origemInicializada = useRef(false);
+  const [origemPrincipal, setOrigemPrincipal] = useState<number | null>(
+    anterior?.itens.find((item) => item.contratacaoOrigemId)
+      ?.contratacaoOrigemId ?? null,
+  );
   const [observacoes, setObservacoes] = useState(anterior?.observacoes ?? '');
   const [revisao, setRevisao] = useState(false),
     [salvando, setSalvando] = useState(false),
@@ -94,6 +130,16 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
         .then((r) => {
           if (!controller.signal.aborted) {
             setContexto(r.data);
+            if (!origemInicializada.current && !anterior) {
+              origemInicializada.current = true;
+              const elegiveis = r.data.contratacoes.filter((contrato) =>
+                r.data.ofertas.some(
+                  (oferta) => oferta.id === contrato.cuidadorServicoId,
+                ),
+              );
+              if (elegiveis.length === 1)
+                selecionarOrigem(elegiveis[0], r.data);
+            }
             setIdosoId((atual) => atual ?? r.data.idosos[0]?.id ?? null);
           }
         })
@@ -190,7 +236,7 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
     setSalvando(true);
     setErro('');
     try {
-      await api.post(url, {
+      const { data: proposta } = await api.post<Proposta>(url, {
         idosoId,
         ...(anterior ? { anteriorId: anterior.id } : {}),
         observacoes,
@@ -205,7 +251,10 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
           inicios: i.inicios,
         })),
       });
-      navigation.goBack();
+      navigation.replace('DetalheProposta', {
+        usuarioId,
+        propostaId: proposta.id,
+      });
     } catch (e) {
       setErro(mensagemErro(e));
       setRevisao(false);
@@ -227,7 +276,7 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
         <Button
           key={i.id}
           title={i.nomeSocial || i.nome}
-          disabled={revisao || !!anterior || salvando}
+          disabled={revisao || !!anterior || !!origemPrincipal || salvando}
           variant={idosoId === i.id ? 'filled' : 'outline'}
           onPress={() => {
             setIdosoId(i.id);
@@ -238,6 +287,34 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
         />
       ))}
       {!revisao &&
+        !anterior &&
+        !itens.length &&
+        origens.length > 1 &&
+        contexto && (
+          <>
+            <Text style={styles.section}>
+              Qual solicitação você quer responder?
+            </Text>
+            {origens.map((origem) => (
+              <Button
+                key={origem.id}
+                variant="outline"
+                title={`#${origem.id} · ${contexto.ofertas.find((oferta) => oferta.id === origem.cuidadorServicoId)?.servico.nome} · ${contexto.idosos.find((idoso) => idoso.id === origem.idosoId)?.nome ?? ''}`}
+                onPress={() => selecionarOrigem(origem, contexto)}
+              />
+            ))}
+          </>
+        )}
+      {!revisao && (itens.length > 0 || !origens.length) && (
+        <Button
+          title={adicionando ? 'Ocultar serviços' : 'Adicionar serviço'}
+          variant="outline"
+          onPress={() => setAdicionando((valor) => !valor)}
+        />
+      )}
+      {!revisao &&
+        adicionando &&
+        (itens.length > 0 || !origens.length) &&
         contexto?.ofertas.map((o) => (
           <Button
             key={o.id}
@@ -245,12 +322,6 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
             variant="outline"
             disabled={itens.length >= 10 || salvando}
             onPress={() => {
-              const candidatos = contexto.contratacoes.filter(
-                (c) =>
-                  c.idosoId === idosoId &&
-                  c.cuidadorServicoId === o.id &&
-                  !itens.some((i) => i.contratacaoOrigemId === c.id),
-              );
               setItens((v) => [
                 ...v,
                 {
@@ -260,9 +331,6 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
                   duracao: String(o.duracaoMinutos),
                   unidade: 'minutos',
                   inicios: [],
-                  ...(candidatos.length === 1
-                    ? { contratacaoOrigemId: candidatos[0].id }
-                    : {}),
                 },
               ]);
               setCalendario(null);
@@ -327,33 +395,35 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
                   ? `atualizar #${i.contratacaoOrigemId} no primeiro atendimento`
                   : 'criar novos registros no aceite'}
               </Text>
-              {contexto?.contratacoes
-                .filter(
-                  (c) =>
-                    c.idosoId === idosoId &&
-                    c.cuidadorServicoId === i.cuidadorServicoId,
-                )
-                .map((c) => (
+              {i.contratacaoOrigemId !== origemPrincipal &&
+                contexto?.contratacoes
+                  .filter(
+                    (c) =>
+                      c.idosoId === idosoId &&
+                      c.cuidadorServicoId === i.cuidadorServicoId,
+                  )
+                  .map((c) => (
+                    <Button
+                      key={c.id}
+                      title={`Vincular contratação #${c.id}`}
+                      variant={
+                        i.contratacaoOrigemId === c.id ? 'filled' : 'outline'
+                      }
+                      onPress={() =>
+                        alterar(index, { contratacaoOrigemId: c.id })
+                      }
+                    />
+                  ))}
+              {!!i.contratacaoOrigemId &&
+                i.contratacaoOrigemId !== origemPrincipal && (
                   <Button
-                    key={c.id}
-                    title={`Vincular contratação #${c.id}`}
-                    variant={
-                      i.contratacaoOrigemId === c.id ? 'filled' : 'outline'
-                    }
+                    title="Criar novos atendimentos sem vínculo anterior"
+                    variant="outline"
                     onPress={() =>
-                      alterar(index, { contratacaoOrigemId: c.id })
+                      alterar(index, { contratacaoOrigemId: undefined })
                     }
                   />
-                ))}
-              {!!i.contratacaoOrigemId && (
-                <Button
-                  title="Criar novos atendimentos sem vínculo anterior"
-                  variant="outline"
-                  onPress={() =>
-                    alterar(index, { contratacaoOrigemId: undefined })
-                  }
-                />
-              )}
+                )}
             </>
           )}
           {i.inicios.map((d) => (
@@ -394,6 +464,9 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
               />
               <Button
                 title="Remover serviço"
+                disabled={
+                  !!origemPrincipal && i.contratacaoOrigemId === origemPrincipal
+                }
                 variant="outline"
                 onPress={() => {
                   setItens((v) => v.filter((_, n) => n !== index));
@@ -453,6 +526,15 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
             onPress={() => setCalendario(null)}
           />
         </View>
+      )}
+      {revisao && (
+        <ResumoVisitas
+          itens={itens.map((item) => ({
+            nome: item.nome,
+            inicios: item.inicios,
+            duracao: minutosProposta(item.duracao, item.unidade) ?? 0,
+          }))}
+        />
       )}
       {revisao ? (
         <>{!!observacoes && <Text style={styles.text}>{observacoes}</Text>}</>

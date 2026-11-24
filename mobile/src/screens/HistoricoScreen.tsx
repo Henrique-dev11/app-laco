@@ -24,6 +24,12 @@ type Contratacao = {
   precoReferencia: string;
   duracaoMinutos: number;
   nomeServico: string;
+  visitaId?: number | null;
+  avaliacaoResponsavel?: {
+    id: number;
+    nota: number;
+    comentario: string | null;
+  } | null;
   itemProposta: { propostaId: number; proposta: { versao: number } } | null;
   observacoes: string | null;
   /** Avaliação do cuidador feita nesta contratação (`null` = ainda não avaliada). */
@@ -116,176 +122,227 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
       {!carregando && !erro && !dados.length && (
         <Notice>Você ainda não tem contratações.</Notice>
       )}
-      {dados.map((contrato, index) => (
-        <MotionView
-          delay={staggerDelay(index)}
-          key={contrato.id}
-          style={appStyles.card}
-        >
-          <MotionView trigger={contrato.status} preset="fade">
-            <Text accessibilityLiveRegion="polite" style={appStyles.text}>
-              {contrato.nomeServico} · {statusLabels[contrato.status]}
-            </Text>
-          </MotionView>
-          {!!contrato.itemProposta && (
-            <Text style={appStyles.text}>
-              Proposta #{contrato.itemProposta.propostaId} · versão{' '}
-              {contrato.itemProposta.proposta.versao}
-            </Text>
-          )}
-          <Text style={appStyles.text}>Idoso: {contrato.idoso.nome}</Text>
-          <Text style={appStyles.text}>
-            Cuidador: {contrato.cuidadorServico.cuidador.usuario.nome}
-          </Text>
-          <Text style={appStyles.text}>
-            Contratante: {contrato.responsavel.usuario.nome}
-          </Text>
-          <Text style={appStyles.text}>
-            {contrato.status === 'SOLICITADA'
-              ? 'Valor solicitado'
-              : 'Valor acordado'}
-            : R$ {Number(contrato.valorAcordado).toFixed(2).replace('.', ',')}
-          </Text>
-          <Text style={appStyles.text}>
-            Duração registrada: {contrato.duracaoMinutos} minutos
-          </Text>
-          <Text style={appStyles.text}>
-            Preço-base na solicitação: R${' '}
-            {Number(contrato.precoReferencia).toFixed(2).replace('.', ',')}
-          </Text>
-          {!!contrato.observacoes && (
-            <Text style={appStyles.text}>
-              Observações: {contrato.observacoes}
-            </Text>
-          )}
-          {!!contrato.agendamento && (
-            <Text style={appStyles.text}>
-              Agendado:{' '}
-              {new Date(contrato.agendamento.inicio).toLocaleString('pt-BR', {
-                timeZone: 'America/Sao_Paulo',
-              })}
-            </Text>
-          )}
-          {!!usuario?.responsavel &&
-            contrato.status === 'ACEITA' &&
-            !contrato.agendamento && (
-              <Button
-                title="Agendar atendimento"
-                disabled={enviando}
-                onPress={() =>
-                  navigation.navigate('AgendarAtendimento', {
-                    contratacaoId: contrato.id,
-                  })
-                }
-              />
-            )}
-          {usuario?.cuidador && contrato.status === 'SOLICITADA' && (
-            <>
-              <Button
-                title="Aceitar"
-                loading={acaoPendente === `${contrato.id}:ACEITA`}
-                disabled={enviando}
-                onPress={() => {
-                  void mudarStatus(contrato.id, 'ACEITA');
-                }}
-              />
-              <Button
-                title="Recusar"
-                loading={acaoPendente === `${contrato.id}:RECUSADA`}
-                variant="outline"
-                disabled={enviando}
-                onPress={() => {
-                  void mudarStatus(contrato.id, 'RECUSADA');
-                }}
-              />
-            </>
-          )}
-          {usuario?.cuidador && contrato.status === 'ACEITA' && (
-            <>
-              <FormField
-                label="Código de confirmação (peça ao contratante)"
-                value={codigos[contrato.id] ?? ''}
-                maxLength={6}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                onChangeText={(codigo) =>
-                  setCodigos((current) => ({
-                    ...current,
-                    [contrato.id]: codigo.toUpperCase(),
-                  }))
-                }
-              />
-              <Button
-                title="Concluir atendimento"
-                loading={acaoPendente === `${contrato.id}:CONCLUIDA`}
-                disabled={enviando}
-                onPress={() => {
-                  void concluir(contrato.id);
-                }}
-              />
-            </>
-          )}
-          {!!usuario?.responsavel && contrato.status === 'ACEITA' && (
-            <>
-              {!!codigosGerados[contrato.id] && (
-                <CodigoDestaque codigo={codigosGerados[contrato.id]} />
-              )}
-              <Button
-                loading={acaoPendente === `${contrato.id}:codigo`}
-                title={
-                  codigosGerados[contrato.id]
-                    ? 'Gerar novo código'
-                    : 'Mostrar código de conclusão'
-                }
-                variant="outline"
-                disabled={enviando}
-                onPress={() => {
-                  void gerarCodigo(contrato.id);
-                }}
-              />
-            </>
-          )}
-          {/* Avaliação: só depois de concluída; cada atendimento é avaliado uma vez. */}
-          {contrato.status === 'CONCLUIDA' && !!contrato.avaliacao && (
-            <View style={appStyles.row}>
-              <Text style={appStyles.text}>
-                {usuario?.cuidador ? 'Avaliação recebida:' : 'Sua avaliação:'}
+      {dados
+        .filter(
+          (contrato) => !contrato.visitaId || contrato.visitaId === contrato.id,
+        )
+        .map((contrato) => {
+          if (!contrato.visitaId) return contrato;
+          const servicos = dados.filter(
+            (item) => item.visitaId === contrato.visitaId,
+          );
+          return {
+            ...contrato,
+            nomeServico: servicos.map((item) => item.nomeServico).join(' + '),
+            valorAcordado: String(
+              servicos.reduce(
+                (total, item) => total + Number(item.valorAcordado),
+                0,
+              ),
+            ),
+            duracaoMinutos: servicos.reduce(
+              (total, item) => total + item.duracaoMinutos,
+              0,
+            ),
+          };
+        })
+        .map((contrato, index) => (
+          <MotionView
+            delay={staggerDelay(index)}
+            key={contrato.id}
+            style={appStyles.card}
+          >
+            <MotionView trigger={contrato.status} preset="fade">
+              <Text accessibilityLiveRegion="polite" style={appStyles.text}>
+                {contrato.nomeServico} · {statusLabels[contrato.status]}
               </Text>
-              <Estrelas nota={contrato.avaliacao.nota} tamanho={18} />
-              {!!contrato.avaliacao.comentario && (
-                <Text style={appStyles.text}>
-                  “{contrato.avaliacao.comentario}”
-                </Text>
+            </MotionView>
+            {!!contrato.itemProposta && (
+              <Text style={appStyles.text}>
+                Proposta #{contrato.itemProposta.propostaId} · versão{' '}
+                {contrato.itemProposta.proposta.versao}
+              </Text>
+            )}
+            <Text style={appStyles.text}>Idoso: {contrato.idoso.nome}</Text>
+            <Text style={appStyles.text}>
+              Cuidador: {contrato.cuidadorServico.cuidador.usuario.nome}
+            </Text>
+            <Text style={appStyles.text}>
+              Contratante: {contrato.responsavel.usuario.nome}
+            </Text>
+            <Text style={appStyles.text}>
+              {contrato.status === 'SOLICITADA'
+                ? 'Valor solicitado'
+                : 'Valor acordado'}
+              : R$ {Number(contrato.valorAcordado).toFixed(2).replace('.', ',')}
+            </Text>
+            <Text style={appStyles.text}>
+              Duração registrada: {contrato.duracaoMinutos} minutos
+            </Text>
+            {!contrato.visitaId && (
+              <Text style={appStyles.text}>
+                Preço-base na solicitação: R${' '}
+                {Number(contrato.precoReferencia).toFixed(2).replace('.', ',')}
+              </Text>
+            )}
+            {!!contrato.observacoes && (
+              <Text style={appStyles.text}>
+                Observações: {contrato.observacoes}
+              </Text>
+            )}
+            {!!contrato.agendamento && (
+              <Text style={appStyles.text}>
+                Agendado:{' '}
+                {new Date(contrato.agendamento.inicio).toLocaleString('pt-BR', {
+                  timeZone: 'America/Sao_Paulo',
+                })}
+              </Text>
+            )}
+            {contrato.status === 'CONCLUIDA' &&
+              !!contrato.avaliacaoResponsavel && (
+                <View style={appStyles.row}>
+                  <Text style={appStyles.text}>
+                    {usuario?.cuidador
+                      ? 'Sua avaliação do responsável:'
+                      : 'Avaliação recebida do cuidador:'}
+                  </Text>
+                  <Estrelas
+                    nota={contrato.avaliacaoResponsavel.nota}
+                    tamanho={18}
+                  />
+                  {!!contrato.avaliacaoResponsavel.comentario && (
+                    <Text style={appStyles.text}>
+                      {contrato.avaliacaoResponsavel.comentario}
+                    </Text>
+                  )}
+                </View>
               )}
-            </View>
-          )}
-          {!!usuario?.responsavel &&
-            contrato.status === 'CONCLUIDA' &&
-            !contrato.avaliacao && (
+            {!!(usuario?.responsavel || usuario?.cuidador) &&
+              contrato.status === 'ACEITA' &&
+              !contrato.agendamento && (
+                <Button
+                  title="Agendar atendimento"
+                  disabled={enviando}
+                  onPress={() =>
+                    navigation.navigate('AgendarAtendimento', {
+                      contratacaoId: contrato.id,
+                    })
+                  }
+                />
+              )}
+            {usuario?.cuidador && contrato.status === 'SOLICITADA' && (
+              <>
+                <Button
+                  title="Aceitar"
+                  loading={acaoPendente === `${contrato.id}:ACEITA`}
+                  disabled={enviando}
+                  onPress={() => {
+                    void mudarStatus(contrato.id, 'ACEITA');
+                  }}
+                />
+                <Button
+                  title="Recusar"
+                  loading={acaoPendente === `${contrato.id}:RECUSADA`}
+                  variant="outline"
+                  disabled={enviando}
+                  onPress={() => {
+                    void mudarStatus(contrato.id, 'RECUSADA');
+                  }}
+                />
+              </>
+            )}
+            {usuario?.cuidador && contrato.status === 'ACEITA' && (
+              <>
+                <FormField
+                  label="Código de confirmação (peça ao contratante)"
+                  value={codigos[contrato.id] ?? ''}
+                  maxLength={6}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  onChangeText={(codigo) =>
+                    setCodigos((current) => ({
+                      ...current,
+                      [contrato.id]: codigo.toUpperCase(),
+                    }))
+                  }
+                />
+                <Button
+                  title="Concluir atendimento"
+                  loading={acaoPendente === `${contrato.id}:CONCLUIDA`}
+                  disabled={enviando}
+                  onPress={() => {
+                    void concluir(contrato.id);
+                  }}
+                />
+              </>
+            )}
+            {!!usuario?.responsavel && contrato.status === 'ACEITA' && (
+              <>
+                {!!codigosGerados[contrato.id] && (
+                  <CodigoDestaque codigo={codigosGerados[contrato.id]} />
+                )}
+                <Button
+                  loading={acaoPendente === `${contrato.id}:codigo`}
+                  title={
+                    codigosGerados[contrato.id]
+                      ? 'Gerar novo código'
+                      : 'Mostrar código de conclusão'
+                  }
+                  variant="outline"
+                  disabled={enviando}
+                  onPress={() => {
+                    void gerarCodigo(contrato.id);
+                  }}
+                />
+              </>
+            )}
+            {/* Avaliação: só depois de concluída; cada atendimento é avaliado uma vez. */}
+            {contrato.status === 'CONCLUIDA' && !!contrato.avaliacao && (
+              <View style={appStyles.row}>
+                <Text style={appStyles.text}>
+                  {usuario?.cuidador ? 'Avaliação recebida:' : 'Sua avaliação:'}
+                </Text>
+                <Estrelas nota={contrato.avaliacao.nota} tamanho={18} />
+                {!!contrato.avaliacao.comentario && (
+                  <Text style={appStyles.text}>
+                    “{contrato.avaliacao.comentario}”
+                  </Text>
+                )}
+              </View>
+            )}
+            {!!usuario?.responsavel &&
+              contrato.status === 'CONCLUIDA' &&
+              !(usuario?.cuidador
+                ? contrato.avaliacaoResponsavel
+                : contrato.avaliacao) && (
+                <Button
+                  title="Avaliar atendimento"
+                  disabled={enviando}
+                  onPress={() =>
+                    setAvaliando({
+                      id: contrato.id,
+                      cuidador: usuario?.cuidador
+                        ? contrato.responsavel.usuario.nome
+                        : contrato.cuidadorServico.cuidador.usuario.nome,
+                    })
+                  }
+                />
+              )}
+            {['SOLICITADA', 'ACEITA'].includes(contrato.status) && (
               <Button
-                title="Avaliar cuidador"
-                disabled={enviando}
-                onPress={() =>
-                  setAvaliando({
-                    id: contrato.id,
-                    cuidador: contrato.cuidadorServico.cuidador.usuario.nome,
-                  })
+                title={
+                  contrato.visitaId ? 'Cancelar visita' : 'Cancelar contratação'
                 }
+                loading={acaoPendente === `${contrato.id}:CANCELADA`}
+                variant="outline"
+                disabled={enviando}
+                onPress={() => {
+                  void mudarStatus(contrato.id, 'CANCELADA');
+                }}
               />
             )}
-          {['SOLICITADA', 'ACEITA'].includes(contrato.status) && (
-            <Button
-              title="Cancelar contratação"
-              loading={acaoPendente === `${contrato.id}:CANCELADA`}
-              variant="outline"
-              disabled={enviando}
-              onPress={() => {
-                void mudarStatus(contrato.id, 'CANCELADA');
-              }}
-            />
-          )}
-        </MotionView>
-      ))}
+          </MotionView>
+        ))}
       <Button
         title="Atualizar contratações"
         loading={carregando}
@@ -299,7 +356,7 @@ export function HistoricoScreen({ navigation }: ScreenProps<'Historico'>) {
         onClose={() => setAvaliando(null)}
         onEnviada={() => {
           setAvaliando(null);
-          setMensagem('Avaliação enviada. Obrigado por ajudar outras famílias!');
+          setMensagem('Avaliação enviada.');
           atualizar();
         }}
       />

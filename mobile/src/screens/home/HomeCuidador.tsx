@@ -110,11 +110,6 @@ export function HomeCuidador({ navigation }: HomeProps) {
           icon="list-outline"
           onPress={() => navigation.navigate('Historico')}
         />
-        <QuickAccessCard
-          title="Ver serviços"
-          icon="heart-outline"
-          onPress={() => navigation.navigate('Servicos')}
-        />
       </View>
       <SecaoTitulo>Meu perfil</SecaoTitulo>
       <LinhaPessoa

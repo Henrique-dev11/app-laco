@@ -1,3 +1,4 @@
+import { DetalhePropostaScreen } from '../screens/DetalhePropostaScreen';
 import { CriarPropostaScreen } from '../screens/CriarPropostaScreen';
 import { AgendarAtendimentoScreen } from '../screens/AgendarAtendimentoScreen';
 import { EditarPerfilScreen } from '../screens/EditarPerfilScreen';
@@ -116,6 +117,7 @@ export function AppRoutes() {
         </>
       ) : (
         <>
+          <Stack.Screen name="DetalheProposta" component={DetalhePropostaScreen} />
           <Stack.Screen name="CriarProposta" component={CriarPropostaScreen} />
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen

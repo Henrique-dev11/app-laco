@@ -43,7 +43,7 @@ type Cuidador = {
     id: number;
     preco: string;
     duracaoMinutos: number;
-    servico: { nome: string };
+    servico: { id: number; nome: string };
   }[];
 };
 
@@ -86,6 +86,7 @@ export function BuscarCuidadorScreen({
     : idosos[0]?.idoso.id;
   const [enviando, setEnviando] = useState(false);
   const [mensagem, setMensagem] = useState('');
+  const [filtroServico, setFiltroServico] = useState(route.params?.servicoId);
   const [busca, setBusca] = useState('');
   const [selecionado, setSelecionado] = useState<Cuidador | null>(null);
   // Muda a cada abertura dos detalhes, para recarregar as avaliações do cuidador.
@@ -95,8 +96,15 @@ export function BuscarCuidadorScreen({
 
   const filtrados = useMemo(() => {
     const termo = normalizar(busca);
-    if (!termo) return dados;
-    return dados.filter((c) =>
+    const disponiveis = filtroServico
+      ? dados.filter((c) =>
+          c.cuidadorServicos.some(
+            (oferta) => oferta.servico.id === filtroServico,
+          ),
+        )
+      : dados;
+    if (!termo) return disponiveis;
+    return disponiveis.filter((c) =>
       normalizar(
         [
           nomeDe(c),
@@ -106,7 +114,7 @@ export function BuscarCuidadorScreen({
         ].join(' '),
       ).includes(termo),
     );
-  }, [dados, busca]);
+  }, [dados, busca, filtroServico]);
 
   function abrir(cuidador: Cuidador) {
     setMensagem('');
@@ -221,6 +229,16 @@ export function BuscarCuidadorScreen({
         </Notice>
       )}
 
+      {!!filtroServico && (
+        <>
+          <Notice>{`Serviço selecionado: ${route.params?.nomeServico ?? 'catálogo'}`}</Notice>
+          <Button
+            title="Ver todos os cuidadores"
+            variant="outline"
+            onPress={() => setFiltroServico(undefined)}
+          />
+        </>
+      )}
       {carregando && !dados.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
       {!carregando && !erro && (
@@ -392,7 +410,9 @@ export function BuscarCuidadorScreen({
                       />
                       <Button
                         loading={enviando}
-                        title={enviando ? 'Enviando...' : 'Confirmar solicitação'}
+                        title={
+                          enviando ? 'Enviando...' : 'Confirmar solicitação'
+                        }
                         disabled={enviando || !idosoId}
                         onPress={() => {
                           void solicitar(selecionada.id);
@@ -443,7 +463,9 @@ export function BuscarCuidadorScreen({
                               (enviando || !idosoId) && styles.desativado,
                             ]}
                           >
-                            <Text style={styles.solicitarTexto}>Selecionar</Text>
+                            <Text style={styles.solicitarTexto}>
+                              Selecionar
+                            </Text>
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -509,7 +531,11 @@ const criarStyles = (colors: Paleta) =>
       borderColor: colors.border,
     },
     chipAtivo: { backgroundColor: colors.primary, borderColor: colors.primary },
-    chipTexto: { fontSize: fs(14), fontWeight: '600', color: colors.primaryDark },
+    chipTexto: {
+      fontSize: fs(14),
+      fontWeight: '600',
+      color: colors.primaryDark,
+    },
     chipTextoAtivo: { color: colors.surface },
     contagem: { fontSize: fs(13), color: colors.muted },
     card: {
@@ -536,14 +562,22 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 12,
       backgroundColor: colors.badge,
     },
-    tagTexto: { fontSize: fs(12), fontWeight: '600', color: colors.primaryDark },
+    tagTexto: {
+      fontSize: fs(12),
+      fontWeight: '600',
+      color: colors.primaryDark,
+    },
     rodape: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       paddingVertical: 4,
     },
     link: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6 },
-    linkTexto: { fontSize: fs(14), fontWeight: '600', color: colors.primaryDark },
+    linkTexto: {
+      fontSize: fs(14),
+      fontWeight: '600',
+      color: colors.primaryDark,
+    },
     fundoModal: {
       flex: 1,
       justifyContent: 'flex-end',
@@ -585,6 +619,10 @@ const criarStyles = (colors: Paleta) =>
       borderRadius: 18,
       backgroundColor: colors.primary,
     },
-    solicitarTexto: { fontSize: fs(13), fontWeight: '700', color: colors.surface },
+    solicitarTexto: {
+      fontSize: fs(13),
+      fontWeight: '700',
+      color: colors.surface,
+    },
     desativado: { opacity: 0.5 },
   });

@@ -17,7 +17,7 @@ export type RootStackParamList = {
   CadastroPreview: undefined;
   Home: ResumoPerfil | undefined;
   Servicos: undefined;
-  BuscarCuidador: { idosoId?: number } | undefined;
+  BuscarCuidador: { idosoId?: number; servicoId?: number; nomeServico?: string } | undefined;
   Historico: undefined;
   Agenda: undefined;
   AgendarAtendimento: { contratacaoId: number };
@@ -29,6 +29,7 @@ export type RootStackParamList = {
   IdosoDetalhes: { idosoId: number; mensagem?: string };
   Mensagens: undefined;
   Conversa: { usuarioId: number; nome: string; fotoVersao: string | null };
+  DetalheProposta: { usuarioId: number; propostaId: number };
   CriarProposta: {
     usuarioId: number;
     anterior?: import('../services/propostas').Proposta;

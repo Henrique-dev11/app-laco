@@ -145,10 +145,11 @@ describe('Avaliação de atendimentos', () => {
     });
   });
 
-  it('exige login e que seja o responsável da contratação', async () => {
+  it('permite avaliação do cuidador e bloqueia terceiros ou avaliação repetida', async () => {
     const url = `/contratacoes/${contratoA}/avaliacao`;
     await http().post(url).send({ nota: 5 }).expect(401);
-    await http().post(url).auth(tokenCuidador, bearer).send({ nota: 5 }).expect(403);
+    await http().post(url).auth(tokenCuidador, bearer).send({ nota: 5 }).expect(201);
+    await http().post(url).auth(tokenCuidador, bearer).send({ nota: 5 }).expect(409);
     await http().post(url).auth(tokenOutro, bearer).send({ nota: 5 }).expect(403);
     expect(await prisma.avaliacao.count()).toBe(0);
   });

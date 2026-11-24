@@ -27,7 +27,7 @@ try {
   const email = (await rl.question('E-mail do administrador: '))
     .trim()
     .toLowerCase();
-  process.stdout.write('Senha (12 a 72 bytes, entrada oculta): ');
+  process.stdout.write('Senha (8 caracteres no mínimo e 72 bytes no máximo, entrada oculta): ');
   ocultar = true;
   const senha = await rl.question('');
   process.stdout.write('\nConfirme a senha: ');
@@ -43,10 +43,10 @@ try {
     throw new Error('Informe nome e e-mail válidos.');
   if (
     senha !== confirmacao ||
-    Buffer.byteLength(senha) < 12 ||
+    senha.length < 8 ||
     Buffer.byteLength(senha) > 72
   )
-    throw new Error('As senhas devem coincidir e ter de 12 a 72 bytes.');
+    throw new Error('As senhas devem coincidir e ter de 8 caracteres no mínimo e 72 bytes no máximo.');
   await client.connect();
   const result = await client.query(
     'INSERT INTO "Usuario" (nome, email, "senhaHash", "tipoUsuario", "updatedAt") VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (email) DO NOTHING RETURNING id',

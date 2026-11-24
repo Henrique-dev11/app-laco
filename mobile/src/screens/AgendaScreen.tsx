@@ -20,6 +20,7 @@ type Agendamento = {
   ativo: boolean;
   contratacao: {
     id: number;
+    visitaId?: number | null;
     nomeServico: string;
     status: string;
     duracaoMinutos: number;
@@ -66,6 +67,27 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
       hour: '2-digit',
       minute: '2-digit',
     });
+  const visitas = new Map<number, Agendamento>();
+  for (const agendamento of agenda.dados) {
+    const chave =
+      agendamento.contratacao.visitaId ?? agendamento.contratacao.id;
+    const atual = visitas.get(chave);
+    if (!atual) {
+      visitas.set(chave, {
+        ...agendamento,
+        contratacao: { ...agendamento.contratacao },
+      });
+      continue;
+    }
+    atual.fim = agendamento.fim;
+    atual.contratacao.nomeServico +=
+      ' + ' + agendamento.contratacao.nomeServico;
+    atual.contratacao.duracaoMinutos += agendamento.contratacao.duracaoMinutos;
+    atual.contratacao.valorAcordado = String(
+      Number(atual.contratacao.valorAcordado) +
+        Number(agendamento.contratacao.valorAcordado),
+    );
+  }
   return (
     <AppScreenLayout
       title="Agenda"
@@ -139,7 +161,7 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
           podem ser agendadas em Minhas contratações.
         </Notice>
       )}
-      {agenda.dados.map((a, index) => (
+      {Array.from(visitas.values()).map((a, index) => (
         <MotionView delay={staggerDelay(index)} key={a.id} style={styles.card}>
           <MotionView
             trigger={`${a.ativo}:${a.contratacao.status}`}

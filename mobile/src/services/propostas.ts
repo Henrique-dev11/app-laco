@@ -39,6 +39,8 @@ export type ContextoProposta = {
     idosoId: number;
     cuidadorServicoId: number;
     status: string;
+    precoReferencia: string;
+    duracaoMinutos: number;
   }[];
 };
 export const urlPropostas = (contatoId: number) =>

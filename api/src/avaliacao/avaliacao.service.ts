@@ -20,34 +20,42 @@ export const arredondarMedia = (media: number | null | undefined) =>
 export class AvaliacaoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** O responsável avalia, uma única vez, um atendimento já concluído. */
+  /** Cada participante pode avaliar uma vez por visita concluída. */
   async criar(contratacaoId: number, dto: CreateAvaliacaoDto, usuario: Identidade) {
     const contrato = await this.prisma.contratacao.findUnique({
       where: { id: contratacaoId },
       select: {
         responsavelId: true,
+        visitaId: true,
         status: true,
         cuidadorServico: { select: { cuidadorId: true } },
         avaliacao: { select: { id: true } },
       },
     });
     if (!contrato) throw new NotFoundException('Contratação não encontrada.');
-    if (contrato.responsavelId !== usuario.responsavelId)
+    const cuidador = usuario.tipoUsuario === 'CUIDADOR' && usuario.cuidadorId === contrato.cuidadorServico.cuidadorId;
+    if (!cuidador && contrato.responsavelId !== usuario.responsavelId)
       throw new ForbiddenException(
-        'Somente o responsável por esta contratação pode avaliar.',
+        'Somente os participantes deste atendimento podem avaliar.',
       );
     if (contrato.status !== 'CONCLUIDA')
       throw new BadRequestException(
         'Só é possível avaliar atendimentos concluídos.',
       );
-    if (contrato.avaliacao)
+    const visitaId = contrato.visitaId ?? contratacaoId;
+    if (!cuidador && contrato.avaliacao)
       throw new ConflictException('Este atendimento já foi avaliado.');
 
     const comentario = dto.comentario?.trim() || null;
     try {
+      if (cuidador)
+        return await this.prisma.avaliacaoResponsavel.create({
+          data: { contratacaoId: visitaId, nota: dto.nota, comentario },
+          select: { id: true, contratacaoId: true, nota: true, comentario: true, createdAt: true },
+        });
       return await this.prisma.avaliacao.create({
         data: {
-          contratacaoId,
+          contratacaoId: visitaId,
           responsavelId: contrato.responsavelId,
           cuidadorId: contrato.cuidadorServico.cuidadorId,
           nota: dto.nota,

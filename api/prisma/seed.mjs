@@ -22,11 +22,11 @@ try {
       process.env.NODE_ENV === 'production' ||
       !process.env.SEED_ADMIN_EMAIL ||
       !process.env.SEED_ADMIN_PASSWORD ||
-      Buffer.byteLength(process.env.SEED_ADMIN_PASSWORD) < 12 ||
+      process.env.SEED_ADMIN_PASSWORD.length < 8 ||
       Buffer.byteLength(process.env.SEED_ADMIN_PASSWORD) > 72
     )
       throw new Error(
-        'Admin de desenvolvimento exige e-mail e senha de 12 a 72 bytes, fora de produção.',
+        'Admin de desenvolvimento exige e-mail e senha de 8 caracteres no mínimo e 72 bytes no máximo, fora de produção.',
       );
     await client.query(
       'INSERT INTO "Usuario" (nome, email, "senhaHash", "tipoUsuario", "updatedAt") VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (email) DO NOTHING',

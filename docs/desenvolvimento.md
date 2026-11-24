@@ -108,3 +108,39 @@ Use os componentes e a paleta em `mobile/src/components/` e
 Os testes ficam em `api/test/`, `mobile/test/` e `web/test/`.
 Documente mudanças de configuração nos exemplos de ambiente e nestes guias,
 mantendo os segredos e os arquivos gerados fora do Git.
+
+
+## Dados fictícios de desenvolvimento
+
+Para popular o banco configurado no `api/.env` deste projeto, execute a partir
+da raiz, com as migrations aplicadas:
+
+```sh
+npm --prefix api run db:seed:usuarios
+npm --prefix api run db:seed:contratos
+npm --prefix api run db:seed:fotos-idosos
+npm --prefix api run db:seed:agenda-chats
+```
+
+Os comandos adicionam 50 cuidadores e 50 responsáveis com fotos sintéticas,
+50 currículos PDF e idosos vinculados, contratos em cinco status, fotos para
+idosos sem imagem, 10 novos agendamentos e conversas relacionadas ao serviço.
+Preservam contas e dados existentes, sem duplicar registros ao repetir.
+São exclusivos de desenvolvimento e recusam `NODE_ENV=production`.
+
+Contas: `cuidador01@exemplo.test` até `cuidador50@exemplo.test`, e
+`responsavel01@exemplo.test` até `responsavel50@exemplo.test`. Senha inicial:
+`LacoFicticio2026!`. Opcionalmente, defina `SEED_DEMO_PASSWORD` em `api/.env`
+antes da primeira execução (8 caracteres no mínimo e 72 bytes no máximo). A senha de contas existentes
+não é substituída. Fotos e prompts ficam em `api/prisma/seed/fotos/README.md`.
+
+### Compatibilidade com o chat anterior
+
+As migrations `preservar_chat_legado` e `importar_chat_legado` permitem
+atualizar bancos que receberam o chat experimental de outubro. O conteúdo
+original continua em `MensagemLegado`, `Conversa`, `Proposta` e `PropostaItem`.
+As mensagens são reapresentadas no chat atual; propostas antigas aparecem
+como texto com valor, situação e serviços, mantendo os dados estruturados
+nas tabelas anteriores. Horários ausentes não são inventados. Os contratos
+anteriores mantêm os vínculos antigos em `propostaItemId` e
+`sessaoPropostaLegado`. Não execute reset para atualizar esse banco.

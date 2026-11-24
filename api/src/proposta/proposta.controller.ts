@@ -9,6 +9,7 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Autenticado } from '../auth/session.guard.js';
+import { PixTesteService } from './pix-teste.service.js';
 import { PropostaService } from './proposta.service.js';
 import {
   AgendaPropostaDto,
@@ -17,7 +18,24 @@ import {
 } from './proposta.dto.js';
 @Controller('mensagens/conversas/:usuarioId/propostas')
 export class PropostaController {
-  constructor(private readonly service: PropostaService) {}
+  constructor(
+    private readonly service: PropostaService,
+    private readonly pix: PixTesteService,
+  ) {}
+  @Get(':id/pix') consultarPix(
+    @Param('usuarioId', ParseIntPipe) outro: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Req() r: Autenticado,
+  ) {
+    return this.pix.consultar(outro, id, r.usuario);
+  }
+  @Post(':id/pix') gerarPix(
+    @Param('usuarioId', ParseIntPipe) outro: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Req() r: Autenticado,
+  ) {
+    return this.pix.consultar(outro, id, r.usuario, true);
+  }
   @Get('contexto') contexto(
     @Param('usuarioId', ParseIntPipe) outro: number,
     @Req() r: Autenticado,
