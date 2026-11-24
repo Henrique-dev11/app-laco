@@ -32,7 +32,8 @@
     "db:seed:usuarios": "node prisma/seed-usuarios.mjs",
     "db:seed:contratos": "node prisma/seed-contratos.mjs",
     "db:seed:fotos-idosos": "node prisma/seed-fotos-idosos.mjs",
-    "db:seed:agenda-chats": "node prisma/seed-agenda-chats.mjs"
+    "db:seed:agenda-chats": "node prisma/seed-agenda-chats.mjs",
+    "db:seed:financeiro": "node prisma/seed-financeiro.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -46,6 +47,7 @@
     "class-validator": "^0.15.1",
     "dotenv": "^18.0.4",
     "pg": "^8.23.0",
+    "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -58,6 +60,7 @@
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
     "oxlint": "^1.58.0",

@@ -1,3 +1,4 @@
+import { AtalhoAcessibilidade } from '../accessibility/AtalhoAcessibilidade';
 import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { useState } from 'react';
@@ -21,7 +22,7 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
   const [senha, setSenha] = useState('');
   const [errors, setErrors] = useState<{ email?: string; senha?: string }>({});
   const [notice, setNotice] = useState('');
-  const { entrar: autenticar } = useAuth();
+  const { entrar: autenticar, avisoSessao } = useAuth();
   const [enviando, setEnviando] = useState(false);
 
   async function entrar() {
@@ -53,6 +54,7 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
         />
         <Text style={styles.title}>Login</Text>
       </View>
+      {!!avisoSessao && <Notice>{avisoSessao}</Notice>}
       <FormField
         label="Digite seu e-mail"
         keyboardType="email-address"
@@ -129,6 +131,7 @@ export function LoginScreen({ navigation }: ScreenProps<'Login'>) {
           Cadastre-se
         </Text>
       </Text>
+      <AtalhoAcessibilidade />
     </ScreenLayout>
   );
 }

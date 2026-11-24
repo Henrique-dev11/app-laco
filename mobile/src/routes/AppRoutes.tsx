@@ -1,3 +1,4 @@
+import { PerfilConsultaScreen } from '../screens/PerfilConsultaScreen';
 import { DetalhePropostaScreen } from '../screens/DetalhePropostaScreen';
 import { CriarPropostaScreen } from '../screens/CriarPropostaScreen';
 import { AgendarAtendimentoScreen } from '../screens/AgendarAtendimentoScreen';
@@ -39,6 +40,7 @@ import { motionDurations, nativeTransition } from '../motion/policy';
 import { ScreenLayout } from '../layouts/ScreenLayout';
 import { Button } from '../components/Button';
 import { BuscarCuidadorScreen } from '../screens/BuscarCuidadorScreen';
+import { CarteiraVirtualScreen, HistoricoFinanceiroScreen, VisitaFinanceiraScreen } from '../screens/FinanceiroScreen';
 import { HistoricoScreen } from '../screens/HistoricoScreen';
 import { DisponibilidadeScreen } from '../screens/DisponibilidadeScreen';
 import { AgendaScreen } from '../screens/AgendaScreen';
@@ -53,7 +55,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // React Navigation mantido por escolha explícita do usuário nesta migração.
 export function AppRoutes() {
-  const { usuario, carregando, erroInicial, tentarRestaurar } = useAuth();
+  const { usuario, carregando, erroInicial, tentarRestaurar, avisoSessao } = useAuth();
   const colors = useTheme();
   const { reducedMotion } = useMotion();
   if (carregando)
@@ -73,7 +75,7 @@ export function AppRoutes() {
   return (
     <Stack.Navigator
       key={usuario ? `usuario-${usuario.id}` : 'visitante'}
-      initialRouteName={usuario ? 'Home' : 'LoginType'}
+      initialRouteName={usuario ? 'Home' : avisoSessao ? 'Login' : 'LoginType'}
       screenOptions={({ route }) => ({
         headerShown: false,
         contentStyle: { backgroundColor: colors.surface },
@@ -131,6 +133,10 @@ export function AppRoutes() {
             component={AdicionarIdosoScreen}
           />
           <Stack.Screen name="EditarIdoso" component={EditarIdosoScreen} />
+          <Stack.Screen name="VisitaFinanceira" component={VisitaFinanceiraScreen} />
+          <Stack.Screen name="HistoricoFinanceiro" component={HistoricoFinanceiroScreen} />
+          <Stack.Screen name="PerfilConsulta" component={PerfilConsultaScreen} />
+          <Stack.Screen name="CarteiraVirtual" component={CarteiraVirtualScreen} />
           <Stack.Screen name="MeusServicos" component={MeusServicosScreen} />
           <Stack.Group screenOptions={{ headerShown: false }}>
             <Stack.Screen

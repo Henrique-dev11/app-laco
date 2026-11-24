@@ -1,9 +1,11 @@
 import { MotionView } from '../motion/MotionView';
 import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
-import { useCallback, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useState } from 'react';
+import { View } from 'react-native';
 import { Text } from '../accessibility/Texto';
+import { ModalRolavel } from '../components/ModalRolavel';
+import { MotionPressable } from '../motion/MotionPressable';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
@@ -41,16 +43,11 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
   const styles = useAppStyles(),
     colors = useTheme();
   const { usuario } = useAuth();
+  const [visitaAberta, setVisitaAberta] = useState<number | null>(null);
   const [idosoId, setIdosoId] = useState<number | null>(null);
   const agenda = useListaApi<Agendamento>(
     `/agendamentos${idosoId ? `?idosoId=${idosoId}` : ''}`,
-  );
-  const atualizarAgenda = agenda.atualizar;
-  useFocusEffect(
-    useCallback(() => {
-      const timer = setInterval(atualizarAgenda, 10000);
-      return () => clearInterval(timer);
-    }, [atualizarAgenda]),
+    10000,
   );
   const semanal = useListaApi<Disponibilidade>(
     usuario?.cuidador
@@ -67,32 +64,26 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
       hour: '2-digit',
       minute: '2-digit',
     });
-  const visitas = new Map<number, Agendamento>();
+  const visitas = new Map<number, Agendamento[]>();
   for (const agendamento of agenda.dados) {
     const chave =
       agendamento.contratacao.visitaId ?? agendamento.contratacao.id;
     const atual = visitas.get(chave);
-    if (!atual) {
-      visitas.set(chave, {
-        ...agendamento,
-        contratacao: { ...agendamento.contratacao },
-      });
-      continue;
-    }
-    atual.fim = agendamento.fim;
-    atual.contratacao.nomeServico +=
-      ' + ' + agendamento.contratacao.nomeServico;
-    atual.contratacao.duracaoMinutos += agendamento.contratacao.duracaoMinutos;
-    atual.contratacao.valorAcordado = String(
-      Number(atual.contratacao.valorAcordado) +
-        Number(agendamento.contratacao.valorAcordado),
-    );
+    if (atual) atual.push(agendamento);
+    else visitas.set(chave, [agendamento]);
   }
   return (
     <AppScreenLayout
       title="Agenda"
       subtitle="Atendimentos e horários de trabalho"
       tab="Agenda"
+      atualizacao={{
+        carregando: agenda.carregando || semanal.carregando,
+        atualizar: () => {
+          void agenda.atualizar();
+          void semanal.atualizar();
+        },
+      }}
     >
       <Notice>Datas e horários apresentados no fuso de São Paulo.</Notice>
       {!!usuario?.cuidador && (
@@ -161,57 +152,111 @@ export function AgendaScreen({ navigation }: ScreenProps<'Agenda'>) {
           podem ser agendadas em Minhas contratações.
         </Notice>
       )}
-      {Array.from(visitas.values()).map((a, index) => (
-        <MotionView delay={staggerDelay(index)} key={a.id} style={styles.card}>
-          <MotionView
-            trigger={`${a.ativo}:${a.contratacao.status}`}
-            preset="fade"
-            style={styles.badge}
+      {Array.from(visitas.entries()).map(([chave, servicos], index) => {
+        const a = servicos[0];
+        return (
+          <MotionPressable
+            enter
+            delay={staggerDelay(index)}
+            key={chave}
+            style={styles.card}
+            accessibilityRole="button"
+            onPress={() => setVisitaAberta(chave)}
           >
-            <Text style={styles.badgeText}>
-              {a.ativo
-                ? a.contratacao.status === 'ACEITA'
-                  ? 'Confirmado'
-                  : statusLabels[a.contratacao.status]
-                : 'Cancelado'}
+            <MotionView
+              trigger={`${a.ativo}:${a.contratacao.status}`}
+              preset="fade"
+              style={styles.badge}
+            >
+              <Text style={styles.badgeText}>
+                {a.ativo
+                  ? a.contratacao.status === 'ACEITA'
+                    ? 'Confirmado'
+                    : statusLabels[a.contratacao.status]
+                  : 'Cancelado'}
+              </Text>
+            </MotionView>
+            <Text style={styles.name}>
+              {servicos.map((s) => s.contratacao.nomeServico).join(' + ')}
             </Text>
-          </MotionView>
-          <Text style={styles.name}>{a.contratacao.nomeServico}</Text>
-          <Text style={styles.text}>
-            Idoso: {a.contratacao.idoso.nomeSocial || a.contratacao.idoso.nome}
-          </Text>
-          <Text style={styles.text}>
-            Cuidador: {a.contratacao.cuidadorServico.cuidador.usuario.nome}
-          </Text>
-          <Text style={styles.text}>Início: {formato(a.inicio)}</Text>
-          <Text style={styles.text}>Término: {formato(a.fim)}</Text>
-          <Text style={styles.text}>
-            Duração: {a.contratacao.duracaoMinutos} minutos
-          </Text>
-          <Text style={styles.text}>
-            Valor acordado:{' '}
-            {Number(a.contratacao.valorAcordado).toLocaleString('pt-BR', {
-              style: 'currency',
-              currency: 'BRL',
-            })}
-          </Text>
-          {!!a.contratacao.observacoes && (
             <Text style={styles.text}>
-              Observações: {a.contratacao.observacoes}
+              Idoso:{' '}
+              {a.contratacao.idoso.nomeSocial || a.contratacao.idoso.nome}
             </Text>
+            <Text style={styles.text}>
+              Cuidador: {a.contratacao.cuidadorServico.cuidador.usuario.nome}
+            </Text>
+            <Text style={styles.text}>Início: {formato(a.inicio)}</Text>
+            <Text style={styles.text}>
+              Término:{' '}
+              {formato(
+                servicos.reduce(
+                  (fim, item) => (item.fim > fim ? item.fim : fim),
+                  a.fim,
+                ),
+              )}
+            </Text>
+            <Text style={styles.text}>
+              Duração:{' '}
+              {servicos.reduce(
+                (total, item) => total + item.contratacao.duracaoMinutos,
+                0,
+              )}{' '}
+              minutos
+            </Text>
+            <Text style={styles.text}>
+              Valor acordado:{' '}
+              {servicos
+                .reduce(
+                  (total, item) =>
+                    total + Number(item.contratacao.valorAcordado),
+                  0,
+                )
+                .toLocaleString('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                })}
+            </Text>
+            {!!a.contratacao.observacoes && (
+              <Text style={styles.text}>
+                Observações: {a.contratacao.observacoes}
+              </Text>
+            )}
+          </MotionPressable>
+        );
+      })}
+      {visitaAberta !== null && (
+        <ModalRolavel fechar={() => setVisitaAberta(null)}>
+          <Text accessibilityRole="header" style={styles.section}>
+            Serviços agendados
+          </Text>
+          {!visitas.get(visitaAberta)?.length && (
+            <Notice>Este agendamento está indisponível.</Notice>
           )}
-        </MotionView>
-      ))}
-      <Button
-        loading={agenda.carregando || semanal.carregando}
-        title="Atualizar agenda"
-        variant="outline"
-        disabled={agenda.carregando || semanal.carregando}
-        onPress={() => {
-          agenda.atualizar();
-          semanal.atualizar();
-        }}
-      />
+          {visitas.get(visitaAberta)?.map((item) => (
+            <View key={item.id} style={styles.card}>
+              <Text style={styles.name}>{item.contratacao.nomeServico}</Text>
+              <Text style={styles.text}>
+                {item.ativo
+                  ? (statusLabels[item.contratacao.status] ??
+                    item.contratacao.status)
+                  : 'Cancelado'}
+              </Text>
+              <Text style={styles.text}>
+                {formato(item.inicio)} às {formato(item.fim)}
+              </Text>
+              <Text style={styles.text}>
+                {item.contratacao.duracaoMinutos} minutos ·{' '}
+                {Number(item.contratacao.valorAcordado).toLocaleString(
+                  'pt-BR',
+                  { style: 'currency', currency: 'BRL' },
+                )}
+              </Text>
+            </View>
+          ))}
+          <Button title="Fechar" onPress={() => setVisitaAberta(null)} />
+        </ModalRolavel>
+      )}
       <Button
         title="Minhas contratações"
         variant="outline"

@@ -3,6 +3,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { api, mensagemErro } from '../services/api';
 import { listarConversas, nomeDoContato } from '../services/mensagens';
+import {
+  listarAvisosPagamento,
+  type AvisoPagamento,
+} from '../services/avisosPagamento';
 import type { DadosAviso } from '../services/notificacoes';
 
 type Contratacao = {
@@ -19,7 +23,7 @@ type Contratacao = {
 
 export type ItemNotificacao = {
   id: string;
-  tipo: 'mensagem' | 'contratacao';
+  tipo: 'mensagem' | 'contratacao' | 'pagamento';
   titulo: string;
   texto: string;
   data: string;
@@ -28,6 +32,7 @@ export type ItemNotificacao = {
   /** Quantidade de mensagens novas, quando for de conversa. */
   quantidade?: number;
   conversa?: DadosAviso;
+  pagamento?: AvisoPagamento;
 };
 
 const INTERVALO_MS = 10000;
@@ -45,6 +50,7 @@ const RESPOSTAS: Record<string, string> = {
  */
 export function useNotificacoes() {
   const { usuario } = useAuth();
+  const usuarioId = usuario?.id;
   const souCuidador = !!usuario?.cuidador;
   const [itens, setItens] = useState<ItemNotificacao[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -52,12 +58,16 @@ export function useNotificacoes() {
 
   useFocusEffect(
     useCallback(() => {
+      if (!usuarioId) return;
       let ativo = true;
       async function carregar() {
         try {
-          const [conversas, contratos] = await Promise.all([
+          const [conversas, contratos, pagamentos] = await Promise.all([
             listarConversas(),
             api.get<Contratacao[]>('/contratacoes').then((r) => r.data),
+            souCuidador
+              ? listarAvisosPagamento().catch(() => [])
+              : Promise.resolve([]),
           ]);
           if (!ativo) return;
           const lista: ItemNotificacao[] = [];
@@ -105,6 +115,20 @@ export function useNotificacoes() {
                 pendente: false,
               });
           }
+          for (const pagamento of pagamentos) {
+            lista.push({
+              id: `pagamento-${pagamento.id}`,
+              tipo: 'pagamento',
+              titulo:
+                pagamento.etapa === 'RETENCAO'
+                  ? 'Pagamento em garantia'
+                  : 'Valor disponível na carteira',
+              texto: pagamento.servicos.join(' + '),
+              data: pagamento.criadoEm,
+              pendente: !pagamento.lidoEm,
+              pagamento,
+            });
+          }
           lista.sort(
             (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
           );
@@ -122,7 +146,7 @@ export function useNotificacoes() {
         ativo = false;
         clearInterval(timer);
       };
-    }, [souCuidador]),
+    }, [souCuidador, usuarioId]),
   );
 
   const pendentes = itens.filter((item) => item.pendente).length;

@@ -9,14 +9,24 @@ import { HomeShell, type HomeProps } from './HomeShell';
 /** Home do idoso com acesso próprio: poucos botões, grandes e diretos. */
 export function HomeIdoso({ navigation }: HomeProps) {
   const { usuario } = useAuth();
-  const { proximo, erro, agora } = useAgendados();
+  const {
+    proximo,
+    erro,
+    agora,
+    atualizar: atualizarAgenda,
+    carregando: agendaCarregando,
+  } = useAgendados();
   const cumprimento = useMemo(() => saudacao(horaEmSaoPaulo()), []);
   const proprio = usuario?.responsavel?.responsavelIdosos.find(
     (item) => item.parentesco === 'PROPRIO',
   )?.idoso;
   if (!usuario || !proprio) return null;
   return (
-    <HomeShell navigation={navigation} saudacao={cumprimento}>
+    <HomeShell
+      navigation={navigation}
+      atualizacao={{ atualizar: atualizarAgenda, carregando: agendaCarregando }}
+      saudacao={cumprimento}
+    >
       <ProximoAtendimento
         grande
         proximo={proximo}

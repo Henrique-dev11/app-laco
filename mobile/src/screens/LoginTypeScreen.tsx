@@ -1,3 +1,4 @@
+import { AtalhoAcessibilidade } from '../accessibility/AtalhoAcessibilidade';
 import { fs, lh } from '../theme/tipografia';
 import { Image, StyleSheet, View } from 'react-native';
 import { Text } from '../accessibility/Texto';
@@ -63,6 +64,7 @@ export function LoginTypeScreen({ navigation }: ScreenProps<'LoginType'>) {
           Privacidade.
         </Text>
       </View>
+      <AtalhoAcessibilidade />
     </ScreenLayout>
   );
 }

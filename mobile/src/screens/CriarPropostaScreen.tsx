@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, View } from 'react-native';
 import { Text } from '../accessibility/Texto';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
+import { ModalRolavel } from '../components/ModalRolavel';
 import { Button } from '../components/Button';
 import { Notice } from '../components/Notice';
 import { FormField } from '../components/FormField';
@@ -74,6 +75,8 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
           : {}),
       })) ?? [],
   );
+  const [rascunhoHorarios, setRascunhoHorarios] = useState<string[]>([]);
+  const [erroHorarios, setErroHorarios] = useState('');
   const [adicionando, setAdicionando] = useState(false);
   const origens =
     contexto?.contratacoes.filter((contrato) =>
@@ -154,6 +157,7 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
     useCallback(() => {
       if (calendario === null || !duracaoAtual) return;
       const controller = new AbortController();
+      setErroHorarios('');
       setOpcoes(null);
       setCarregando(true);
       api
@@ -165,7 +169,7 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
           if (!controller.signal.aborted) setOpcoes(r.data);
         })
         .catch((e) => {
-          if (!controller.signal.aborted) setErro(mensagemErro(e));
+          if (!controller.signal.aborted) setErroHorarios(mensagemErro(e));
         })
         .finally(() => {
           if (!controller.signal.aborted) setCarregando(false);
@@ -179,8 +183,8 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
     0,
   );
   function conflita(inicio: string, fim: string) {
-    return itens.some((i) =>
-      i.inicios.some((d) => {
+    return itens.some((i, index) =>
+      (index === calendario ? rascunhoHorarios : i.inicios).some((d) => {
         const duracao = minutosProposta(i.duracao, i.unidade);
         return (
           duracao !== null &&
@@ -457,6 +461,7 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
                 variant="outline"
                 disabled={!minutosProposta(i.duracao, i.unidade)}
                 onPress={() => {
+                  setRascunhoHorarios([...i.inicios]);
                   setCalendario(index);
                   setDia('');
                   setConsulta((n) => n + 1);
@@ -478,8 +483,17 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
         </View>
       ))}
       {!revisao && itemAtual && calendario !== null && (
-        <View style={styles.card}>
-          <Text style={styles.section}>Horários para {itemAtual.nome}</Text>
+        <ModalRolavel fechar={() => setCalendario(null)}>
+          <Text accessibilityRole="header" style={styles.section}>
+            Horários para {itemAtual.nome}
+          </Text>
+          {!!erroHorarios && <Notice>{erroHorarios}</Notice>}
+          {!!erroHorarios && (
+            <Button
+              title="Tentar novamente"
+              onPress={() => setConsulta((n) => n + 1)}
+            />
+          )}
           <CalendarioDisponivel
             mes={mes}
             onMes={(m) => {
@@ -507,12 +521,16 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
                 title={`${h.horaInicio} às ${h.horaFim}`}
                 variant="outline"
                 disabled={
-                  itemAtual.inicios.length >= 30 || conflita(h.inicio, h.fim)
+                  !rascunhoHorarios.includes(h.inicio) &&
+                  (rascunhoHorarios.length >= 30 || conflita(h.inicio, h.fim))
                 }
+                selected={rascunhoHorarios.includes(h.inicio)}
                 onPress={() =>
-                  alterar(calendario, {
-                    inicios: [...itemAtual.inicios, h.inicio].sort(),
-                  })
+                  setRascunhoHorarios((atual) =>
+                    atual.includes(h.inicio)
+                      ? atual.filter((inicio) => inicio !== h.inicio)
+                      : [...atual, h.inicio].sort(),
+                  )
                 }
               />
             ))}
@@ -520,12 +538,34 @@ function Formulario({ route, navigation }: ScreenProps<'CriarProposta'>) {
             Horário de São Paulo. As datas serão revalidadas no envio e no
             aceite.
           </Text>
+          <Text style={styles.section}>
+            Horários selecionados ({rascunhoHorarios.length})
+          </Text>
+          {rascunhoHorarios.map((inicio) => (
+            <Button
+              key={inicio}
+              variant="outline"
+              title={`Remover ${new Date(inicio).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}
+              onPress={() =>
+                setRascunhoHorarios((atual) =>
+                  atual.filter((valor) => valor !== inicio),
+                )
+              }
+            />
+          ))}
           <Button
-            title="Fechar calendário"
+            title="Aplicar"
+            onPress={() => {
+              alterar(calendario, { inicios: rascunhoHorarios });
+              setCalendario(null);
+            }}
+          />
+          <Button
+            title="Cancelar"
             variant="outline"
             onPress={() => setCalendario(null)}
           />
-        </View>
+        </ModalRolavel>
       )}
       {revisao && (
         <ResumoVisitas

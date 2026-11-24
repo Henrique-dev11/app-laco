@@ -55,6 +55,9 @@ enum StatusContratacao {
 }
 
 model Usuario {
+  contestacoesSimuladas PagamentoSimulado[] @relation("ContestacoesSimuladas")
+  resolucoesSimuladas PagamentoSimulado[] @relation("ResolucoesSimuladas")
+  movimentosAdministrados MovimentoSimulado[]
   id          Int           @id @default(autoincrement())
   nome        String        @db.VarChar(150)
   nomeSocial  String?       @db.VarChar(150)
@@ -155,6 +158,8 @@ model Idoso {
 }
 
 model Cuidador {
+  pagamentosSimulados PagamentoSimulado[]
+  movimentosSimulados MovimentoSimulado[]
   propostasAtendimento PropostaAtendimento[]
   id                      Int               @id @default(autoincrement())
   usuarioId               Int               @unique
@@ -235,6 +240,8 @@ model Disponibilidade {
 }
 
 model Contratacao {
+  financeiroSimulado Boolean @default(false)
+  pagamentoSimulado PagamentoSimulado?
   visitaId Int?
   @@index([visitaId])
   avaliacaoResponsavel AvaliacaoResponsavel?
@@ -256,6 +263,7 @@ model Contratacao {
 
   // Código de conclusão: só o hash é guardado; o código em si é mostrado apenas ao responsável.
   codigoConclusaoHash String?
+  codigoConclusaoExpiraEm DateTime?
   tentativasCodigo    Int     @default(0)
 
   createdAt DateTime @default(now())
@@ -289,6 +297,7 @@ model Sessao {
   createdAt DateTime @default(now())
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   @@index([usuarioId])
+  dispositivosPush DispositivoPush[]
   @@index([expiraEm])
 }
 
@@ -418,4 +427,125 @@ model AvaliacaoResponsavel {
   nota Int
   comentario String? @db.VarChar(1000)
   createdAt DateTime @default(now())
+}
+
+enum MetodoFinanceiro {
+  PIX
+  CARTAO
+  OUTRO
+}
+
+enum StatusPagamentoSimulado {
+  PENDENTE
+  RETIDO
+  LIBERADO
+  REEMBOLSADO
+  CANCELADO
+  EM_CONTESTACAO
+}
+
+enum TipoMovimentoSimulado {
+  RETENCAO
+  LIBERACAO
+  REEMBOLSO
+  SAQUE
+}
+
+enum EtapaCodigoAtendimento {
+  INICIO
+  FIM
+}
+
+model PagamentoSimulado {
+  id              Int @id @default(autoincrement())
+  contratacaoId   Int @unique
+  cuidadorId      Int
+  status          StatusPagamentoSimulado @default(PENDENTE)
+  metodo          MetodoFinanceiro @default(PIX)
+  bruto           Decimal @db.Decimal(16, 2)
+  comissao        Decimal @db.Decimal(16, 2)
+  liquido         Decimal @db.Decimal(16, 2)
+  inicioEm        DateTime?
+  validacaoEm     DateTime?
+  fimEm           DateTime?
+  motivoContestacao String? @db.VarChar(1000)
+  contestadoPorId Int?
+  motivoResolucao String? @db.VarChar(1000)
+  resolvidoPorId  Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  contratacao     Contratacao @relation(fields: [contratacaoId], references: [id])
+  cuidador        Cuidador @relation(fields: [cuidadorId], references: [id])
+  contestadoPor   Usuario? @relation("ContestacoesSimuladas", fields: [contestadoPorId], references: [id])
+  resolvidoPor    Usuario? @relation("ResolucoesSimuladas", fields: [resolvidoPorId], references: [id])
+  codigos         CodigoAtendimento[]
+  movimentos      MovimentoSimulado[]
+  avisos          AvisoPagamento[]
+  @@index([cuidadorId, status])
+}
+
+model CodigoAtendimento {
+  id           Int @id @default(autoincrement())
+  pagamentoId  Int
+  etapa        EtapaCodigoAtendimento
+  hash         String
+  emitidoEm    DateTime
+  expiraEm     DateTime
+  usadoEm      DateTime?
+  tentativas   Int @default(0)
+  pagamento    PagamentoSimulado @relation(fields: [pagamentoId], references: [id])
+  @@unique([pagamentoId, etapa])
+}
+
+model MovimentoSimulado {
+  id           Int @id @default(autoincrement())
+  cuidadorId   Int
+  pagamentoId  Int?
+  adminId      Int?
+  chave        String @unique
+  tipo         TipoMovimentoSimulado
+  metodo       MetodoFinanceiro @default(PIX)
+  status       String @default("CONFIRMADO")
+  valor        Decimal @db.Decimal(16, 2)
+  descricao    String
+  createdAt    DateTime @default(now())
+  cuidador     Cuidador @relation(fields: [cuidadorId], references: [id])
+  pagamento    PagamentoSimulado? @relation(fields: [pagamentoId], references: [id])
+  admin        Usuario? @relation(fields: [adminId], references: [id])
+  @@index([cuidadorId, createdAt])
+}
+
+model AvisoPagamento {
+  id          Int @id @default(autoincrement())
+  pagamentoId Int
+  etapa       String
+  servicos    String[]
+  criadoEm    DateTime @default(now())
+  lidoEm      DateTime?
+  pagamento   PagamentoSimulado @relation(fields: [pagamentoId], references: [id], onDelete: Cascade)
+  entregas    EntregaPush[]
+  @@unique([pagamentoId, etapa])
+}
+
+model DispositivoPush {
+  id        Int @id @default(autoincrement())
+  sessaoId  String
+  token     String @unique
+  sessao    Sessao @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
+  entregas  EntregaPush[]
+  @@index([sessaoId])
+}
+
+model EntregaPush {
+  id            Int @id @default(autoincrement())
+  avisoId       Int
+  dispositivoId Int
+  tentativas    Int @default(0)
+  ticket        String?
+  encerrada     Boolean @default(false)
+  proximaEm     DateTime @default(now())
+  aviso         AvisoPagamento @relation(fields: [avisoId], references: [id], onDelete: Cascade)
+  dispositivo   DispositivoPush @relation(fields: [dispositivoId], references: [id], onDelete: Cascade)
+  @@unique([avisoId, dispositivoId])
+  @@index([encerrada, proximaEm])
 }

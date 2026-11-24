@@ -19,16 +19,15 @@ import { SeletorEstrelas } from './SeletorEstrelas';
 type Props = {
   /** Contratação concluída que está sendo avaliada; nulo = modal fechado. */
   contratacaoId: number | null;
-  cuidadorNome: string;
+  avaliadoNome: string;
   onClose: () => void;
   /** Chamado depois que a API aceitou a avaliação. */
   onEnviada: () => void;
 };
 
 /**
- * Folha para avaliar o cuidador de um atendimento concluído: nota em estrelas
- * (obrigatória) e comentário (opcional). Usada pelo responsável e pelo idoso
- * independente a partir do histórico de contratações.
+ * Folha para avaliar a outra parte após a conclusão do atendimento.
+ * A nota em estrelas é obrigatória e o comentário é opcional.
  */
 export function AvaliarCuidador(props: Props) {
   const { contratacaoId, onClose } = props;
@@ -46,12 +45,7 @@ export function AvaliarCuidador(props: Props) {
   );
 }
 
-function Folha({
-  contratacaoId,
-  cuidadorNome,
-  onClose,
-  onEnviada,
-}: Props) {
+function Folha({ contratacaoId, avaliadoNome, onClose, onEnviada }: Props) {
   const styles = useStyles(criarStyles);
   const alturaTeclado = useAlturaTeclado();
   const [nota, setNota] = useState(0);
@@ -85,23 +79,27 @@ function Folha({
 
   return (
     <CamadaLeitura>
-      <Pressable style={styles.fundo} onPress={fechar}>
+      <View style={styles.fundo}>
         <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={fechar}
+          accessible={false}
+        />
+        <View
           style={[styles.folha, { marginBottom: alturaTeclado }]}
-          onPress={() => undefined}
+          accessibilityViewIsModal
         >
           <ScrollView
             contentContainerStyle={styles.conteudo}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
           >
             <View style={styles.alca} />
             <Text accessibilityRole="header" style={styles.titulo}>
-              Avaliar {cuidadorNome}
+              Avaliar {avaliadoNome}
             </Text>
             <Text style={styles.texto}>
-              Conte como foi o atendimento. Sua avaliação ajuda outras famílias
-              a escolher um cuidador.
+              Como foi sua experiência neste atendimento?
             </Text>
             <SeletorEstrelas
               nota={nota}
@@ -138,8 +136,8 @@ function Folha({
               onPress={fechar}
             />
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
       {/* O botão global fica sob o modal; este mantém a acessibilidade à mão. */}
       <BotaoAcessibilidade elevado={false} />
     </CamadaLeitura>
@@ -155,6 +153,8 @@ const criarStyles = (colors: Paleta) =>
     },
     folha: {
       maxHeight: '90%',
+      flexShrink: 1,
+      overflow: 'hidden',
       width: '100%',
       maxWidth: 640,
       alignSelf: 'center',

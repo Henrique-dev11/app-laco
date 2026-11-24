@@ -4,7 +4,7 @@ import { staggerDelay } from '../motion/policy';
 import { SkeletonList } from '../motion/SkeletonList';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import { isAxiosError } from 'axios';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { CamadaLeitura, Text, TextInput } from '../accessibility/Texto';
 import { BotaoAcessibilidade } from '../accessibility/BotaoAcessibilidade';
@@ -12,7 +12,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { Estrelas } from '../components/Estrelas';
-import { FormField } from '../components/FormField';
 import { ListaAvaliacoes, ResumoNota } from '../components/ListaAvaliacoes';
 import { Notice } from '../components/Notice';
 import { AppScreenLayout } from '../layouts/AppScreenLayout';
@@ -57,14 +56,6 @@ const normalizar = (texto: string) =>
 const nomeDe = (c: Cuidador) => c.usuario.nomeSocial || c.usuario.nome;
 const preco = (valor: string) => Number(valor).toFixed(2).replace('.', ',');
 
-type Selecionada = {
-  id: number;
-  nome: string;
-  cuidador: string;
-  preco: string;
-  duracaoMinutos: number;
-};
-
 export function BuscarCuidadorScreen({
   navigation,
   route,
@@ -85,77 +76,88 @@ export function BuscarCuidadorScreen({
     ? escolhaId
     : idosos[0]?.idoso.id;
   const [enviando, setEnviando] = useState(false);
+  const emCurso = useRef(false);
   const [mensagem, setMensagem] = useState('');
   const [filtroServico, setFiltroServico] = useState(route.params?.servicoId);
   const [busca, setBusca] = useState('');
   const [selecionado, setSelecionado] = useState<Cuidador | null>(null);
   // Muda a cada abertura dos detalhes, para recarregar as avaliações do cuidador.
   const [abertura, setAbertura] = useState(0);
-  const [selecionada, setSelecionada] = useState<Selecionada | null>(null);
-  const [observacoes, setObservacoes] = useState('');
+  const [somenteAvaliados, setSomenteAvaliados] = useState(false);
 
   const filtrados = useMemo(() => {
     const termo = normalizar(busca);
-    const disponiveis = filtroServico
-      ? dados.filter((c) =>
-          c.cuidadorServicos.some(
-            (oferta) => oferta.servico.id === filtroServico,
-          ),
-        )
-      : dados;
-    if (!termo) return disponiveis;
-    return disponiveis.filter((c) =>
-      normalizar(
-        [
-          nomeDe(c),
-          c.endereco.cidade,
-          c.endereco.estado,
-          ...c.cuidadorServicos.map((o) => o.servico.nome),
-        ].join(' '),
-      ).includes(termo),
-    );
-  }, [dados, busca, filtroServico]);
+    return dados
+      .filter((cuidador) => {
+        const servicos = cuidador.cuidadorServicos;
+        return (
+          (!filtroServico ||
+            servicos.some(({ servico }) => servico.id === filtroServico)) &&
+          (!somenteAvaliados || (cuidador.totalAvaliacoes ?? 0) > 0) &&
+          normalizar(
+            [
+              nomeDe(cuidador),
+              cuidador.endereco.cidade,
+              cuidador.endereco.estado,
+              ...servicos.map(({ servico }) => servico.nome),
+            ].join(' '),
+          ).includes(termo)
+        );
+      })
+      .sort(
+        (a, b) =>
+          (normalizarMedia(b.avaliacaoMedia) ?? 0) -
+            (normalizarMedia(a.avaliacaoMedia) ?? 0) ||
+          (b.totalAvaliacoes ?? 0) - (a.totalAvaliacoes ?? 0) ||
+          nomeDe(a).localeCompare(nomeDe(b), 'pt-BR'),
+      );
+  }, [dados, busca, filtroServico, somenteAvaliados]);
 
   function abrir(cuidador: Cuidador) {
     setMensagem('');
-    setSelecionada(null);
-    setObservacoes('');
     setAbertura((n) => n + 1);
     setSelecionado(cuidador);
   }
 
   function fechar() {
-    setSelecionado(null);
-    setSelecionada(null);
-    setObservacoes('');
+    if (!emCurso.current) setSelecionado(null);
   }
 
-  async function solicitar(cuidadorServicoId: number) {
-    if (!idosoId || !usuario?.responsavel || !selecionada || enviando) return;
+  async function solicitar(
+    cuidador: Cuidador,
+    oferta: Cuidador['cuidadorServicos'][number],
+  ) {
+    if (!idosoId || !usuario?.responsavel || emCurso.current) return;
+    emCurso.current = true;
     setEnviando(true);
     setMensagem('');
     try {
       await api.post('/contratacoes', {
         responsavelId: usuario.responsavel.id,
         idosoId,
-        cuidadorServicoId,
-        precoReferenciaEsperado: Number(selecionada.preco),
-        duracaoEsperadaMinutos: selecionada.duracaoMinutos,
-        ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
+        cuidadorServicoId: oferta.id,
+        reutilizarSolicitacaoPendente: true,
+        precoReferenciaEsperado: Number(oferta.preco),
+        duracaoEsperadaMinutos: oferta.duracaoMinutos,
       });
-      setMensagem(
-        'Solicitação salva. Aguarde a resposta do cuidador em Minhas contratações.',
-      );
-      setSelecionada(null);
-      setObservacoes('');
+      setSelecionado(null);
+      navigation.navigate('Conversa', {
+        usuarioId: cuidador.usuario.id,
+        nome: nomeDe(cuidador),
+        fotoVersao: cuidador.usuario.foto?.updatedAt ?? null,
+        sugestoes: [
+          `Olá! Você tem disponibilidade para o serviço de ${oferta.servico.nome}?`,
+          `Olá! Você pode me contar como funciona o serviço de ${oferta.servico.nome} e enviar uma proposta?`,
+        ],
+      });
     } catch (error) {
       setMensagem(mensagemErro(error));
-      // Preço ou duração mudaram desde que a lista foi carregada.
       if (isAxiosError(error) && error.response?.status === 409) {
-        setSelecionada(null);
+        setSelecionado(null);
         atualizar();
       }
     } finally {
+      emCurso.current = false;
       setEnviando(false);
     }
   }
@@ -169,6 +171,7 @@ export function BuscarCuidadorScreen({
       title="Buscar cuidador"
       subtitle="Encontre quem pode cuidar com você"
       tab="Buscar"
+      atualizacao={{ atualizar, carregando }}
     >
       <View style={styles.busca}>
         <Ionicons name="search" size={20} color={colors.muted} />
@@ -239,6 +242,13 @@ export function BuscarCuidadorScreen({
           />
         </>
       )}
+      <Button
+        compacto
+        title="Somente cuidadores avaliados"
+        variant={somenteAvaliados ? 'filled' : 'outline'}
+        selected={somenteAvaliados}
+        onPress={() => setSomenteAvaliados((ativo) => !ativo)}
+      />
       {carregando && !dados.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
       {!carregando && !erro && (
@@ -313,14 +323,6 @@ export function BuscarCuidadorScreen({
 
       <View style={styles.rodape}>
         <TouchableOpacity
-          disabled={carregando}
-          onPress={atualizar}
-          style={styles.link}
-        >
-          <Ionicons name="refresh" size={16} color={colors.primaryDark} />
-          <Text style={styles.linkTexto}>Atualizar lista</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
           onPress={() => navigation.navigate('Historico')}
           style={styles.link}
         >
@@ -336,12 +338,18 @@ export function BuscarCuidadorScreen({
         onRequestClose={fechar}
       >
         <CamadaLeitura>
-          <Pressable style={styles.fundoModal} onPress={fechar}>
-            <Pressable style={styles.folha} onPress={() => undefined}>
+          <View style={styles.fundoModal}>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={fechar}
+              accessible={false}
+            />
+            <View style={styles.folha} accessibilityViewIsModal>
               {aberto && (
                 <ScrollView
                   contentContainerStyle={styles.folhaConteudo}
-                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled
                 >
                   <View style={styles.alca} />
                   <View style={styles.folhaTopo}>
@@ -382,59 +390,16 @@ export function BuscarCuidadorScreen({
                     </View>
                   )}
 
-                  {selecionada ? (
-                    <View style={styles.bloco}>
-                      <Text style={styles.secao}>Revisar solicitação</Text>
+                  <View style={styles.bloco}>
+                    <Text style={styles.secao}>Serviços</Text>
+                    {!aberto.cuidadorServicos.length && (
                       <Text style={styles.texto}>
-                        {selecionada.cuidador} · {selecionada.nome}
+                        Este cuidador ainda não cadastrou serviços.
                       </Text>
-                      <Text style={styles.texto}>
-                        Idoso:{' '}
-                        {idosos.find((i) => i.idoso.id === idosoId)?.idoso.nome}
-                      </Text>
-                      <Text style={styles.texto}>
-                        Preço de referência: R$ {preco(selecionada.preco)} ·{' '}
-                        {selecionada.duracaoMinutos} minutos
-                      </Text>
-                      <Notice>
-                        O preço-base e a duração acima serão usados nesta
-                        solicitação. Aguarde o aceite do cuidador.
-                      </Notice>
-                      <FormField
-                        label="Informações sobre o atendimento (opcional)"
-                        value={observacoes}
-                        onChangeText={setObservacoes}
-                        maxLength={2000}
-                        multiline
-                        editable={!enviando}
-                      />
-                      <Button
-                        loading={enviando}
-                        title={
-                          enviando ? 'Enviando...' : 'Confirmar solicitação'
-                        }
-                        disabled={enviando || !idosoId}
-                        onPress={() => {
-                          void solicitar(selecionada.id);
-                        }}
-                      />
-                      <Button
-                        title="Voltar à escolha de serviços"
-                        variant="outline"
-                        disabled={enviando}
-                        onPress={() => setSelecionada(null)}
-                      />
-                    </View>
-                  ) : (
-                    <View style={styles.bloco}>
-                      <Text style={styles.secao}>Serviços</Text>
-                      {!aberto.cuidadorServicos.length && (
-                        <Text style={styles.texto}>
-                          Este cuidador ainda não cadastrou serviços.
-                        </Text>
-                      )}
-                      {aberto.cuidadorServicos.map((oferta) => (
-                        <View key={oferta.id} style={styles.servico}>
+                    )}
+                    {aberto.cuidadorServicos.map((oferta) => (
+                      <View key={oferta.id} style={styles.servico}>
+                        <View style={styles.linhaServico}>
                           <View style={styles.cardInfo}>
                             <Text style={styles.servicoNome}>
                               {oferta.servico.nome}
@@ -446,31 +411,23 @@ export function BuscarCuidadorScreen({
                           <Text style={styles.preco}>
                             R$ {preco(oferta.preco)}
                           </Text>
-                          <TouchableOpacity
-                            accessibilityRole="button"
-                            disabled={enviando || !idosoId}
-                            onPress={() =>
-                              setSelecionada({
-                                id: oferta.id,
-                                nome: oferta.servico.nome,
-                                cuidador: nomeDe(aberto),
-                                preco: oferta.preco,
-                                duracaoMinutos: oferta.duracaoMinutos,
-                              })
-                            }
-                            style={[
-                              styles.solicitar,
-                              (enviando || !idosoId) && styles.desativado,
-                            ]}
-                          >
-                            <Text style={styles.solicitarTexto}>
-                              Selecionar
-                            </Text>
-                          </TouchableOpacity>
                         </View>
-                      ))}
-                    </View>
-                  )}
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          disabled={enviando || !idosoId}
+                          onPress={() => void solicitar(aberto, oferta)}
+                          style={[
+                            styles.solicitar,
+                            (enviando || !idosoId) && styles.desativado,
+                          ]}
+                        >
+                          <Text style={styles.solicitarTexto}>
+                            Solicitar e conversar
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
 
                   {!idosoId && (
                     <Notice>
@@ -479,19 +436,34 @@ export function BuscarCuidadorScreen({
                   )}
                   {!!mensagem && <Notice>{mensagem}</Notice>}
                   {/* Avaliações (estrelas e comentários) deste cuidador. */}
-                  {!selecionada && (
-                    <ListaAvaliacoes
-                      resumo={avaliacoes.resumo}
-                      carregando={avaliacoes.carregando}
-                      erro={avaliacoes.erro}
-                      atualizar={avaliacoes.atualizar}
-                    />
-                  )}
-                  <Button title="Fechar" variant="outline" onPress={fechar} />
+                  <ListaAvaliacoes
+                    resumo={avaliacoes.resumo}
+                    carregando={avaliacoes.carregando}
+                    erro={avaliacoes.erro}
+                    atualizar={avaliacoes.atualizar}
+                  />
+                  <Button
+                    title="Ver perfil do cuidador"
+                    disabled={enviando}
+                    variant="outline"
+                    onPress={() => {
+                      fechar();
+                      navigation.navigate('PerfilConsulta', {
+                        usuarioId: aberto.usuario.id,
+                        tipo: 'cuidador',
+                      });
+                    }}
+                  />
+                  <Button
+                    title="Fechar"
+                    variant="outline"
+                    onPress={fechar}
+                    disabled={enviando}
+                  />
                 </ScrollView>
               )}
-            </Pressable>
-          </Pressable>
+            </View>
+          </View>
           {/* O botão global fica sob o modal; este mantém a acessibilidade à mão. */}
           <BotaoAcessibilidade elevado={false} />
         </CamadaLeitura>
@@ -584,7 +556,10 @@ const criarStyles = (colors: Paleta) =>
       backgroundColor: 'rgba(0,0,0,0.45)',
     },
     folha: {
-      maxHeight: '88%',
+      height: '88%',
+      width: '100%',
+      maxWidth: 640,
+      alignSelf: 'center',
       backgroundColor: colors.surface,
       borderTopLeftRadius: 28,
       borderTopRightRadius: 28,
@@ -602,9 +577,8 @@ const criarStyles = (colors: Paleta) =>
     bloco: { gap: 10 },
     secao: { fontSize: fs(16), fontWeight: '700', color: colors.text },
     texto: { fontSize: fs(14), lineHeight: lh(21), color: colors.muted },
+    linhaServico: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     servico: {
-      flexDirection: 'row',
-      alignItems: 'center',
       gap: 10,
       padding: 12,
       borderWidth: 1,
@@ -614,12 +588,15 @@ const criarStyles = (colors: Paleta) =>
     servicoNome: { fontSize: fs(15), fontWeight: '600', color: colors.text },
     preco: { fontSize: fs(15), fontWeight: '700', color: colors.primaryDark },
     solicitar: {
-      paddingVertical: 8,
-      paddingHorizontal: 14,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 8,
       borderRadius: 18,
       backgroundColor: colors.primary,
     },
     solicitarTexto: {
+      textAlign: 'center',
       fontSize: fs(13),
       fontWeight: '700',
       color: colors.surface,

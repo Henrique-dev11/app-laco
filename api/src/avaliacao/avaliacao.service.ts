@@ -83,6 +83,10 @@ export class AvaliacaoService {
     });
     if (!cuidador) throw new NotFoundException('Cuidador não encontrado.');
 
+    return this.resumoDoCuidador(cuidador.id);
+  }
+
+  async resumoDoCuidador(cuidadorId: number) {
     const [resumo, avaliacoes] = await Promise.all([
       this.prisma.avaliacao.aggregate({
         where: { cuidadorId },

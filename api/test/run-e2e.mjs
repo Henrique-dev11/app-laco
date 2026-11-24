@@ -25,6 +25,7 @@ try {
     ...process.env,
     DATABASE_URL: teste.toString(),
     NODE_ENV: 'test',
+    FINANCEIRO_SIMULADO: '0',
   };
   for (const args of [
     [

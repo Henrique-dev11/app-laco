@@ -20,6 +20,7 @@ import { NavigationContext } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { ajustarEstiloTexto, extrairTexto } from '../utils/acessibilidade';
 import {
+  useLeitura,
   usePreferenciasAcessibilidade,
   useRegistroTextos,
 } from './AcessibilidadeContext';
@@ -52,6 +53,14 @@ export function CamadaLeitura({ children }: PropsWithChildren) {
 
 /** Conteúdo que não deve ser lido por "Ler a tela" (o próprio painel). */
 const SemLeitura = createContext(false);
+export const DentroDeControle = createContext(false);
+
+export function useLeituraPorToque() {
+  const { preferencias } = usePreferenciasAcessibilidade();
+  const { falar } = useLeitura();
+  const excluido = useContext(SemLeitura);
+  return preferencias.leituraPorToque && !excluido ? falar : undefined;
+}
 export function ForaDaLeitura({ children }: PropsWithChildren) {
   return <SemLeitura.Provider value>{children}</SemLeitura.Provider>;
 }
@@ -68,6 +77,8 @@ export function Text({
   const aninhado = useContext(DentroDeTexto);
   const escopo = useContext(EscopoLeitura);
   const semLeitura = useContext(SemLeitura);
+  const controle = useContext(DentroDeControle);
+  const ler = useLeituraPorToque();
   // Pode ser nulo fora de uma tela (ex.: avisos no topo do app).
   const navegacao = useContext(NavigationContext) ?? undefined;
   const interna = useRef<HostInstance | null>(null);
@@ -111,6 +122,14 @@ export function Text({
   const elemento = (
     <RNText
       {...props}
+      onPress={
+        ler && !aninhado && !controle && texto.trim()
+          ? (event) => {
+              ler(props.accessibilityLabel ?? texto);
+              props.onPress?.(event);
+            }
+          : props.onPress
+      }
       ref={(no) => {
         interna.current = no;
         if (typeof ref === 'function') ref(no);
@@ -134,6 +153,7 @@ export function TextInput({
 }: ComponentProps<typeof RNTextInput>) {
   const { preferencias } = usePreferenciasAcessibilidade();
   const colors = useTheme();
+  const ler = useLeituraPorToque();
   const { escalaFonte, negrito, contraste } = preferencias;
   // Campo sem cor própria usa a cor de texto da paleta em alto contraste.
   const corPadrao =
@@ -156,6 +176,15 @@ export function TextInput({
   return (
     <RNTextInput
       {...props}
+      onFocus={
+        ler
+          ? (event) => {
+              const nome = props.accessibilityLabel ?? props.placeholder;
+              if (nome) ler(nome);
+              props.onFocus?.(event);
+            }
+          : props.onFocus
+      }
       style={[style, corPadrao, ajuste as TextStyle | null]}
     />
   );

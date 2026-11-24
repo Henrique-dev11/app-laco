@@ -25,9 +25,14 @@ function carregar(): Notificacoes | null {
   const nativos = (
     globalThis as { expo?: { modules?: Record<string, unknown> } }
   ).expo?.modules;
-  if (Platform.OS === 'android' && nativos && !nativos.ExpoTopicSubscriptionModule)
+  if (
+    Platform.OS === 'android' &&
+    nativos &&
+    !nativos.ExpoTopicSubscriptionModule
+  )
     return (modulo = null);
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- carregamento protegido em builds sem o módulo nativo
     const carregado = require('expo-notifications') as Notificacoes;
     // Mostra o aviso mesmo com o app aberto (aparece na área de notificação).
     carregado.setNotificationHandler({
@@ -110,5 +115,55 @@ export function aoToqueNoAviso(abrir: (dados: DadosAviso) => void) {
         fotoVersao: dados.fotoVersao ?? null,
       });
   });
+  return () => assinatura.remove();
+}
+
+const CANAL_PAGAMENTOS = 'pagamentos';
+
+export async function obterTokenPushPagamento() {
+  const n = carregar();
+  const projectId =
+    process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId;
+  if (!n || !projectId)
+    throw new Error(
+      'As notificações no aparelho requerem a versão instalada e configurada do Laço.',
+    );
+  if (Platform.OS === 'android')
+    await n.setNotificationChannelAsync(CANAL_PAGAMENTOS, {
+      name: 'Pagamentos',
+      importance: n.AndroidImportance.HIGH,
+    });
+  const atual = await n.getPermissionsAsync();
+  const permissao =
+    atual.granted ||
+    (atual.canAskAgain && (await n.requestPermissionsAsync()).granted);
+  if (!permissao)
+    throw new Error(
+      'Permita as notificações nas configurações do aparelho. Os avisos continuam disponíveis no sino.',
+    );
+  return (await n.getExpoPushTokenAsync({ projectId })).data;
+}
+
+export function aoToqueNoAvisoPagamento(abrir: (id: number) => void) {
+  const n = carregar();
+  if (!n) return () => undefined;
+  function verificar(
+    resposta: import('expo-notifications').NotificationResponse | null,
+  ) {
+    const dados = resposta?.notification.request.content.data;
+    if (
+      dados?.tipo !== 'pagamento' ||
+      typeof dados.avisoId !== 'number' ||
+      !Number.isSafeInteger(dados.avisoId) ||
+      dados.avisoId < 1
+    )
+      return;
+    n?.clearLastNotificationResponse();
+    abrir(dados.avisoId);
+  }
+  const assinatura = n.addNotificationResponseReceivedListener(verificar);
+  verificar(n.getLastNotificationResponse());
   return () => assinatura.remove();
 }

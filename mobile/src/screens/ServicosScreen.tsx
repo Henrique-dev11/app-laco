@@ -16,7 +16,11 @@ export function ServicosScreen({ navigation }: ScreenProps<'Servicos'>) {
     useListaApi<Servico>('/servicos');
   const ativos = dados.filter((servico) => servico.ativo);
   return (
-    <AppScreenLayout title="Serviços" subtitle="Cuidados para cada necessidade">
+    <AppScreenLayout
+      title="Serviços"
+      subtitle="Cuidados para cada necessidade"
+      atualizacao={{ atualizar, carregando }}
+    >
       {carregando && !dados.length && <SkeletonList />}
       {!!erro && <Notice>{erro}</Notice>}
       {!carregando && !erro && !ativos.length && (
@@ -43,13 +47,6 @@ export function ServicosScreen({ navigation }: ScreenProps<'Servicos'>) {
           />
         </MotionView>
       ))}
-      <Button
-        loading={carregando}
-        title="Atualizar serviços"
-        variant="outline"
-        disabled={carregando}
-        onPress={atualizar}
-      />
     </AppScreenLayout>
   );
 }

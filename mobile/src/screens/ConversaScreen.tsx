@@ -6,9 +6,19 @@ import { AnimatedCollapse } from '../motion/AnimatedCollapse';
 import { MotionView } from '../motion/MotionView';
 import { SkeletonList } from '../motion/SkeletonList';
 import { juntarMensagens as juntar, idsNovasMensagens } from '../utils/chat';
-import { listarPropostas, statusProposta, type Proposta } from '../services/propostas';
+import {
+  listarPropostas,
+  statusProposta,
+  type Proposta,
+} from '../services/propostas';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { Text, TextInput } from '../accessibility/Texto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -38,7 +48,7 @@ export function ConversaScreen(props: ScreenProps<'Conversa'>) {
   return <ConversaConteudo key={props.route.params.usuarioId} {...props} />;
 }
 function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
-  const { usuarioId, nome, fotoVersao } = route.params;
+  const { usuarioId, nome, fotoVersao, sugestoes } = route.params;
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const { usuario } = useAuth();
@@ -48,6 +58,7 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [texto, setTexto] = useState('');
+  const [sugestoesUsadas, setSugestoesUsadas] = useState<string[]>();
   const [enviando, setEnviando] = useState(false);
   const ultimoId = useRef<number | undefined>(undefined);
   const lista = useRef<FlatList<Mensagem>>(null);
@@ -142,6 +153,7 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
       setNovasNaoVistas(0);
       setMensagens((atuais) => juntar(atuais, [enviada]));
       setTexto('');
+      setSugestoesUsadas(sugestoes);
       setErro('');
     } catch (error) {
       setErro(mensagemErro(error));
@@ -185,6 +197,22 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
           <Text style={styles.titulo} numberOfLines={1}>
             {nome}
           </Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Ver perfil do contato"
+            onPress={() =>
+              navigation.navigate('PerfilConsulta', {
+                usuarioId,
+                tipo: usuario?.cuidador ? 'responsavel' : 'cuidador',
+              })
+            }
+          >
+            <Ionicons
+              name="person-circle-outline"
+              color={colors.surface}
+              size={30}
+            />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.corpo}>
@@ -270,10 +298,20 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
                         preset="fade"
                         style={{ gap: 4 }}
                       >
-                        <Text style={styles.horaDele}>Proposta · {statusProposta[proposta.status] ?? proposta.status}</Text>
-                        <Button title="Visualizar proposta" variant="outline" onPress={() =>
-                          navigation.navigate('DetalheProposta', { usuarioId, propostaId: proposta.id })
-                        } />
+                        <Text style={styles.horaDele}>
+                          Proposta ·{' '}
+                          {statusProposta[proposta.status] ?? proposta.status}
+                        </Text>
+                        <Button
+                          title="Visualizar proposta"
+                          variant="outline"
+                          onPress={() =>
+                            navigation.navigate('DetalheProposta', {
+                              usuarioId,
+                              propostaId: proposta.id,
+                            })
+                          }
+                        />
                         <Text style={styles.horaDele}>
                           {rotuloHora(item.createdAt)}
                         </Text>
@@ -338,6 +376,20 @@ function ConversaConteudo({ navigation, route }: ScreenProps<'Conversa'>) {
               }}
             />
           </AnimatedCollapse>
+          {!!sugestoes?.length && sugestoesUsadas !== sugestoes && !texto && (
+            <View style={styles.sugestoes}>
+              {sugestoes.map((sugestao) => (
+                <TouchableOpacity
+                  key={sugestao}
+                  accessibilityRole="button"
+                  style={styles.sugestao}
+                  onPress={() => setTexto(sugestao)}
+                >
+                  <Text style={{ color: colors.primaryDark }}>{sugestao}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <View
             style={[
               styles.barra,
@@ -463,6 +515,8 @@ const criarStyles = (colors: Paleta) =>
     },
     horaDele: { alignSelf: 'flex-end', fontSize: fs(11), color: colors.muted },
     aviso: { paddingHorizontal: 16, paddingBottom: 8 },
+    sugestoes: { gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
+    sugestao: { padding: 10, borderRadius: 12, backgroundColor: colors.chip },
     barra: {
       flexDirection: 'row',
       alignItems: 'flex-end',

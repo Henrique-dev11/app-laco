@@ -1,8 +1,19 @@
+import {
+  AtualizarWeb,
+  gesto,
+  type Atualizacao,
+} from '../components/Atualizacao';
 import { fs } from '../theme/tipografia';
 import { MotionPressable as TouchableOpacity } from '../motion/MotionPressable';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { Text } from '../accessibility/Texto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -25,6 +36,7 @@ type Props = PropsWithChildren<{
   headerRight?: ReactNode;
   formulario?: boolean;
   bloqueado?: boolean;
+  atualizacao?: Atualizacao;
 }>;
 export function AppScreenLayout({
   children,
@@ -34,6 +46,7 @@ export function AppScreenLayout({
   headerRight,
   formulario = false,
   bloqueado = false,
+  atualizacao,
 }: Props) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
@@ -85,6 +98,7 @@ export function AppScreenLayout({
           }
         >
           <ScrollView
+            refreshControl={gesto(atualizacao)}
             contentContainerStyle={styles.scroll}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
@@ -92,6 +106,7 @@ export function AppScreenLayout({
           >
             <MotionView preset="fade" style={styles.content}>
               {children}
+              <AtualizarWeb atualizacao={atualizacao} />
             </MotionView>
           </ScrollView>
         </KeyboardAvoidingView>

@@ -1,5 +1,6 @@
 import {
   ValidateIf,
+  IsBoolean,
   IsInt,
   IsNumber,
   Max,
@@ -38,4 +39,8 @@ export class CreateContratacaoDto {
   @IsString()
   @MaxLength(2000)
   observacoes?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  reutilizarSolicitacaoPendente?: boolean;
 }

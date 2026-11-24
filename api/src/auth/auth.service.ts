@@ -20,6 +20,7 @@ export type Identidade = {
   responsavelId: number | null;
   cuidadorId: number | null;
   sessaoId: string;
+  sessaoExpiraEm?: Date;
 };
 export type Imagem = { mimetype: string; buffer: Buffer };
 export type Pdf = { originalname: string; mimetype: string; buffer: Buffer };
@@ -278,6 +279,7 @@ export class AuthService {
       responsavelId: sessao.usuario.responsavel?.id ?? null,
       cuidadorId: sessao.usuario.cuidador?.id ?? null,
       sessaoId: sessao.id,
+      sessaoExpiraEm: sessao.expiraEm,
     };
   }
 

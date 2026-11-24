@@ -8,6 +8,7 @@ type Linha = {
   cuidadorServicoId: number;
   status: string;
   codigoConclusaoHash: string | null;
+  codigoConclusaoExpiraEm: Date | null;
   tentativasCodigo: number;
 };
 
@@ -19,6 +20,7 @@ function criarServico(status = 'ACEITA') {
     cuidadorServicoId: 5,
     status,
     codigoConclusaoHash: null,
+    codigoConclusaoExpiraEm: null,
     tentativasCodigo: 0,
   };
   const combina = (where: any) =>
@@ -26,6 +28,9 @@ function criarServico(status = 'ACEITA') {
     (where.status === undefined || where.status === linha.status) &&
     (where.codigoConclusaoHash?.not === undefined ||
       linha.codigoConclusaoHash !== null) &&
+    (!where.codigoConclusaoExpiraEm?.gt ||
+      (linha.codigoConclusaoExpiraEm &&
+        linha.codigoConclusaoExpiraEm > where.codigoConclusaoExpiraEm.gt)) &&
     (where.tentativasCodigo?.lt === undefined ||
       linha.tentativasCodigo < where.tentativasCodigo.lt);
   const aplicar = (data: any) => {
@@ -45,7 +50,7 @@ function criarServico(status = 'ACEITA') {
     cuidadorServico: { findUniqueOrThrow: async () => ({ cuidadorId: 20 }) },
     agendamento: { updateMany: async () => ({ count: 0 }) },
     $transaction: async (cb: any) =>
-      cb({ contratacao, agendamento: prisma.agendamento }),
+      cb({ contratacao, agendamento: prisma.agendamento, $queryRaw: async () => [] }),
   };
   return { linha, service: new ContratacaoService(prisma) };
 }
@@ -76,6 +81,27 @@ describe('código de conclusão', () => {
     expect(linha.codigoConclusaoHash).not.toContain(codigo);
   });
 
+  it('rejeita código vencido e aceita um novo', async () => {
+    const { service, linha } = criarServico();
+    const { codigo, expiraEm } = await service.gerarCodigoConclusao(
+      1,
+      responsavel,
+    );
+    expect(expiraEm.getTime() - Date.now()).toBeGreaterThan(14 * 60_000);
+    linha.codigoConclusaoExpiraEm = new Date(0);
+    await expect(
+      service.updateStatus(1, { ...concluir, codigo }, cuidador),
+    ).rejects.toThrow(/expirado/);
+    expect(linha.tentativasCodigo).toBe(0);
+    const novo = await service.gerarCodigoConclusao(1, responsavel);
+    await service.updateStatus(
+      1,
+      { ...concluir, codigo: novo.codigo },
+      cuidador,
+    );
+    expect(linha.status).toBe('CONCLUIDA');
+  });
+
   it('só o responsável da contratação gera o código', async () => {
     const { service } = criarServico();
     await expect(service.gerarCodigoConclusao(1, cuidador)).rejects.toThrow(
@@ -86,9 +112,9 @@ describe('código de conclusão', () => {
   it('cuidador sem código não conclui', async () => {
     const { service } = criarServico();
     await service.gerarCodigoConclusao(1, responsavel);
-    await expect(
-      service.updateStatus(1, concluir, cuidador),
-    ).rejects.toThrow(/Informe o código/);
+    await expect(service.updateStatus(1, concluir, cuidador)).rejects.toThrow(
+      /Informe o código/,
+    );
   });
 
   it('não conclui se o responsável ainda não gerou o código', async () => {

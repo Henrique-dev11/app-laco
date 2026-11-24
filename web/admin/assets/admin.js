@@ -46,6 +46,10 @@ const categorias = {
   idosos: 'Idosos',
 };
 const titulos = {
+  'pagamentos-simulados': [
+    'Pagamentos simulados',
+    'Financeiro acadêmico e resolução de contestações.',
+  ],
   'visao-geral': [
     'Visão geral',
     'Acompanhe o crescimento, os cadastros e os atendimentos.',
@@ -913,6 +917,124 @@ async function relatorios(aba, atual, sessao) {
       ),
     );
 }
+async function pagamentosSimulados(atual, sessao) {
+  const [dados, movimentos] = await Promise.all([
+    api.pagamentosSimulados(),
+    api.movimentosSimulados(),
+  ]);
+  if (atual !== versao || token !== sessao) return;
+  const conteudo = $('page-content');
+  conteudo.replaceChildren(
+    node(
+      'p',
+      'Simulação acadêmica. Nenhum dinheiro real é movimentado.',
+      'notice',
+    ),
+  );
+  const moeda = (v) =>
+    Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const situacoes = {
+    PENDENTE: 'Pendente',
+    RETIDO: 'Retido',
+    LIBERADO: 'Liberado',
+    REEMBOLSADO: 'Reembolsado',
+    EM_CONTESTACAO: 'Em contestação',
+    CANCELADO: 'Cancelado',
+  };
+  if (!dados.length)
+    conteudo.append(
+      estado('Nenhum pagamento', 'As transações simuladas aparecerão aqui.'),
+    );
+  for (const p of dados) {
+    const bloco = painel(
+      `Visita #${p.contratacaoId} · ${p.contratacao.nomeServico}`,
+      situacoes[p.status],
+    );
+    bloco.append(
+      grid(
+        campo('Pagamento', '#' + p.id),
+        campo('Total', moeda(p.bruto)),
+        campo('Comissão', moeda(p.comissao)),
+        campo('Líquido do cuidador', moeda(p.liquido)),
+      ),
+    );
+    if (p.motivoContestacao)
+      bloco.append(node('p', 'Contestação: ' + p.motivoContestacao));
+    if (p.motivoResolucao)
+      bloco.append(
+        node(
+          'p',
+          `Resolução por administrador #${p.resolvidoPorId || '–'} · ${p.motivoResolucao}`,
+        ),
+      );
+    for (const m of p.movimentos)
+      bloco.append(
+        node(
+          'p',
+          `#${m.id} · ${m.descricao} · ${moeda(m.valor)} · ${new Date(m.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`,
+        ),
+      );
+    if (['RETIDO', 'EM_CONTESTACAO'].includes(p.status)) {
+      const campoMotivo = node('textarea');
+      campoMotivo.maxLength = 1000;
+      campoMotivo.setAttribute('aria-label', 'Justificativa da resolução');
+      const nota = node('p');
+      nota.setAttribute('role', 'status');
+      const botoes = [];
+      const acao = (descricao, valor) => {
+        const botao = node('button', descricao, 'button');
+        botao.addEventListener('click', async () => {
+          const motivo = campoMotivo.value.trim();
+          if (!motivo) {
+            nota.textContent = 'Informe uma justificativa.';
+            campoMotivo.focus();
+            return;
+          }
+          if (!window.confirm(descricao + '?')) return;
+          botoes.forEach((b) => {
+            b.disabled = true;
+          });
+          try {
+            await api.resolverPagamento(p.contratacaoId, valor, motivo);
+            await carregar();
+          } catch (e) {
+            nota.textContent = e.message;
+            botoes.forEach((b) => {
+              b.disabled = false;
+            });
+          }
+        });
+        botoes.push(botao);
+        return botao;
+      };
+      bloco.append(
+        campoMotivo,
+        nota,
+        acao('Autorizar reembolso simulado', 'REEMBOLSAR'),
+      );
+      if (p.status === 'EM_CONTESTACAO')
+        bloco.append(
+          acao('Liberar valor por decisão administrativa', 'LIBERAR'),
+        );
+    }
+    conteudo.append(bloco);
+  }
+  const saques = movimentos.filter((m) => m.tipo === 'SAQUE');
+  if (saques.length) {
+    const bloco = painel(
+      'Saques simulados',
+      'Movimentações recentes das carteiras',
+    );
+    for (const m of saques)
+      bloco.append(
+        node(
+          'p',
+          `#${m.id} · Cuidador #${m.cuidadorId} · ${moeda(m.valor)} · ${new Date(m.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`,
+        ),
+      );
+    conteudo.append(bloco);
+  }
+}
 function rota() {
   return location.hash.slice(1) || 'visao-geral';
 }
@@ -954,6 +1076,8 @@ async function carregar() {
     else if (caminho === 'contratacoes') await lista(null, true, atual, sessao);
     else if (caminho.startsWith('relatorios/'))
       await relatorios(categoria, atual, sessao);
+    else if (caminho === 'pagamentos-simulados')
+      await pagamentosSimulados(atual, sessao);
     else if (caminho === 'administracao')
       $('page-content').replaceChildren(
         painel(

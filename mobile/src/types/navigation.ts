@@ -17,8 +17,12 @@ export type RootStackParamList = {
   CadastroPreview: undefined;
   Home: ResumoPerfil | undefined;
   Servicos: undefined;
-  BuscarCuidador: { idosoId?: number; servicoId?: number; nomeServico?: string } | undefined;
+  BuscarCuidador:
+    { idosoId?: number; servicoId?: number; nomeServico?: string } | undefined;
   Historico: undefined;
+  VisitaFinanceira: { contratacaoId: number };
+  HistoricoFinanceiro: undefined;
+  CarteiraVirtual: undefined;
   Agenda: undefined;
   AgendarAtendimento: { contratacaoId: number };
   EditarPerfil: undefined;
@@ -28,12 +32,18 @@ export type RootStackParamList = {
   Disponibilidade: undefined;
   IdosoDetalhes: { idosoId: number; mensagem?: string };
   Mensagens: undefined;
-  Conversa: { usuarioId: number; nome: string; fotoVersao: string | null };
+  Conversa: {
+    usuarioId: number;
+    nome: string;
+    fotoVersao: string | null;
+    sugestoes?: string[];
+  };
   DetalheProposta: { usuarioId: number; propostaId: number };
   CriarProposta: {
     usuarioId: number;
     anterior?: import('../services/propostas').Proposta;
   };
+  PerfilConsulta: { usuarioId: number; tipo: 'cuidador' | 'responsavel'; proprio?: boolean };
   Perfil: (Partial<ResumoPerfil> & { mensagem?: string }) | undefined;
   Notificacoes: undefined;
 };

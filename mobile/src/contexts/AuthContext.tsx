@@ -3,9 +3,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
+import { AppState } from 'react-native';
 import { isAxiosError } from 'axios';
 import { api, definirToken, mensagemErro } from '../services/api';
 import { recuperarFotoPendente, type FotoPendente } from '../services/foto';
@@ -16,6 +18,7 @@ type Auth = {
   usuario: UsuarioAtual | null;
   carregando: boolean;
   erroInicial: string;
+  avisoSessao: string;
   tentarRestaurar: () => void;
   entrar: (email: string, senha: string) => Promise<void>;
   sair: () => Promise<void>;
@@ -29,9 +32,38 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [usuario, setUsuario] = useState<UsuarioAtual | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erroInicial, setErroInicial] = useState('');
+  const [avisoSessao, setAvisoSessao] = useState('');
+  const tokenAtual = useRef<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
   const [fotoPendente, setFotoPendente] = useState<FotoPendente | null>(null);
   const limparFotoPendente = useCallback(() => setFotoPendente(null), []);
+
+  const expirar = useCallback(async () => {
+    if (!tokenAtual.current) return;
+    tokenAtual.current = null;
+    definirToken(null);
+    setUsuario(null);
+    setFotoPendente(null);
+    setAvisoSessao('Sua sessão expirou. Entre novamente para continuar.');
+    await gravarToken(null).catch(() => undefined);
+  }, []);
+
+  const validade = usuario?.sessaoExpiraEm;
+  useEffect(() => {
+    if (!validade) return;
+    const restante = () => new Date(validade).getTime() - Date.now();
+    const verificar = () => {
+      if (restante() <= 0) void expirar();
+    };
+    const timer = setTimeout(verificar, Math.max(0, restante()));
+    const assinatura = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') verificar();
+    });
+    return () => {
+      clearTimeout(timer);
+      assinatura.remove();
+    };
+  }, [validade, expirar]);
 
   useEffect(() => {
     let ativo = true;
@@ -41,18 +73,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (
           isAxiosError(error) &&
           error.response?.status === 401 &&
-          error.config?.url !== '/auth/login'
+          ativo &&
+          tokenAtual.current &&
+          error.config?.headers.get('Authorization') ===
+            `Bearer ${tokenAtual.current}`
         ) {
-          definirToken(null);
-          if (ativo) {
-            setUsuario(null);
-            setFotoPendente(null);
-          }
-          try {
-            await gravarToken(null);
-          } catch {
-            /* A API continua rejeitando a sessão expirada. */
-          }
+          await expirar();
         }
         return Promise.reject(error);
       },
@@ -63,6 +89,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const token = await lerToken();
         if (!ativo) return;
+        tokenAtual.current = token;
         definirToken(token);
         if (token) {
           const response = await api.get<UsuarioAtual>('/auth/me');
@@ -87,7 +114,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       ativo = false;
       api.interceptors.response.eject(interceptor);
     };
-  }, [tentativa]);
+  }, [tentativa, expirar]);
 
   async function entrar(email: string, senha: string) {
     const { data } = await api.post<Sessao>('/auth/login', {
@@ -104,13 +131,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
         .catch(() => undefined);
       throw error;
     }
+    tokenAtual.current = data.token;
     definirToken(data.token);
-    setUsuario(data.usuario);
+    setUsuario({ ...data.usuario, sessaoExpiraEm: data.expiraEm });
+    setAvisoSessao('');
     setFotoPendente(null);
     setErroInicial('');
   }
   async function sair() {
     await api.post('/auth/logout');
+    tokenAtual.current = null;
     definirToken(null);
     setUsuario(null);
     setFotoPendente(null);
@@ -129,6 +159,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         usuario,
         carregando,
         erroInicial,
+        avisoSessao,
         tentarRestaurar: () => setTentativa((value) => value + 1),
         entrar,
         sair,

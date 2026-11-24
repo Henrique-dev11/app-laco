@@ -1,3 +1,8 @@
+import {
+  AtualizarWeb,
+  gesto,
+  type Atualizacao,
+} from '../../components/Atualizacao';
 import { fs } from '../../theme/tipografia';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -21,11 +26,17 @@ type Props = PropsWithChildren<
   HomeProps & {
     /** Texto pequeno acima do nome ("Olá," / "Bom dia,"). */
     saudacao?: string;
+    atualizacao?: Atualizacao;
   }
 >;
 
 /** Cabeçalho, rolagem e barra inferior comuns a todas as Homes. */
-export function HomeShell({ navigation, saudacao = 'Olá,', children }: Props) {
+export function HomeShell({
+  navigation,
+  saudacao = 'Olá,',
+  children,
+  atualizacao,
+}: Props) {
   const styles = useStyles(criarStyles);
   const colors = useTheme();
   const { usuario } = useAuth();
@@ -76,11 +87,13 @@ export function HomeShell({ navigation, saudacao = 'Olá,', children }: Props) {
           </TouchableOpacity>
         </View>
         <ScrollView
+          refreshControl={gesto(atualizacao)}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
         >
           <MotionView preset="fade" style={styles.content}>
             {children}
+            <AtualizarWeb atualizacao={atualizacao} />
           </MotionView>
         </ScrollView>
         <BottomNavigation
