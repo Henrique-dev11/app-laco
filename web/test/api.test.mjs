@@ -97,6 +97,9 @@ test('servidor entrega o painel e impede acesso a configurações e arquivos pri
       home.headers.get('Content-Security-Policy'),
       /img-src 'self' data: blob:/,
     );
+    const ui = await fetch(origem + '/admin/assets/dashboard-ui.js');
+    assert.equal(ui.status, 200);
+    assert.match(ui.headers.get('content-type'), /javascript/);
     for (const path of [
       '/.env',
       '/package.json',

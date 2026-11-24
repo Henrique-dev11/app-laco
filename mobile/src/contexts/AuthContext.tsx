@@ -7,6 +7,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
+import { usePresentation } from '../motion/PresentationProvider';
 import { AppState } from 'react-native';
 import { isAxiosError } from 'axios';
 import { api, definirToken, mensagemErro } from '../services/api';
@@ -29,6 +30,7 @@ type Auth = {
 const Context = createContext<Auth | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const { apresentar } = usePresentation();
   const [usuario, setUsuario] = useState<UsuarioAtual | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erroInicial, setErroInicial] = useState('');
@@ -133,6 +135,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
     tokenAtual.current = data.token;
     definirToken(data.token);
+    apresentar('login');
     setUsuario({ ...data.usuario, sessaoExpiraEm: data.expiraEm });
     setAvisoSessao('');
     setFotoPendente(null);

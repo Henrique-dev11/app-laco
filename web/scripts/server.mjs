@@ -31,6 +31,10 @@ const files = new Map([
     '/admin/assets/api.js',
     ['admin/assets/api.js', 'text/javascript; charset=utf-8'],
   ],
+  [
+    '/admin/assets/dashboard-ui.js',
+    ['admin/assets/dashboard-ui.js', 'text/javascript; charset=utf-8'],
+  ],
   ['/admin/assets/logo-laco.png', ['admin/assets/logo-laco.png', 'image/png']],
 ]);
 

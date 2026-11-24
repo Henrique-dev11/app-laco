@@ -1,3 +1,4 @@
+import { usePresentation } from '../motion/PresentationProvider';
 import { fs, lh } from '../theme/tipografia';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -20,6 +21,7 @@ import type { ScreenProps } from '../types/navigation';
 export function CadastroPreviewScreen({
   navigation,
 }: ScreenProps<'CadastroPreview'>) {
+  const { apresentar } = usePresentation();
   const styles = useStyles(criarStyles);
   const paleta = useTheme();
   const { cadastro, limparCadastro } = useCadastro();
@@ -34,6 +36,7 @@ export function CadastroPreviewScreen({
     setErro('');
     try {
       await salvarCadastro(cadastro);
+      apresentar('cadastro');
       limparCadastro();
       setSalvo(true);
     } catch (error) {

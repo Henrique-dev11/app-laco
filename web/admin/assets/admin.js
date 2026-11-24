@@ -1,3 +1,9 @@
+import {
+  initializeDashboard,
+  revealPage,
+  openDialog,
+  closeDialog,
+} from './dashboard-ui.js';
 import { createApi } from './api.js';
 const $ = (id) => document.getElementById(id);
 const node = (tag, text, classe) => {
@@ -47,8 +53,8 @@ const categorias = {
 };
 const titulos = {
   'pagamentos-simulados': [
-    'Pagamentos simulados',
-    'Financeiro acadêmico e resolução de contestações.',
+    'Pagamentos',
+    'Pagamentos e resolução de contestações.',
   ],
   'visao-geral': [
     'Visão geral',
@@ -181,8 +187,9 @@ function limparSessao() {
   $('page-content').replaceChildren();
   $('detail-content').replaceChildren();
   for (const id of ['detail-dialog', 'confirm-dialog'])
-    if ($(id).open) $(id).close();
+    if ($(id).open) void closeDialog($(id), true);
   $('dashboard-view').hidden = true;
+  motionRoute = undefined;
   $('login-view').hidden = false;
 }
 function badge(v) {
@@ -319,7 +326,7 @@ function grafico(
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('width', String(width));
   svg.setAttribute('height', String(height));
-  svg.setAttribute('role', 'img');
+  svg.setAttribute('role', 'group');
   svg.setAttribute(
     'aria-label',
     `${titulo}. Os valores completos estão na tabela abaixo.`,
@@ -353,10 +360,14 @@ function grafico(
       rect.setAttribute('y', String(base - h));
       rect.setAttribute('width', String(bar - 2));
       rect.setAttribute('height', String(h));
-      rect.setAttribute('rx', '3');
+      rect.setAttribute('rx', '7');
+      rect.classList.add('chart-bar');
+      rect.setAttribute('tabindex', '0');
       rect.setAttribute('fill', palette[s.cor]);
       const title = document.createElementNS(ns, 'title');
       title.textContent = `${d.rotulo ?? rotuloPeriodo(d.periodo, grupo)} · ${s.nome}: ${monetario ? dinheiro(v) : v}`;
+      rect.dataset.chartLabel = title.textContent;
+      rect.setAttribute('aria-label', title.textContent);
       rect.append(title);
       svg.append(rect);
     });
@@ -425,99 +436,381 @@ function formularioPeriodo(onSubmit) {
   });
   return form;
 }
+function rosca(dados) {
+  const box = painel(
+    'Distribuição dos atendimentos',
+    'Contratações por status no período selecionado.',
+  );
+  const total = dados.reduce((sum, item) => sum + item.quantidade, 0);
+  if (!total) {
+    box.append(
+      estado('Sem movimentação', 'Não há contratações neste período.'),
+    );
+    return box;
+  }
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 240 240');
+  svg.setAttribute('role', 'group');
+  svg.setAttribute('aria-label', 'Distribuição das contratações por status');
+  svg.classList.add('donut-svg');
+  const colors = {
+    SOLICITADA: '#a77bbb',
+    ACEITA: '#b26398',
+    CONCLUIDA: '#5c2d6b',
+    CANCELADA: '#b9aebc',
+    RECUSADA: '#d8c5df',
+  };
+  const circumference = 2 * Math.PI * 86;
+  let offset = 0;
+  const legend = node('div', undefined, 'donut-legend');
+  for (const item of dados) {
+    if (!item.quantidade) continue;
+    const label = `${labels[item.status]}: ${item.quantidade} (${Math.round((item.quantidade / total) * 100)}%)`;
+    const circle = document.createElementNS(ns, 'circle');
+    for (const [key, value] of Object.entries({
+      cx: 120,
+      cy: 120,
+      r: 86,
+      fill: 'none',
+      stroke: colors[item.status],
+      'stroke-width': 22,
+      'stroke-dasharray': `${(item.quantidade / total) * circumference} ${circumference}`,
+      'stroke-dashoffset': -offset,
+      transform: 'rotate(-90 120 120)',
+      tabindex: 0,
+      'aria-label': label,
+    }))
+      circle.setAttribute(key, String(value));
+    circle.dataset.chartLabel = label;
+    svg.append(circle);
+    offset += (item.quantidade / total) * circumference;
+    const row = node('div', undefined, 'legend-row');
+    const dot = node('span', undefined, 'legend-dot');
+    dot.style.backgroundColor = colors[item.status];
+    row.append(
+      dot,
+      node('span', labels[item.status]),
+      node('strong', item.quantidade),
+    );
+    legend.append(row);
+  }
+  for (const [y, text, cls] of [
+    [119, total, 'donut-total'],
+    [143, 'contratações', 'donut-caption'],
+  ]) {
+    const el = document.createElementNS(ns, 'text');
+    el.setAttribute('x', '120');
+    el.setAttribute('y', String(y));
+    el.setAttribute('text-anchor', 'middle');
+    el.classList.add(cls);
+    el.textContent = text;
+    svg.append(el);
+  }
+  const visual = node('div', undefined, 'donut-layout');
+  visual.append(svg, legend);
+  box.append(visual);
+  const details = node('details');
+  details.append(
+    node('summary', 'Ver dados do gráfico'),
+    tabela(
+      ['Status', 'Quantidade'],
+      dados.map((item) => [labels[item.status], item.quantidade]),
+    ),
+  );
+  box.append(details);
+  return box;
+}
 async function visao(atual, sessao) {
-  const [resumo, relatorio] = await Promise.all([
-    api.resumo(),
-    api.relatorios({ ...periodo, agrupamento: 'mes' }),
-  ]);
-  if (atual !== versao || token !== sessao) return;
   const root = $('page-content');
   root.replaceChildren();
-  const hero = node('section', undefined, 'overview-banner');
-  hero.append(
-    node('span', 'UM OLHAR SOBRE O CUIDADO', 'eyebrow'),
-    node('h2', 'Pessoas conectadas. Atendimentos acompanhados.'),
-    node(
-      'p',
-      `Dados atualizados em ${new Date(resumo.atualizadoEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`,
-    ),
+  const summary = node('div', undefined, 'overview-summary');
+  const charts = node('div', undefined, 'overview-charts');
+  const operations = node('div', undefined, 'overview-operations');
+  const recent = painel(
+    'Últimas contratações',
+    'Os cinco registros mais recentes · todo o histórico.',
   );
-  root.append(
-    hero,
-    metricas([
-      {
-        titulo: 'Cuidadores',
-        valor: resumo.cuidadores,
-        href: '#usuarios/cuidadores',
-        nota: `${resumo.pendentesVerificacao} aguardando análise`,
-      },
-      {
-        titulo: 'Responsáveis',
-        valor: resumo.responsaveis,
-        href: '#usuarios/responsaveis',
-      },
-      { titulo: 'Idosos', valor: resumo.idosos, href: '#usuarios/idosos' },
-      {
-        titulo: 'Idosos independentes',
-        valor: resumo.independentes,
-        href: '#usuarios/independentes',
-        nota: 'Autocuidado · incluídos no total de idosos',
-      },
-    ]),
-    metricas([
-      {
-        titulo: 'Todas as contratações',
-        valor: resumo.contratacoes,
-        href: '#contratacoes',
-      },
-      {
-        titulo: 'Pendentes',
-        valor: resumo.porStatus.SOLICITADA,
-        destaque: true,
-        href: '#contratacoes?status=SOLICITADA',
-      },
-      {
-        titulo: 'Aceitas',
-        valor: resumo.porStatus.ACEITA,
-        href: '#contratacoes?status=ACEITA',
-      },
-      {
-        titulo: 'Concluídas',
-        valor: resumo.porStatus.CONCLUIDA,
-        href: '#contratacoes?status=CONCLUIDA',
-      },
-      {
-        titulo: 'Canceladas',
-        valor: resumo.porStatus.CANCELADA,
-        href: '#contratacoes?status=CANCELADA',
-      },
-    ]),
+  const pending = painel(
+    'Aguardando análise',
+    'Cuidadores com verificação pendente.',
   );
-  const charts = node('div', undefined, 'chart-grid');
-  charts.append(
-    grafico(
-      'Contratações por status',
-      relatorio.porStatus.map((d) => ({ ...d, rotulo: labels[d.status] })),
-      [{ chave: 'quantidade', nome: 'Contratações no período', cor: 'purple' }],
-    ),
-    grafico(
-      'Contratações realizadas por mês',
-      relatorio.mensal,
-      [{ chave: 'quantidade', nome: 'Contratações', cor: 'rose' }],
-      { grupo: 'mes' },
-    ),
+  const payments = painel(
+    'Pagamentos',
+    'Valores consolidados · todo o histórico.',
   );
-  root.append(
-    node(
-      'p',
-      `Gráficos de ${data(`${relatorio.inicio}T12:00:00Z`)} a ${data(`${relatorio.fim}T12:00:00Z`)}. Indicadores gerais consideram todos os cadastros.`,
-      'muted',
+  const distribution = node('div'),
+    monthly = node('div');
+  charts.append(distribution, monthly);
+  operations.append(recent, pending, payments);
+  root.append(summary, charts, operations);
+  const valid = () => atual === versao && token === sessao && root.isConnected;
+  async function bloco(container, fetcher, render, preserveHeading = false) {
+    let request = 0;
+    const body = preserveHeading
+      ? node('div', undefined, 'block-body')
+      : container;
+    if (preserveHeading) container.append(body);
+    async function load() {
+      const current = ++request;
+      body.setAttribute('aria-busy', 'true');
+      body.replaceChildren(estado('Carregando', 'Consultando os registros.'));
+      try {
+        const result = await fetcher();
+        if (!valid() || current !== request || !container.isConnected) return;
+        body.replaceChildren(...render(result));
+      } catch (error) {
+        if (!valid() || current !== request || !container.isConnected) return;
+        body.replaceChildren(
+          estado('Não foi possível carregar', error.message),
+          button('Tentar novamente', () => void load(), 'button outline'),
+        );
+      } finally {
+        if (current === request) body.removeAttribute('aria-busy');
+      }
+    }
+    await load();
+  }
+  const firstSummary = api.resumo();
+  const firstReport = api.relatorios({ ...periodo, agrupamento: 'mes' });
+  const initial = (promise, reload) => {
+    let first = true;
+    return () => {
+      if (first) {
+        first = false;
+        return promise;
+      }
+      return reload();
+    };
+  };
+  function paymentValues(s) {
+    const p = s.pagamentos;
+    if (!p?.disponivel)
+      return [
+        estado(
+          'Financeiro indisponível',
+          'O financeiro não está habilitado neste ambiente.',
+        ),
+      ];
+    const list = node('div', undefined, 'payment-summary');
+    for (const [label, amount, count, cls] of [
+      [
+        'Líquido liberado',
+        p.liberados.liquido,
+        p.liberados.quantidade,
+        'released',
+      ],
+      [
+        'Em contestação',
+        p.emContestacao.bruto,
+        p.emContestacao.quantidade,
+        'disputed',
+      ],
+    ]) {
+      const row = node('div', undefined, cls);
+      row.append(
+        node('span', label),
+        node('strong', dinheiro(amount)),
+        node('small', `${count} pagamento(s)`),
+      );
+      list.append(row);
+    }
+    const link = node('a', 'Ver pagamentos →', 'text-link');
+    link.href = '#pagamentos-simulados';
+    return [list, link];
+  }
+  await Promise.all([
+    bloco(
+      summary,
+      initial(firstSummary, () => api.resumo()),
+      (s) => {
+        const primary = metricas([
+          {
+            titulo: 'Todas as contratações',
+            valor: s.contratacoes,
+            href: '#contratacoes',
+            nota: 'Todo o histórico',
+          },
+          {
+            titulo: 'Atendimentos concluídos',
+            valor: s.porStatus.CONCLUIDA,
+            href: '#contratacoes?status=CONCLUIDA',
+            nota: 'Cuidado realizado',
+          },
+          {
+            titulo: 'Aguardando análise',
+            valor: s.pendentesVerificacao,
+            href: '#usuarios/cuidadores?verificacao=PENDENTE',
+            nota: 'Verificação de cuidadores',
+          },
+          {
+            titulo: 'Líquido liberado',
+            valor: s.pagamentos?.disponivel
+              ? dinheiro(s.pagamentos.liberados.liquido)
+              : 'Indisponível',
+            href: '#pagamentos-simulados',
+            nota: 'Pagamentos · todo o histórico',
+          },
+        ]);
+        primary.classList.add('primary-stats');
+        const secondary = metricas([
+          {
+            titulo: 'Cuidadores',
+            valor: s.cuidadores,
+            href: '#usuarios/cuidadores',
+          },
+          {
+            titulo: 'Responsáveis',
+            valor: s.responsaveis,
+            href: '#usuarios/responsaveis',
+          },
+          { titulo: 'Idosos', valor: s.idosos, href: '#usuarios/idosos' },
+          {
+            titulo: 'Independentes',
+            valor: s.independentes,
+            href: '#usuarios/independentes',
+            nota: 'Incluídos no total de idosos',
+          },
+          ...['SOLICITADA', 'ACEITA', 'CANCELADA'].map((status) => ({
+            titulo: labels[status],
+            valor: s.porStatus[status],
+            href: `#contratacoes?status=${status}`,
+          })),
+        ]);
+        secondary.classList.add('secondary-stats');
+        const count = $('sidebar-count');
+        count.textContent = s.pendentesVerificacao;
+        count.hidden = !s.pendentesVerificacao;
+        return [
+          primary,
+          secondary,
+          node(
+            'p',
+            `Atualizado em ${new Date(s.atualizadoEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Indicadores gerais: todo o histórico.`,
+            'update-note',
+          ),
+        ];
+      },
     ),
-    charts,
-  );
-  const count = $('sidebar-count');
-  count.textContent = resumo.pendentesVerificacao;
-  count.hidden = !resumo.pendentesVerificacao;
+    bloco(
+      distribution,
+      initial(firstReport, () =>
+        api.relatorios({ ...periodo, agrupamento: 'mes' }),
+      ),
+      (r) => [rosca(r.porStatus)],
+    ),
+    bloco(
+      monthly,
+      initial(firstReport, () =>
+        api.relatorios({ ...periodo, agrupamento: 'mes' }),
+      ),
+      (r) => {
+        const graph = grafico(
+          'Contratações por mês',
+          r.mensal,
+          [{ chave: 'quantidade', nome: 'Contratações', cor: 'purple' }],
+          { grupo: 'mes' },
+        );
+        graph.insertBefore(
+          node(
+            'p',
+            `${data(`${r.inicio}T12:00:00Z`)} a ${data(`${r.fim}T12:00:00Z`)}`,
+            'muted',
+          ),
+          graph.children[1],
+        );
+        return [graph];
+      },
+    ),
+    bloco(
+      recent,
+      () => api.contratacoes({ pagina: 1, limite: 5 }),
+      (result) => {
+        if (!result.dados.length)
+          return [
+            estado(
+              'Nenhuma contratação',
+              'Os próximos atendimentos aparecerão aqui.',
+            ),
+          ];
+        const list = node('div', undefined, 'activity-list');
+        for (const c of result.dados) {
+          const row = node('div', undefined, 'activity-row');
+          const copy = node('div');
+          copy.append(
+            node('strong', c.nomeServico),
+            node('small', `#${c.id} · ${nome(c.idoso)} · ${data(c.createdAt)}`),
+          );
+          row.append(
+            copy,
+            badge(c.status),
+            button(
+              'Detalhes',
+              () => void abrirDetalhe('contratacoes', c.id),
+              'review-button',
+            ),
+          );
+          list.append(row);
+        }
+        const link = node('a', 'Todas as contratações →', 'text-link');
+        link.href = '#contratacoes';
+        return [list, link];
+      },
+      true,
+    ),
+    bloco(
+      pending,
+      () =>
+        api.usuarios('cuidadores', {
+          pagina: 1,
+          limite: 5,
+          verificacao: 'PENDENTE',
+        }),
+      (result) => {
+        if (!result.dados.length)
+          return [estado('Tudo em dia', 'Nenhum cuidador aguardando análise.')];
+        const list = node('div', undefined, 'activity-list');
+        for (const c of result.dados) {
+          const row = node('div', undefined, 'activity-row');
+          const initials = node(
+            'span',
+            nome(c.usuario)
+              .split(' ')
+              .slice(0, 2)
+              .map((n) => n[0])
+              .join(''),
+            'avatar',
+          );
+          initials.setAttribute('aria-hidden', 'true');
+          const copy = node('div');
+          copy.append(
+            node('strong', nome(c.usuario)),
+            node('small', `Cadastro em ${data(c.createdAt)}`),
+          );
+          row.append(
+            initials,
+            copy,
+            button(
+              'Analisar',
+              () => void abrirDetalhe('cuidadores', c.id),
+              'review-button',
+            ),
+          );
+          list.append(row);
+        }
+        const link = node('a', 'Ver fila de análise →', 'text-link');
+        link.href = '#usuarios/cuidadores?verificacao=PENDENTE';
+        return [list, link];
+      },
+      true,
+    ),
+    bloco(
+      payments,
+      initial(firstSummary, () => api.resumo()),
+      paymentValues,
+      true,
+    ),
+  ]);
 }
 function filtroSelect(form, chave, titulo, opcoes) {
   const label = node('label', titulo),
@@ -924,13 +1217,7 @@ async function pagamentosSimulados(atual, sessao) {
   ]);
   if (atual !== versao || token !== sessao) return;
   const conteudo = $('page-content');
-  conteudo.replaceChildren(
-    node(
-      'p',
-      'Simulação acadêmica. Nenhum dinheiro real é movimentado.',
-      'notice',
-    ),
-  );
+  conteudo.replaceChildren();
   const moeda = (v) =>
     Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const situacoes = {
@@ -943,7 +1230,7 @@ async function pagamentosSimulados(atual, sessao) {
   };
   if (!dados.length)
     conteudo.append(
-      estado('Nenhum pagamento', 'As transações simuladas aparecerão aqui.'),
+      estado('Nenhum pagamento', 'As transações aparecerão aqui.'),
     );
   for (const p of dados) {
     const bloco = painel(
@@ -1010,7 +1297,7 @@ async function pagamentosSimulados(atual, sessao) {
       bloco.append(
         campoMotivo,
         nota,
-        acao('Autorizar reembolso simulado', 'REEMBOLSAR'),
+        acao('Autorizar reembolso', 'REEMBOLSAR'),
       );
       if (p.status === 'EM_CONTESTACAO')
         bloco.append(
@@ -1021,10 +1308,7 @@ async function pagamentosSimulados(atual, sessao) {
   }
   const saques = movimentos.filter((m) => m.tipo === 'SAQUE');
   if (saques.length) {
-    const bloco = painel(
-      'Saques simulados',
-      'Movimentações recentes das carteiras',
-    );
+    const bloco = painel('Saques', 'Movimentações recentes das carteiras');
     for (const m of saques)
       bloco.append(
         node(
@@ -1038,6 +1322,7 @@ async function pagamentosSimulados(atual, sessao) {
 function rota() {
   return location.hash.slice(1) || 'visao-geral';
 }
+let motionRoute;
 async function carregar() {
   if (!token) return;
   const sessao = token,
@@ -1109,7 +1394,13 @@ async function carregar() {
       );
     }
   } finally {
-    if (atual === versao) $('refresh').disabled = busy;
+    if (atual === versao) {
+      $('refresh').disabled = busy;
+      if (motionRoute !== caminho && token === sessao) {
+        revealPage($('page-content'));
+        motionRoute = caminho;
+      }
+    }
   }
 }
 async function abrirDetalhe(categoria, id) {
@@ -1123,7 +1414,7 @@ async function abrirDetalhe(categoria, id) {
   $('detail-content').replaceChildren(
     estado('Carregando', 'Consultando o registro selecionado.'),
   );
-  if (!$('detail-dialog').open) $('detail-dialog').showModal();
+  if (!$('detail-dialog').open) openDialog($('detail-dialog'));
   try {
     const c = await (categoria === 'contratacoes'
       ? api.contratacao(id)
@@ -1350,7 +1641,7 @@ function acao(titulo, descricao, action) {
   $('confirm-description').textContent = descricao;
   confirmar = action;
   aviso('confirm-error');
-  $('confirm-dialog').showModal();
+  openDialog($('confirm-dialog'));
 }
 for (const [id, titulo, descricao, action] of [
   [
@@ -1386,7 +1677,7 @@ $('confirm-action').addEventListener('click', async () => {
   setBusy(true);
   try {
     await confirmar();
-    $('confirm-dialog').close();
+    await closeDialog($('confirm-dialog'));
     const id = selecionado.id,
       categoria = categoriaDetalhe;
     await carregar();
@@ -1398,11 +1689,17 @@ $('confirm-action').addEventListener('click', async () => {
     setBusy(false);
   }
 });
-$('cancel-action').addEventListener('click', () => $('confirm-dialog').close());
+$('cancel-action').addEventListener(
+  'click',
+  () => void closeDialog($('confirm-dialog')),
+);
 $('confirm-dialog').addEventListener('cancel', (e) => {
   if (busy) e.preventDefault();
 });
-$('close-detail').addEventListener('click', () => $('detail-dialog').close());
+$('close-detail').addEventListener(
+  'click',
+  () => void closeDialog($('detail-dialog')),
+);
 function abrirPainel(u) {
   usuario = u;
   filtros = Object.fromEntries(new URLSearchParams(rota().split('?')[1]));
@@ -1460,7 +1757,7 @@ $('refresh').addEventListener('click', () => void carregar());
 window.addEventListener('hashchange', () => {
   filtros = Object.fromEntries(new URLSearchParams(rota().split('?')[1]));
   paginaAtual = 1;
-  if ($('detail-dialog').open) $('detail-dialog').close();
+  if ($('detail-dialog').open) void closeDialog($('detail-dialog'), true);
   void carregar();
 });
 if (token) {
@@ -1482,3 +1779,5 @@ if (token) {
     $('login-button').disabled = false;
   }
 }
+
+initializeDashboard();
